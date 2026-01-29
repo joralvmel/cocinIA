@@ -1,7 +1,9 @@
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   return (
@@ -10,13 +12,13 @@ export default function HomeScreen() {
       style={{ backgroundColor: colors.background }}
     >
       <Text style={{ color: colors.primary }} className="text-3xl font-bold">
-        🍳 CocinIA
+        🍳 {t('home.title')}
       </Text>
       <Text style={{ color: colors.textSecondary }} className="mt-2">
-        Your AI cooking assistant
+        {t('home.subtitle')}
       </Text>
       <Text style={{ color: colors.textMuted }} className="mt-8 text-sm">
-        Home Screen Placeholder
+        {t('home.placeholder')}
       </Text>
     </View>
   );

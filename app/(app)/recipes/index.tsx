@@ -1,7 +1,9 @@
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function RecipesScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   return (
@@ -10,10 +12,10 @@ export default function RecipesScreen() {
       style={{ backgroundColor: colors.background }}
     >
       <Text style={{ color: colors.textSecondary }} className="text-lg">
-        📖 Recipes
+        📖 {t('recipes.title')}
       </Text>
       <Text style={{ color: colors.textMuted }} className="mt-2 text-sm">
-        Browse and discover recipes
+        {t('recipes.subtitle')}
       </Text>
     </View>
   );

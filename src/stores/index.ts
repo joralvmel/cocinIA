@@ -4,3 +4,4 @@
  */
 
 export { useThemeStore } from './themeStore';
+export { useLanguageStore } from './languageStore';

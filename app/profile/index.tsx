@@ -1,13 +1,18 @@
 import { View, Text } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useThemeStore } from '@/stores/themeStore';
+import { useLanguageStore } from '@/stores/languageStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { supportedLanguages, type LanguageCode } from '@/i18n';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = 'light' | 'dark';
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { mode, setMode } = useThemeStore();
+  const { language, setLanguage } = useLanguageStore();
   const { colors } = useAppTheme();
 
   return (
@@ -24,25 +29,26 @@ export default function ProfileScreen() {
           <FontAwesome name="user" size={40} color={colors.primary} />
         </View>
         <Text style={{ color: colors.text }} className="text-xl font-bold">
-          Guest User
+          {t('profile.guestUser')}
         </Text>
         <Text style={{ color: colors.textSecondary }} className="text-sm">
-          Sign in to sync your data
+          {t('profile.signInToSync')}
         </Text>
       </View>
 
       {/* Settings Section */}
       <View className="mb-6">
         <Text style={{ color: colors.textSecondary }} className="text-sm font-semibold uppercase mb-3 px-1">
-          Appearance
+          {t('profile.appearance')}
         </Text>
 
+        {/* Theme Selector */}
         <View
-          className="rounded-xl p-4"
+          className="rounded-xl p-4 mb-4"
           style={{ backgroundColor: colors.surface }}
         >
           <Text style={{ color: colors.text }} className="font-medium mb-3">
-            Theme
+            {t('profile.theme')}
           </Text>
           <SegmentedButtons
             value={mode}
@@ -50,15 +56,34 @@ export default function ProfileScreen() {
             buttons={[
               {
                 value: 'light',
-                label: 'Light',
+                label: t('profile.themeLight'),
                 icon: 'white-balance-sunny',
               },
               {
                 value: 'dark',
-                label: 'Dark',
+                label: t('profile.themeDark'),
                 icon: 'moon-waning-crescent',
               },
             ]}
+            style={{ backgroundColor: 'transparent' }}
+          />
+        </View>
+
+        {/* Language Selector */}
+        <View
+          className="rounded-xl p-4"
+          style={{ backgroundColor: colors.surface }}
+        >
+          <Text style={{ color: colors.text }} className="font-medium mb-3">
+            {t('profile.language')}
+          </Text>
+          <SegmentedButtons
+            value={language}
+            onValueChange={(value) => setLanguage(value as LanguageCode)}
+            buttons={supportedLanguages.map((lang) => ({
+              value: lang.code,
+              label: lang.nativeName,
+            }))}
             style={{ backgroundColor: 'transparent' }}
           />
         </View>
@@ -67,7 +92,7 @@ export default function ProfileScreen() {
       {/* Placeholder for more settings */}
       <View className="flex-1 items-center justify-center">
         <Text style={{ color: colors.textMuted }} className="text-sm">
-          More settings coming soon
+          {t('profile.moreSettingsSoon')}
         </Text>
       </View>
     </View>

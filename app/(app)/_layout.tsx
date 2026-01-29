@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 function TabBarIcon(props: {
@@ -10,6 +11,7 @@ function TabBarIcon(props: {
 }
 
 export default function AppLayout() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   return (
@@ -29,35 +31,35 @@ export default function AppLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
       />
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'Recipes',
+          title: t('tabs.recipes'),
           tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} />,
         }}
       />
       <Tabs.Screen
         name="weekly-plan"
         options={{
-          title: 'Plan',
+          title: t('tabs.plan'),
           tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
         }}
       />
       <Tabs.Screen
         name="shopping-list"
         options={{
-          title: 'Shopping',
+          title: t('tabs.shopping'),
           tabBarIcon: ({ color }) => <TabBarIcon name="shopping-cart" color={color} />,
         }}
       />
       <Tabs.Screen
         name="pantry"
         options={{
-          title: 'Pantry',
+          title: t('tabs.pantry'),
           tabBarIcon: ({ color }) => <TabBarIcon name="archive" color={color} />,
         }}
       />

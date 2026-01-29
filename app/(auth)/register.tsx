@@ -1,8 +1,10 @@
 import { View, Text, Pressable } from 'react-native';
 import { Link, router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   const handleRegister = () => {
@@ -16,10 +18,10 @@ export default function RegisterScreen() {
       style={{ backgroundColor: colors.background }}
     >
       <Text style={{ color: colors.primary }} className="text-3xl font-bold mb-2">
-        Create account
+        {t('auth.registerTitle')}
       </Text>
       <Text style={{ color: colors.textSecondary }} className="mb-12">
-        Join CocinIA
+        {t('auth.registerSubtitle')}
       </Text>
 
       {/* Placeholder - implement registration later */}
@@ -29,15 +31,15 @@ export default function RegisterScreen() {
           className="bg-primary-500 py-4 rounded-xl active:bg-primary-600"
         >
           <Text className="text-white text-center font-semibold text-lg">
-            Register
+            {t('auth.register')}
           </Text>
         </Pressable>
 
         <Link href="/(auth)/login" asChild>
           <Pressable className="py-4">
             <Text style={{ color: colors.textSecondary }} className="text-center">
-              Already got an account?{' '}
-              <Text style={{ color: colors.primary }}>Login</Text>
+              {t('auth.alreadyHaveAccount')}{' '}
+              <Text style={{ color: colors.primary }}>{t('auth.login')}</Text>
             </Text>
           </Pressable>
         </Link>

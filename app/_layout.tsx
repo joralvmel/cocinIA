@@ -1,8 +1,9 @@
 import './global.css';
+import '@/i18n'; // Initialize i18n
 import { useEffect } from 'react';
 import { Stack, router } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useColorScheme, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { ThemeProvider } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -21,13 +22,8 @@ import { colorScheme as nativeWindColorScheme } from 'nativewind';
 export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
-  const systemColorScheme = useColorScheme();
   const { mode } = useThemeStore();
-
-  // Determine effective theme
-  const isDark = mode === 'system'
-    ? systemColorScheme === 'dark'
-    : mode === 'dark';
+  const isDark = mode === 'dark';
 
   // Sync NativeWind with our theme store
   useEffect(() => {

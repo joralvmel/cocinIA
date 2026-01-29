@@ -1,7 +1,9 @@
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 export default function PantryScreen() {
+  const { t } = useTranslation();
   const { colors } = useAppTheme();
 
   return (
@@ -10,10 +12,10 @@ export default function PantryScreen() {
       style={{ backgroundColor: colors.background }}
     >
       <Text style={{ color: colors.textSecondary }} className="text-lg">
-        🥫 Pantry
+        🥫 {t('pantry.title')}
       </Text>
       <Text style={{ color: colors.textMuted }} className="mt-2 text-sm">
-        Manage your pantry inventory
+        {t('pantry.subtitle')}
       </Text>
     </View>
   );
