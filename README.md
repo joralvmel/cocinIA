@@ -145,36 +145,50 @@ npx expo start -c     # Start with cleared cache
 ```
 cocinIA/
 ├── app/                              # Expo Router (file-based routing)
-│   ├── (auth)/                       # Authentication routes (not authenticated)
+│   ├── _layout.tsx                   # Root layout (providers, navigation)
+│   ├── index.tsx                     # Entry point (redirects to app)
+│   ├── global.css                    # NativeWind global styles
+│   ├── +not-found.tsx                # 404 page
+│   ├── (auth)/                       # Auth routes (unauthenticated)
+│   │   ├── _layout.tsx
 │   │   ├── login.tsx
-│   │   └── onboarding/
-│   ├── (main)/                       # Main app (authenticated)
-│   │   ├── index.tsx                 # Home
-│   │   ├── recipes/
-│   │   ├── planner/
-│   │   ├── shopping/
-│   │   ├── pantry/
-│   │   └── profile/
-│   └── _layout.tsx                   # Root layout
+│   │   └── register.tsx
+│   ├── (app)/                        # Main app with tabs
+│   │   ├── _layout.tsx               # Tabs layout
+│   │   ├── home/                     # Tab: Home
+│   │   │   ├── _layout.tsx           # Stack navigation
+│   │   │   └── index.tsx
+│   │   ├── recipes/                  # Tab: Recipes
+│   │   │   ├── _layout.tsx
+│   │   │   └── index.tsx
+│   │   ├── weekly-plan/              # Tab: Weekly Planner
+│   │   │   ├── _layout.tsx
+│   │   │   └── index.tsx
+│   │   ├── shopping-list/            # Tab: Shopping List
+│   │   │   ├── _layout.tsx
+│   │   │   └── index.tsx
+│   │   └── pantry/                   # Tab: Pantry
+│   │       ├── _layout.tsx
+│   │       └── index.tsx
+│   └── profile/                      # Profile (accessible from header)
+│       ├── _layout.tsx
+│       └── index.tsx
 ├── src/
-│   ├── components/                   # React components
-│   │   ├── ui/                       # Reusable UI components
-│   │   ├── recipes/
-│   │   ├── planner/
-│   │   └── shared/
-│   ├── lib/                          # Configuration files
-│   │   ├── supabase.ts
-│   │   └── openai.ts
+│   ├── components/                   # Reusable components
+│   │   └── ui/                       # Base UI components
+│   ├── features/                     # Feature-based modules
 │   ├── hooks/                        # Custom React hooks
-│   ├── stores/                       # Zustand stores (UI state only)
-│   ├── services/                     # Business logic
-│   ├── schemas/                      # Zod validation schemas
-│   ├── constants/
-│   └── types/
+│   ├── services/                     # API clients (Supabase, OpenAI)
+│   ├── stores/                       # Zustand stores (UI state)
+│   ├── types/                        # Shared TypeScript types
+│   ├── utils/                        # Helper functions
+│   └── constants/                    # App constants and config
 ├── assets/
-├── supabase/                         # Database migrations
-├── global.css
+│   └── images/                       # App icons and images
 ├── tailwind.config.js
+├── metro.config.js
+├── babel.config.js
+├── tsconfig.json
 ├── .env
 └── package.json
 ```
