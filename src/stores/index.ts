@@ -3,4 +3,4 @@
  * Export all your stores from here
  */
 
-// Example: export { useUserStore } from './userStore';
+export { useThemeStore } from './themeStore';

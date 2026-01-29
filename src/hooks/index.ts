@@ -3,4 +3,4 @@
  * Export all your hooks from here
  */
 
-// Example: export { useAuth } from './useAuth';
+export { useAppTheme } from './useAppTheme';
