@@ -3,4 +3,5 @@
  * Export all your components from here
  */
 
-// Example: export { Button } from './ui/Button';
+// Re-export all UI components
+export * from './ui';
