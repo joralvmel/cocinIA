@@ -1,114 +1,113 @@
-import { View, Text, Pressable } from 'react-native';
-import { SegmentedButtons } from 'react-native-paper';
+import { View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLanguageStore } from '@/stores/languageStore';
-import { useAppTheme } from '@/hooks/useAppTheme';
 import { supportedLanguages, type LanguageCode } from '@/i18n';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-
-type ThemeMode = 'light' | 'dark';
+import {
+  Avatar,
+  Section,
+  ListItem,
+  ListGroup,
+  Switch,
+  Button,
+  BottomSheet,
+} from '@/components/ui';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { mode, setMode } = useThemeStore();
   const { language, setLanguage } = useLanguageStore();
-  const { colors } = useAppTheme();
+  const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
+
+  const isDarkMode = mode === 'dark';
+
+  const handleThemeToggle = (value: boolean) => {
+    setMode(value ? 'dark' : 'light');
+  };
+
+  const currentLanguage = supportedLanguages.find((l) => l.code === language);
 
   return (
-    <View
-      className="flex-1 px-4 pt-6"
-      style={{ backgroundColor: colors.background }}
-    >
+    <View className="flex-1 px-4 pt-6 bg-white dark:bg-gray-900">
       {/* Profile Header */}
       <View className="items-center mb-8">
-        <View
-          className="w-20 h-20 rounded-full items-center justify-center mb-3"
-          style={{ backgroundColor: colors.primaryLight }}
-        >
-          <FontAwesome name="user" size={40} color={colors.primary} />
-        </View>
-        <Text style={{ color: colors.text }} className="text-xl font-bold">
+        <Avatar size="xl" name={t('profile.guestUser')} className="mb-3" />
+        <Text className="text-xl font-bold text-gray-900 dark:text-gray-50">
           {t('profile.guestUser')}
         </Text>
-        <Text style={{ color: colors.textSecondary }} className="text-sm">
+        <Text className="text-sm text-gray-500 dark:text-gray-400">
           {t('profile.signInToSync')}
         </Text>
       </View>
 
       {/* Settings Section */}
-      <View className="mb-6">
-        <Text style={{ color: colors.textSecondary }} className="text-sm font-semibold uppercase mb-3 px-1">
-          {t('profile.appearance')}
-        </Text>
-
-        {/* Theme Selector */}
-        <View
-          className="rounded-xl p-4 mb-4"
-          style={{ backgroundColor: colors.surface }}
-        >
-          <Text style={{ color: colors.text }} className="font-medium mb-3">
-            {t('profile.theme')}
-          </Text>
-          <SegmentedButtons
-            value={mode}
-            onValueChange={(value) => setMode(value as ThemeMode)}
-            buttons={[
-              {
-                value: 'light',
-                label: t('profile.themeLight'),
-                icon: 'white-balance-sunny',
-              },
-              {
-                value: 'dark',
-                label: t('profile.themeDark'),
-                icon: 'moon-waning-crescent',
-              },
-            ]}
-            style={{ backgroundColor: 'transparent' }}
+      <Section title={t('profile.appearance')}>
+        <ListGroup>
+          <ListItem
+            leftIcon="moon-o"
+            title={t('profile.theme')}
+            subtitle={isDarkMode ? t('profile.themeDark') : t('profile.themeLight')}
+            right={
+              <Switch
+                value={isDarkMode}
+                onValueChange={handleThemeToggle}
+              />
+            }
           />
-        </View>
-
-        {/* Language Selector */}
-        <View
-          className="rounded-xl p-4"
-          style={{ backgroundColor: colors.surface }}
-        >
-          <Text style={{ color: colors.text }} className="font-medium mb-3">
-            {t('profile.language')}
-          </Text>
-          <SegmentedButtons
-            value={language}
-            onValueChange={(value) => setLanguage(value as LanguageCode)}
-            buttons={supportedLanguages.map((lang) => ({
-              value: lang.code,
-              label: lang.nativeName,
-            }))}
-            style={{ backgroundColor: 'transparent' }}
+          <ListItem
+            leftIcon="globe"
+            title={t('profile.language')}
+            right={
+              <Text className="text-gray-500 dark:text-gray-400">
+                {currentLanguage?.nativeName}
+              </Text>
+            }
+            showChevron
+            onPress={() => setLanguageSheetVisible(true)}
           />
-        </View>
-      </View>
+        </ListGroup>
+      </Section>
 
       {/* Developer Section */}
       <View className="flex-1 justify-center items-center px-4">
-        <Pressable
-          className="rounded-xl px-6 py-4 border-2 border-dashed"
-          style={{ borderColor: colors.border }}
+        <Button
+          variant="outline"
+          icon="paint-brush"
           onPress={() => router.push('/components-demo' as any)}
         >
-          <View className="items-center">
-            <FontAwesome name="paint-brush" size={32} color={colors.primary} style={{ marginBottom: 8 }} />
-            <Text style={{ color: colors.text }} className="font-semibold text-base mb-1">
-              🎨 Components Demo
-            </Text>
-            <Text style={{ color: colors.textMuted }} className="text-sm text-center">
-              View all UI components
-            </Text>
-          </View>
-        </Pressable>
+          🎨 Components Demo
+        </Button>
       </View>
+
+      {/* Language Selector Bottom Sheet */}
+      <BottomSheet
+        visible={languageSheetVisible}
+        onClose={() => setLanguageSheetVisible(false)}
+        title={t('profile.language')}
+      >
+        <View className="gap-2">
+          {supportedLanguages.map((lang) => (
+            <ListItem
+              key={lang.code}
+              title={lang.nativeName}
+              subtitle={lang.name}
+              right={
+                language === lang.code ? (
+                  <Text className="text-primary-600 dark:text-primary-400">✓</Text>
+                ) : null
+              }
+              onPress={() => {
+                setLanguage(lang.code as LanguageCode);
+                setLanguageSheetVisible(false);
+              }}
+              className="rounded-xl"
+            />
+          ))}
+        </View>
+      </BottomSheet>
     </View>
   );
 }

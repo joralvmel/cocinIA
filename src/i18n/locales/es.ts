@@ -13,6 +13,7 @@
     back: 'Atras',
     search: 'Buscar',
     noResults: 'No se encontraron resultados',
+    or: 'o',
   },
   tabs: {
     home: 'Inicio',

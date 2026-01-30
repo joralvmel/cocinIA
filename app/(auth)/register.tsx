@@ -1,11 +1,10 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '@/hooks/useAppTheme';
+import { Button } from '@/components/ui';
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
-  const { colors } = useAppTheme();
 
   const handleRegister = () => {
     // TODO: Implement actual registration logic
@@ -13,35 +12,26 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View
-      className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: colors.background }}
-    >
-      <Text style={{ color: colors.primary }} className="text-3xl font-bold mb-2">
+    <View className="flex-1 items-center justify-center px-6 bg-white dark:bg-gray-900">
+      <Text className="text-3xl font-bold mb-2 text-primary-600 dark:text-primary-400">
         {t('auth.registerTitle')}
       </Text>
-      <Text style={{ color: colors.textSecondary }} className="mb-12">
+      <Text className="mb-12 text-gray-500 dark:text-gray-400">
         {t('auth.registerSubtitle')}
       </Text>
 
-      {/* Placeholder - implement registration later */}
       <View className="w-full gap-4">
-        <Pressable
-          onPress={handleRegister}
-          className="bg-primary-500 py-4 rounded-xl active:bg-primary-600"
-        >
-          <Text className="text-white text-center font-semibold text-lg">
-            {t('auth.register')}
-          </Text>
-        </Pressable>
+        <Button onPress={handleRegister} variant="primary" size="lg" fullWidth>
+          {t('auth.register')}
+        </Button>
 
         <Link href="/(auth)/login" asChild>
-          <Pressable className="py-4">
-            <Text style={{ color: colors.textSecondary }} className="text-center">
+          <Button variant="ghost" fullWidth>
+            <Text className="text-gray-500 dark:text-gray-400">
               {t('auth.alreadyHaveAccount')}{' '}
-              <Text style={{ color: colors.primary }}>{t('auth.login')}</Text>
+              <Text className="text-primary-600 dark:text-primary-400">{t('auth.login')}</Text>
             </Text>
-          </Pressable>
+          </Button>
         </Link>
       </View>
     </View>

@@ -1,11 +1,10 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '@/hooks/useAppTheme';
+import { Button, DividerWithText } from '@/components/ui';
 
 export default function LoginScreen() {
   const { t } = useTranslation();
-  const { colors } = useAppTheme();
 
   const handleLogin = () => {
     // TODO: Implement actual login logic
@@ -13,37 +12,25 @@ export default function LoginScreen() {
   };
 
   return (
-    <View
-      className="flex-1 items-center justify-center px-6"
-      style={{ backgroundColor: colors.background }}
-    >
-      <Text style={{ color: colors.primary }} className="text-4xl font-bold mb-2">
+    <View className="flex-1 items-center justify-center px-6 bg-white dark:bg-gray-900">
+      <Text className="text-4xl font-bold mb-2 text-primary-600 dark:text-primary-400">
         {t('auth.loginTitle')}
       </Text>
-      <Text style={{ color: colors.textSecondary }} className="mb-12">
+      <Text className="mb-12 text-gray-500 dark:text-gray-400">
         {t('auth.loginSubtitle')}
       </Text>
 
-      {/* Placeholder - implement auth later */}
       <View className="w-full gap-4">
-        <Pressable
-          onPress={handleLogin}
-          className="bg-primary-500 py-4 rounded-xl active:bg-primary-600"
-        >
-          <Text className="text-white text-center font-semibold text-lg">
-            {t('auth.login')}
-          </Text>
-        </Pressable>
+        <Button onPress={handleLogin} variant="primary" size="lg" fullWidth>
+          {t('auth.login')}
+        </Button>
+
+        <DividerWithText text={t('common.or')} />
 
         <Link href="/(auth)/register" asChild>
-          <Pressable
-            className="py-4 rounded-xl"
-            style={{ borderWidth: 1, borderColor: colors.primary }}
-          >
-            <Text style={{ color: colors.primary }} className="text-center font-semibold text-lg">
-              {t('auth.createAccount')}
-            </Text>
-          </Pressable>
+          <Button variant="outline" size="lg" fullWidth>
+            {t('auth.createAccount')}
+          </Button>
         </Link>
       </View>
     </View>

@@ -13,6 +13,7 @@
     back: 'Back',
     search: 'Search',
     noResults: 'No results found',
+    or: 'or',
   },
   tabs: {
     home: 'Home',
