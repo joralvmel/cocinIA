@@ -1,10 +1,12 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { withLayoutContext } from 'expo-router';
+import { withLayoutContext, Redirect } from 'expo-router';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useTranslation } from 'react-i18next';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useAuth } from '@/contexts';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Loader } from '@/components/ui';
 
 const { Navigator } = createMaterialTopTabNavigator();
 const MaterialTopTabs = withLayoutContext(Navigator);
@@ -19,7 +21,22 @@ function TabBarIcon(props: {
 export default function AppLayout() {
   const { t } = useTranslation();
   const { colors, isDark } = useAppTheme();
+  const { isAuthenticated, loading } = useAuth();
   const insets = useSafeAreaInsets();
+
+  // Show loader while checking authentication
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+        <Loader size="lg" />
+      </View>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

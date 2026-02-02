@@ -9,6 +9,7 @@ import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '@/services/queryClient';
 import { useThemeStore } from '@/stores/themeStore';
+import { AuthProvider } from '@/contexts';
 import {
   lightNavigationTheme,
   darkNavigationTheme,
@@ -36,45 +37,47 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <PaperProvider theme={paperTheme}>
-          <ThemeProvider value={navigationTheme}>
-            <View style={{ flex: 1, backgroundColor: navigationTheme.colors.background }}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: navigationTheme.colors.background },
-                  animation: 'fade',
-                  animationDuration: 150,
-                }}
-              >
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-                <Stack.Screen
-                  name="profile"
-                  options={{
-                    headerShown: true,
-                    title: 'Profile',
-                    presentation: 'card',
-                    animation: 'slide_from_right',
-                    headerStyle: { backgroundColor: navigationTheme.colors.card },
-                    headerTintColor: navigationTheme.colors.text,
-                    headerShadowVisible: false,
-                    headerLeft: () => (
-                      <Pressable onPress={() => router.back()} className="p-2 mr-2">
-                        <FontAwesome
-                          name="arrow-left"
-                          size={20}
-                          color={isDark ? brandColors.primary[400] : brandColors.primary[600]}
-                        />
-                      </Pressable>
-                    ),
+        <AuthProvider>
+          <PaperProvider theme={paperTheme}>
+            <ThemeProvider value={navigationTheme}>
+              <View style={{ flex: 1, backgroundColor: navigationTheme.colors.background }}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: navigationTheme.colors.background },
+                    animation: 'fade',
+                    animationDuration: 150,
                   }}
-                />
-              </Stack>
-            </View>
-          </ThemeProvider>
-        </PaperProvider>
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(app)" />
+                  <Stack.Screen
+                    name="profile"
+                    options={{
+                      headerShown: true,
+                      title: 'Profile',
+                      presentation: 'card',
+                      animation: 'slide_from_right',
+                      headerStyle: { backgroundColor: navigationTheme.colors.card },
+                      headerTintColor: navigationTheme.colors.text,
+                      headerShadowVisible: false,
+                      headerLeft: () => (
+                        <Pressable onPress={() => router.back()} className="p-2 mr-2">
+                          <FontAwesome
+                            name="arrow-left"
+                            size={20}
+                            color={isDark ? brandColors.primary[400] : brandColors.primary[600]}
+                          />
+                        </Pressable>
+                      ),
+                    }}
+                  />
+                </Stack>
+              </View>
+            </ThemeProvider>
+          </PaperProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

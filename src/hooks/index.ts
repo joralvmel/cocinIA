@@ -4,4 +4,4 @@
  */
 
 export { useAppTheme } from './useAppTheme';
-export { useAuth } from './useAuth';
+export { useAuth } from '@/contexts';
