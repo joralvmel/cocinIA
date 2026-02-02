@@ -6,7 +6,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
 
   return (
-    <View className="flex-1 bg-white dark:bg-gray-900 px-4 pt-6">
+    <View className="flex-1 bg-white dark:bg-gray-900 px-4 pt-6 pb-8">
       <Text className="text-3xl font-bold text-primary-600 dark:text-primary-400 mb-2">
         🍳 {t('home.title')}
       </Text>

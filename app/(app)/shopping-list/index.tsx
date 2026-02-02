@@ -6,7 +6,7 @@ export default function ShoppingListScreen() {
   const { t } = useTranslation();
 
   return (
-    <View className="flex-1 bg-white dark:bg-gray-900 px-4 pt-6">
+    <View className="flex-1 bg-white dark:bg-gray-900 px-4 pt-6 pb-8">
       <Text className="text-2xl font-bold text-gray-900 dark:text-gray-50 mb-2">
         🛒 {t('shoppingList.title')}
       </Text>
