@@ -32,6 +32,7 @@ export { Badge, InfoBadge, BadgeGroup, type BadgeProps, type BadgeVariant, type 
 export { Avatar, AvatarGroup, type AvatarProps, type AvatarSize, type AvatarGroupProps } from './Avatar';
 export { Divider, DividerWithText, type DividerProps, type DividerWithTextProps } from './Divider';
 export { ProgressBar, StepperProgress, type ProgressBarProps, type StepperProgressProps } from './Progress';
+export { Logo, type LogoProps } from './Logo';
 
 // Layout
 export { Section, SectionHeader, type SectionProps, type SectionHeaderProps } from './Section';

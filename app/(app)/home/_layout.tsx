@@ -1,7 +1,8 @@
 import { Stack, Link } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, View, Text } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { Logo } from '@/components/ui';
 
 export default function HomeLayout() {
   const { colors } = useAppTheme();
@@ -19,8 +20,15 @@ export default function HomeLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: 'CocinIA',
-          headerLargeTitle: true,
+          headerTitle: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 8 }}>
+              <Logo size="sm" style={{ width: 32, height: 32 }} />
+              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary }}>
+                CocinIA
+              </Text>
+            </View>
+          ),
+          headerLargeTitle: false,
           headerRight: () => (
             <Link href="/profile" asChild>
               <Pressable className="mr-4">

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Button, Divider, Input, Loader, AlertModal } from '@/components/ui';
+import { Button, Divider, Input, Loader, AlertModal, Logo } from '@/components/ui';
 import { authService } from '@/services';
 import { GoogleIcon } from '@/assets/icons';
 
@@ -148,6 +148,9 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="w-full max-w-md mx-auto">
+          <View className="items-center mb-6">
+            <Logo size="xl" />
+          </View>
           <Text className="text-4xl font-bold mb-2 text-primary-600 dark:text-primary-400 text-center">
             {t('auth.loginTitle')}
           </Text>
