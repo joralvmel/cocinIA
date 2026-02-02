@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLanguageStore } from '@/stores/languageStore';
 import { supportedLanguages, type LanguageCode } from '@/i18n';
+import { useAuth } from '@/hooks';
+import { authService } from '@/services';
 import {
   Avatar,
   Section,
@@ -13,6 +15,7 @@ import {
   Switch,
   Button,
   BottomSheet,
+  AlertModal,
 } from '@/components/ui';
 
 export default function ProfileScreen() {
@@ -20,7 +23,9 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const { mode, setMode } = useThemeStore();
   const { language, setLanguage } = useLanguageStore();
+  const { user, isAuthenticated } = useAuth();
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
+  const [signOutAlertVisible, setSignOutAlertVisible] = useState(false);
 
   const isDarkMode = mode === 'dark';
 
@@ -28,19 +33,36 @@ export default function ProfileScreen() {
     setMode(value ? 'dark' : 'light');
   };
 
+  const handleSignOut = () => {
+    setSignOutAlertVisible(true);
+  };
+
+  const confirmSignOut = async () => {
+    try {
+      await authService.signOut();
+      setSignOutAlertVisible(false);
+      router.replace('/(auth)/login');
+    } catch (error: any) {
+      setSignOutAlertVisible(false);
+    }
+  };
+
   const currentLanguage = supportedLanguages.find((l) => l.code === language);
+  const displayName = user?.email || t('profile.guestUser');
 
   return (
     <View className="flex-1 px-4 pt-6 bg-white dark:bg-gray-900">
       {/* Profile Header */}
       <View className="items-center mb-8">
-        <Avatar size="xl" name={t('profile.guestUser')} className="mb-3" />
+        <Avatar size="xl" name={displayName} className="mb-3" />
         <Text className="text-xl font-bold text-gray-900 dark:text-gray-50">
-          {t('profile.guestUser')}
+          {displayName}
         </Text>
-        <Text className="text-sm text-gray-500 dark:text-gray-400">
-          {t('profile.signInToSync')}
-        </Text>
+        {!isAuthenticated && (
+          <Text className="text-sm text-gray-500 dark:text-gray-400">
+            {t('profile.signInToSync')}
+          </Text>
+        )}
       </View>
 
       {/* Settings Section */}
@@ -70,6 +92,18 @@ export default function ProfileScreen() {
           />
         </ListGroup>
       </Section>
+
+      {/* Sign Out Button */}
+      {isAuthenticated && (
+        <View className="mt-4">
+          <Button
+            variant="outline"
+            onPress={handleSignOut}
+          >
+            🚪 {t('auth.signOut')}
+          </Button>
+        </View>
+      )}
 
       {/* Developer Section */}
       <View className="flex-1 justify-center items-center px-4">
@@ -108,6 +142,18 @@ export default function ProfileScreen() {
           ))}
         </View>
       </BottomSheet>
+
+      {/* Sign Out Confirmation Alert */}
+      <AlertModal
+        visible={signOutAlertVisible}
+        onClose={() => setSignOutAlertVisible(false)}
+        title={t('auth.signOut')}
+        message="Are you sure you want to sign out?"
+        variant="warning"
+        confirmLabel={t('auth.signOut')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmSignOut}
+      />
     </View>
   );
 }

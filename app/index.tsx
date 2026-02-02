@@ -1,15 +1,22 @@
 import { Redirect } from 'expo-router';
+import { View } from 'react-native';
+import { useAuth } from '@/hooks';
+import { Loader } from '@/components/ui';
 
-/**
- * Entry point - redirects based on auth state
- * TODO: Add actual auth check with Supabase
- */
 export default function Index() {
-  // TODO: Add auth check
-  // const { session, isLoading } = useAuth();
-  // if (isLoading) return <LoadingScreen />;
-  // if (session) return <Redirect href="/(app)/home" />;
+  const { session, loading } = useAuth();
 
-  // For now, redirect to login
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
+        <Loader size="lg" />
+      </View>
+    );
+  }
+
+  if (session) {
+    return <Redirect href="/(app)/home" />;
+  }
+
   return <Redirect href="/(auth)/login" />;
 }

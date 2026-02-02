@@ -15,6 +15,8 @@ export interface ButtonProps {
   loading?: boolean;
   icon?: keyof typeof FontAwesome.glyphMap;
   iconPosition?: 'left' | 'right';
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   fullWidth?: boolean;
   className?: string;
 }
@@ -46,6 +48,8 @@ export function Button({
   loading = false,
   icon,
   iconPosition = 'left',
+  leftIcon,
+  rightIcon,
   fullWidth = false,
   className = '',
 }: ButtonProps) {
@@ -97,6 +101,7 @@ export function Button({
         <ActivityIndicator size="small" color={textColor} />
       ) : (
         <>
+          {leftIcon && <Text style={{ marginRight: 8 }}>{leftIcon}</Text>}
           {icon && iconPosition === 'left' && (
             <FontAwesome name={icon} size={iconSizes[size]} color={textColor} className="mr-2" />
           )}
@@ -106,6 +111,7 @@ export function Button({
           {icon && iconPosition === 'right' && (
             <FontAwesome name={icon} size={iconSizes[size]} color={textColor} className="ml-2" />
           )}
+          {rightIcon && <Text style={{ marginLeft: 8 }}>{rightIcon}</Text>}
         </>
       )}
     </Pressable>
