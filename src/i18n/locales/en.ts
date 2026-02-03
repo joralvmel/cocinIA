@@ -171,6 +171,7 @@
     title: 'CocinIA',
     subtitle: 'Your AI cooking assistant',
     placeholder: 'Home Screen Placeholder',
+    chatPlaceholder: 'Write your message...',
   },
   recipes: {
     title: 'Recipes',

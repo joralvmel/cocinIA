@@ -171,6 +171,7 @@
     title: 'CocinIA',
     subtitle: 'Tu asistente de cocina con IA',
     placeholder: 'Pantalla de inicio',
+    chatPlaceholder: 'Escribe tu mensaje...',
   },
   recipes: {
     title: 'Recetas',
