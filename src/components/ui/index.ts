@@ -14,6 +14,7 @@ export { NumberInput, CompactNumberInput, type NumberInputProps, type CompactNum
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { SelectBottomSheet, SelectTrigger, type SelectBottomSheetProps, type SelectBottomSheetOption, type SelectTriggerProps } from './SelectBottomSheet';
 export { DatePicker, type DatePickerProps } from './DatePicker';
+export { RangeSlider, type RangeSliderProps } from './RangeSlider';
 
 // Cards
 export { Card, CardHeader, CardContent, CardFooter, type CardProps, type CardHeaderProps, type CardContentProps, type CardFooterProps } from './Card';

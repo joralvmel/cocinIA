@@ -61,16 +61,18 @@ export function Input({
         </Text>
       )}
       <View
-        className={`flex-row rounded-xl px-4 border-[1.5px] ${multiline ? 'items-start pt-3' : 'items-center'} ${getBorderClasses()} ${disabled ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'}`}
+        className={`flex-row rounded-xl px-4 border-[1.5px] ${multiline ? 'items-start' : 'items-center'} ${getBorderClasses()} ${disabled ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gray-50 dark:bg-gray-800'}`}
         style={{ minHeight }}
       >
         {leftIcon && (
-          <FontAwesome
-            name={leftIcon}
-            size={18}
-            color={error ? colors.error : colors.textSecondary}
-            className={`mr-3 ${multiline ? 'mt-0.5' : ''}`}
-          />
+          <View style={{ paddingTop: multiline ? 12 : 0, paddingBottom: multiline ? 12 : 0, justifyContent: multiline ? 'flex-start' : 'center' }}>
+            <FontAwesome
+              name={leftIcon}
+              size={18}
+              color={error ? colors.error : colors.textSecondary}
+              style={{ marginRight: 12 }}
+            />
+          </View>
         )}
         <TextInput
           value={value}
@@ -83,7 +85,7 @@ export function Input({
           secureTextEntry={secureTextEntry && !isPasswordVisible}
           multiline={multiline}
           numberOfLines={numberOfLines}
-          className={`flex-1 text-base text-gray-900 dark:text-gray-50 ${multiline ? 'pb-3' : 'py-3'}`}
+          className={`flex-1 text-base text-gray-900 dark:text-gray-50 py-3`}
           style={{ textAlignVertical: multiline ? 'top' : 'center' }}
           {...rest}
         />

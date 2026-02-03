@@ -6,6 +6,8 @@
       "@/*": ["./*"],
       "@/components": ["./src/components"],
       "@/components/*": ["./src/components/*"],
+      "@/config": ["./src/config"],
+      "@/config/*": ["./src/config/*"],
       "@/features": ["./src/features"],
       "@/features/*": ["./src/features/*"],
       "@/hooks": ["./src/hooks"],

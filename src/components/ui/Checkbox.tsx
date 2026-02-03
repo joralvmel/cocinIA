@@ -11,6 +11,8 @@ export interface CheckboxProps {
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  /** Whether to strike through the label when checked (useful for shopping lists) */
+  strikethrough?: boolean;
 }
 
 const boxSizes = {
@@ -28,6 +30,7 @@ export function Checkbox({
   disabled = false,
   size = 'md',
   className = '',
+  strikethrough = false,
 }: CheckboxProps) {
   const handlePress = () => {
     if (!disabled) onChange(!checked);
@@ -61,7 +64,7 @@ export function Checkbox({
           {label && (
             <Text
               className={`font-medium text-gray-900 dark:text-gray-50 ${
-                checked ? 'line-through' : ''
+                checked && strikethrough ? 'line-through' : ''
               }`}
             >
               {label}
