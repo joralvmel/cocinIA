@@ -89,13 +89,13 @@ export function AlertModal({
               </Text>
             )}
           </View>
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Button variant="outline" onPress={onClose} fullWidth>
-                {cancelLabel}
-              </Button>
-            </View>
-            {onConfirm && (
+          {onConfirm ? (
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Button variant="outline" onPress={onClose} fullWidth>
+                  {cancelLabel}
+                </Button>
+              </View>
               <View className="flex-1">
                 <Button
                   variant={variant === 'danger' ? 'danger' : 'primary'}
@@ -108,8 +108,16 @@ export function AlertModal({
                   {confirmLabel}
                 </Button>
               </View>
-            )}
-          </View>
+            </View>
+          ) : (
+            <Button
+              variant="primary"
+              onPress={onClose}
+              fullWidth
+            >
+              {confirmLabel}
+            </Button>
+          )}
         </View>
       </View>
     </Modal>

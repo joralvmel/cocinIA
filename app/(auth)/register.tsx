@@ -76,7 +76,7 @@ export default function RegisterScreen() {
         setAlertVisible(true);
       } else if (result?.session) {
         // Auto-logged in (email confirmation disabled)
-        router.replace('/(app)/home');
+        router.replace('/');
       } else {
         router.replace('/(auth)/login');
       }
@@ -105,7 +105,7 @@ export default function RegisterScreen() {
 
       if (Platform.OS !== 'web') {
         if (result) {
-          router.replace('/(app)/home');
+          router.replace('/');
         } else {
           setLoading(false);
         }

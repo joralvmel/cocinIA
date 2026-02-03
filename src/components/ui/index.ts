@@ -12,6 +12,8 @@ export { Input, type InputProps } from './Input';
 export { SearchInput, type SearchInputProps } from './SearchInput';
 export { NumberInput, CompactNumberInput, type NumberInputProps, type CompactNumberInputProps } from './NumberInput';
 export { Select, type SelectProps, type SelectOption } from './Select';
+export { SelectBottomSheet, SelectTrigger, type SelectBottomSheetProps, type SelectBottomSheetOption, type SelectTriggerProps } from './SelectBottomSheet';
+export { DatePicker, type DatePickerProps } from './DatePicker';
 
 // Cards
 export { Card, CardHeader, CardContent, CardFooter, type CardProps, type CardHeaderProps, type CardContentProps, type CardFooterProps } from './Card';
@@ -33,10 +35,12 @@ export { Avatar, AvatarGroup, type AvatarProps, type AvatarSize, type AvatarGrou
 export { Divider, DividerWithText, type DividerProps, type DividerWithTextProps } from './Divider';
 export { ProgressBar, StepperProgress, type ProgressBarProps, type StepperProgressProps } from './Progress';
 export { Logo, type LogoProps } from './Logo';
+export { ProfileCompletionCard } from './ProfileCompletionCard';
 
 // Layout
 export { Section, SectionHeader, type SectionProps, type SectionHeaderProps } from './Section';
 export { ListItem, ListItemSeparator, ListGroup, type ListItemProps, type ListGroupProps } from './ListItem';
+export { ScreenHeader, type ScreenHeaderProps } from './ScreenHeader';
 
 // Modals
 export { AlertModal, type AlertModalProps } from './AlertModal';

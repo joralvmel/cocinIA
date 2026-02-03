@@ -17,5 +17,22 @@ export {
   type AppColors,
 } from './theme';
 
-// Add your constants here
-// Example: export const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// Countries and currencies
+export { countries, getCountryByCode, type Country } from './countries';
+export { currencies, getCurrencyByCode, type Currency } from './currencies';
+
+// Dietary restrictions
+export {
+  allergies,
+  preferences,
+  allRestrictions,
+  getRestrictionById,
+  type DietaryRestriction,
+} from './restrictions';
+
+// Cuisines
+export { cuisines, getCuisineById, type Cuisine } from './cuisines';
+
+// Equipment
+export { equipment, getEquipmentById, type Equipment } from './equipment';
+

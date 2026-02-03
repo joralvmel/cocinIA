@@ -1,9 +1,9 @@
 import './global.css';
 import '@/i18n'; // Initialize i18n
 import { useEffect } from 'react';
-import { Stack, router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { ThemeProvider } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,9 +15,7 @@ import {
   darkNavigationTheme,
   lightPaperTheme,
   darkPaperTheme,
-  brandColors,
 } from '@/constants/theme';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colorScheme as nativeWindColorScheme } from 'nativewind';
 
 export { ErrorBoundary } from 'expo-router';
@@ -51,26 +49,14 @@ export default function RootLayout() {
                 >
                   <Stack.Screen name="index" />
                   <Stack.Screen name="(auth)" />
+                  <Stack.Screen name="(onboarding)" />
                   <Stack.Screen name="(app)" />
                   <Stack.Screen
                     name="profile"
                     options={{
-                      headerShown: true,
-                      title: 'Profile',
+                      headerShown: false,
                       presentation: 'card',
                       animation: 'slide_from_right',
-                      headerStyle: { backgroundColor: navigationTheme.colors.card },
-                      headerTintColor: navigationTheme.colors.text,
-                      headerShadowVisible: false,
-                      headerLeft: () => (
-                        <Pressable onPress={() => router.back()} className="p-2 mr-2">
-                          <FontAwesome
-                            name="arrow-left"
-                            size={20}
-                            color={isDark ? brandColors.primary[400] : brandColors.primary[600]}
-                          />
-                        </Pressable>
-                      ),
                     }}
                   />
                 </Stack>

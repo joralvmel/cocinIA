@@ -3,4 +3,25 @@
  * Export all your helpers from here
  */
 
-// Example: export { formatDate } from './date';
+// Nutrition calculations
+export {
+  calculateBMR,
+  calculateTDEE,
+  calculateAge,
+  calculateNutritionGoals,
+  cmToFeetInches,
+  feetInchesToCm,
+  kgToLbs,
+  lbsToKg,
+  type FitnessGoal,
+  type NutritionGoals,
+} from './nutrition';
+
+// Profile completion
+export {
+  calculateProfileCompletion,
+  getCompletionMessage,
+  getNextRecommendedCategory,
+  type ProfileCompletionResult,
+} from './profileCompletion';
+

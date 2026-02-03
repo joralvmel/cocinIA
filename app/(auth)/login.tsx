@@ -51,7 +51,7 @@ export default function LoginScreen() {
 
     try {
       await authService.signInWithEmail(email, password);
-      router.replace('/(app)/home');
+      router.replace('/');
     } catch (error: any) {
       let errorMessage = error.message || t('auth.loginError');
       let variant: 'info' | 'warning' | 'danger' = 'danger';
@@ -115,7 +115,7 @@ export default function LoginScreen() {
 
       if (Platform.OS !== 'web') {
         if (result) {
-          router.replace('/(app)/home');
+          router.replace('/');
         } else {
           setLoading(false);
         }
