@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@google/generative-ai": "^0.24.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "^5.1.2",
     "@react-navigation/material-top-tabs": "^7.4.13",
@@ -29,7 +30,6 @@
     "expo-web-browser": "~15.0.10",
     "i18next": "^25.8.0",
     "nativewind": "^4.2.1",
-    "openai": "^6.17.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-i18next": "^16.5.4",

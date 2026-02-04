@@ -1,31 +1,17 @@
 /**
  * AI Configuration
- * Centralized configuration for AI models and settings
+ * Centralized configuration for Gemini AI
  */
 
 export const AI_CONFIG = {
   /**
-   * Default OpenAI model for recipe generation
-   * Change this to switch models easily (e.g., 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo')
+   * Google Gemini Configuration
+   * Using Gemini 2.5 Flash Lite for fast and accurate recipe generation
    */
-  model: 'gpt-4o-mini',
-
-  /**
-   * Temperature for recipe generation (0-2)
-   * Lower = more deterministic, Higher = more creative
-   */
+  model: 'gemini-2.5-flash-lite' as const,
   temperature: 0.7,
-
-  /**
-   * Maximum tokens for recipe generation response
-   */
-  maxTokens: 2500,
-
-  /**
-   * Maximum tokens for chat responses
-   */
-  chatMaxTokens: 1000,
+  maxOutputTokens: 2500,
 } as const;
 
-export type AIModel = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4-turbo' | 'gpt-3.5-turbo';
+export type GeminiModel = 'gemini-2.5-flash-lite' | 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
 
