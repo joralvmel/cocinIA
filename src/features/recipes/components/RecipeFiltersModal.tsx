@@ -6,7 +6,7 @@ import { useRecipeGenerationStore } from '@/stores';
 import { cuisines } from '@/constants/cuisines';
 import { equipment as equipmentConstants } from '@/constants/equipment';
 import { type MealType, type DifficultyLevel } from '@/types';
-import { type ProfileEquipment } from '@/services';
+import { type ProfileEquipment, type ProfileCuisine, profileService } from '@/services';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -20,6 +20,7 @@ interface RecipeFiltersModalProps {
   onClose: () => void;
   profileEquipment?: ProfileEquipment[];
   profileCuisines?: string[];
+  profileCustomCuisines?: ProfileCuisine[];
   profileFavoriteIngredients?: ProfileFavoriteIngredient[];
 }
 
@@ -28,6 +29,7 @@ export function RecipeFiltersModal({
   onClose,
   profileEquipment = [],
   profileCuisines = [],
+  profileCustomCuisines = [],
   profileFavoriteIngredients = [],
 }: RecipeFiltersModalProps) {
   const { t } = useTranslation();
@@ -38,6 +40,8 @@ export function RecipeFiltersModal({
   const [ingredientsToUseText, setIngredientsToUseText] = useState('');
   const [ingredientsToExcludeText, setIngredientsToExcludeText] = useState('');
   const [hasInitializedDefaults, setHasInitializedDefaults] = useState(false);
+  const [resetPressed, setResetPressed] = useState(false);
+  const [clearPressed, setClearPressed] = useState(false);
 
   // Default values from profile (used for reset)
   const defaultCuisines = profileCuisines;
@@ -100,10 +104,20 @@ export function RecipeFiltersModal({
   ];
 
   // All cuisine options (same as edit-preferences) - using labelKey for translation
-  const allCuisineOptions = cuisines.map((c) => ({
+  const standardCuisineOptions = cuisines.map((c) => ({
     id: c.id,
     label: `${c.icon} ${String(t(c.labelKey as any, { defaultValue: c.defaultLabel }))}`,
   }));
+
+  // Add custom cuisines from profile
+  const customCuisineOptions = profileCustomCuisines
+    .filter(c => c.custom_name)
+    .map(c => ({
+      id: c.cuisine_type,
+      label: `🍽️ ${c.custom_name}`,
+    }));
+
+  const allCuisineOptions = [...standardCuisineOptions, ...customCuisineOptions];
 
   // All equipment options - combine standard with profile custom equipment
   const standardEquipmentOptions = equipmentConstants.map((e) => ({
@@ -129,6 +143,17 @@ export function RecipeFiltersModal({
       .filter(Boolean);
   };
 
+  // Show feedback with color flash
+  const flashReset = () => {
+    setResetPressed(true);
+    setTimeout(() => setResetPressed(false), 600);
+  };
+
+  const flashClear = () => {
+    setClearPressed(true);
+    setTimeout(() => setClearPressed(false), 600);
+  };
+
   // Reset all filters to profile defaults
   const handleReset = () => {
     setIngredientsToUseText('');
@@ -144,6 +169,7 @@ export function RecipeFiltersModal({
     setFormField('cuisines', defaultCuisines);
     setFormField('equipment', defaultEquipment);
     setFormField('difficulty', undefined);
+    flashReset();
   };
 
   // Apply filters and close
@@ -168,6 +194,7 @@ export function RecipeFiltersModal({
     setFormField('cuisines', []);
     setFormField('equipment', []);
     setFormField('difficulty', undefined);
+    flashClear();
   };
 
   // Handle max calorie change from slider
@@ -185,29 +212,34 @@ export function RecipeFiltersModal({
       okLabel={String(t('common.apply'))}
       onOk={handleApply}
       showCloseButton={false}
-    >
-      <View className="pb-10 gap-5">
-        {/* Reset Buttons */}
-        <View className="flex-row justify-end gap-3">
+      headerActions={
+        <View className="flex-row items-center gap-2">
+          {/* Clear Button */}
           <Pressable
             onPress={handleClearAll}
-            className="flex-row items-center"
+            className={`p-2 rounded-lg ${clearPressed ? 'bg-red-100 dark:bg-red-900/30' : ''}`}
           >
-            <FontAwesome name="trash-o" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
-            <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-              {String(t('recipeGeneration.clearAll' as any))}
-            </Text>
+            <FontAwesome
+              name="trash-o"
+              size={18}
+              color={clearPressed ? '#ef4444' : colors.textSecondary}
+            />
           </Pressable>
+          {/* Reset Button */}
           <Pressable
             onPress={handleReset}
-            className="flex-row items-center"
+            className={`p-2 rounded-lg ${resetPressed ? 'bg-primary-100 dark:bg-primary-900/30' : ''}`}
           >
-            <FontAwesome name="refresh" size={14} color={colors.primary} style={{ marginRight: 6 }} />
-            <Text className="text-primary-500 dark:text-primary-400 text-sm font-medium">
-              {String(t('recipeGeneration.resetToProfile' as any))}
-            </Text>
+            <FontAwesome
+              name="refresh"
+              size={18}
+              color={resetPressed ? '#22c55e' : colors.primary}
+            />
           </Pressable>
         </View>
+      }
+    >
+      <View className="pb-10 gap-5">
 
         {/* Ingredients to Use */}
         <Section title={String(t('recipeGeneration.ingredientsToUse'))}>

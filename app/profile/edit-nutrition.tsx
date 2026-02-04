@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import {View, Text, ScrollView, Pressable, ActivityIndicator} from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, BackHandler } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -11,12 +11,12 @@ import {
   Section,
   AlertModal,
   ScreenHeader,
-  IconButton,
+  MultiActionButton,
+  type ActionOption,
 } from '@/components/ui';
 import { profileService } from '@/services';
 import { calculateNutritionGoals, type FitnessGoal } from '@/utils';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 
 export default function EditNutritionScreen() {
   const router = useRouter();
@@ -25,7 +25,7 @@ export default function EditNutritionScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error' | 'calculated'>('success');
+  const [alertType, setAlertType] = useState<'error' | 'calculated'>('error');
 
   // Form state
   const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal>('maintain');
@@ -100,6 +100,7 @@ export default function EditNutritionScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await profileService.updateProfile({
@@ -110,23 +111,52 @@ export default function EditNutritionScreen() {
         fat_goal_g: fatGoal,
         default_servings: defaultServings,
       });
-      setAlertType('success');
-      setAlertVisible(true);
+      return true;
     } catch (error) {
       console.error('Error saving profile:', error);
       setAlertType('error');
       setAlertVisible(true);
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  // Auto-save when navigating back
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleSave().then(() => {
+          router.back();
+        });
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [fitnessGoal, dailyCalorieGoal, proteinGoal, carbsGoal, fatGoal, defaultServings])
+  );
+
+  // Handle back from ScreenHeader
+  const handleBack = async () => {
+    await handleSave();
+    router.back();
+  };
+
   const handleAlertClose = () => {
     setAlertVisible(false);
-    if (alertType === 'success') {
-      router.back();
-    }
   };
+
+  // FAB options for calculating goals
+  const fabOptions: ActionOption[] = canCalculate ? [
+    {
+      id: 'calculate',
+      label: t('profile.calculateGoals'),
+      icon: 'calculator',
+      color: 'primary',
+      onPress: handleCalculateGoals,
+    },
+  ] : [];
 
   // Goal options
   const goalOptions = [
@@ -149,7 +179,7 @@ export default function EditNutritionScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.nutritionGoals')} />
+        <ScreenHeader title={t('profile.nutritionGoals')} onBack={handleBack} />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -167,18 +197,6 @@ export default function EditNutritionScreen() {
             className="mt-2"
           />
 
-          {/* Calculate Button */}
-          {canCalculate && (
-            <Pressable
-              onPress={handleCalculateGoals}
-              className="flex-row items-center justify-center mt-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-900/30"
-            >
-              <FontAwesome name="calculator" size={16} color={colors.primary} />
-              <Text className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
-                {t('profile.calculateGoals')}
-              </Text>
-            </Pressable>
-          )}
 
           {!canCalculate && (
             <Text className="text-sm text-gray-500 dark:text-gray-400 mt-3 text-center">
@@ -255,24 +273,18 @@ export default function EditNutritionScreen() {
         </ScrollView>
       </View>
 
-      {/* Floating Save Button */}
-      <View
-        className="absolute bottom-6 right-6"
-        style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
-      >
-        {saving ? (
-          <View className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center">
-            <ActivityIndicator color="#ffffff" size="small" />
-          </View>
-        ) : (
-          <IconButton
-            icon="check"
-            size="xl"
-            variant="primary"
-            onPress={handleSave}
+      {/* Floating Calculate Button */}
+      {canCalculate && (
+        <View className="absolute bottom-6 right-6">
+          <MultiActionButton
+            icon="calculator"
+            options={fabOptions}
+            variant="floating"
+            floatingColor="primary-500"
+            loading={saving}
           />
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Goal Selector */}
       <SelectBottomSheet
@@ -290,14 +302,12 @@ export default function EditNutritionScreen() {
         onClose={handleAlertClose}
         title={alertType === 'error' ? t('common.error') : t('common.done')}
         message={
-          alertType === 'success'
-            ? t('profile.profileUpdated')
-            : alertType === 'calculated'
+          alertType === 'calculated'
             ? t('profile.calculatedGoals')
             : t('profile.updateError')
         }
         variant={alertType === 'error' ? 'danger' : 'info'}
-        confirmLabel={t('common.done')}
+        confirmLabel={t('common.ok')}
       />
       </SafeAreaView>
     </View>

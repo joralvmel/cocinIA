@@ -20,7 +20,7 @@ export interface Profile {
   fat_goal_g: number | null;
   default_servings: number | null;
   preferred_cuisines: string[] | null;
-  quick_filters: string[] | null;
+  // REMOVED: quick_filters - now in profile_quick_filters table
   measurement_system: 'metric' | 'imperial' | null;
   onboarding_completed: boolean;
   onboarding_step: number | null;
@@ -53,6 +53,23 @@ export interface FavoriteIngredient {
   created_at: string;
 }
 
+export interface ProfileCuisine {
+  id: string;
+  profile_id: string;
+  cuisine_type: string;
+  custom_name: string | null;
+  created_at: string;
+}
+
+export interface ProfileQuickFilter {
+  id: string;
+  profile_id: string;
+  filter_type: string;
+  custom_name: string | null;
+  display_order: number;
+  created_at: string;
+}
+
 // Profile update payload
 export interface ProfileUpdatePayload {
   display_name?: string;
@@ -70,7 +87,7 @@ export interface ProfileUpdatePayload {
   fat_goal_g?: number;
   default_servings?: number;
   preferred_cuisines?: string[];
-  quick_filters?: string[];
+  // REMOVED: quick_filters - now in profile_quick_filters table
   measurement_system?: 'metric' | 'imperial';
   onboarding_completed?: boolean;
   onboarding_step?: number;
@@ -305,6 +322,106 @@ export const profileService = {
             profile_id: user.id,
             ingredient_name: i.ingredient_name,
             always_available: i.always_available,
+          }))
+        );
+
+      if (error) throw error;
+    }
+  },
+
+  /**
+   * Get user's custom cuisines
+   */
+  async getCuisines(): Promise<ProfileCuisine[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('profile_cuisines')
+      .select('*')
+      .eq('profile_id', user.id);
+
+    if (error) {
+      // Table might not exist yet
+      console.error('Error fetching cuisines:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Save cuisines (replaces all existing ones)
+   */
+  async saveCuisines(cuisines: { cuisine_type: string; custom_name?: string }[]): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Delete existing cuisines
+    await supabase
+      .from('profile_cuisines')
+      .delete()
+      .eq('profile_id', user.id);
+
+    // Insert new cuisines if any
+    if (cuisines.length > 0) {
+      const { error } = await supabase
+        .from('profile_cuisines')
+        .insert(
+          cuisines.map((c) => ({
+            profile_id: user.id,
+            cuisine_type: c.cuisine_type,
+            custom_name: c.custom_name || null,
+          }))
+        );
+
+      if (error) throw error;
+    }
+  },
+
+  /**
+   * Get user's quick filters from profile_quick_filters table
+   */
+  async getQuickFilters(): Promise<ProfileQuickFilter[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('profile_quick_filters')
+      .select('*')
+      .eq('profile_id', user.id)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      // Table might not exist yet or migration not run
+      console.error('Error fetching quick filters:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Save quick filters (replaces all existing ones)
+   */
+  async saveQuickFilters(filters: { filter_type: string; custom_name?: string }[]): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Delete existing filters
+    await supabase
+      .from('profile_quick_filters')
+      .delete()
+      .eq('profile_id', user.id);
+
+    // Insert new filters if any, maintaining order
+    if (filters.length > 0) {
+      const { error } = await supabase
+        .from('profile_quick_filters')
+        .insert(
+          filters.map((f, index) => ({
+            profile_id: user.id,
+            filter_type: f.filter_type,
+            custom_name: f.custom_name || null,
+            display_order: index,
           }))
         );
 

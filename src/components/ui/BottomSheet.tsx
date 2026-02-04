@@ -9,12 +9,10 @@ export interface BottomSheetProps {
   children: React.ReactNode;
   showHandle?: boolean;
   showCloseButton?: boolean;
-  /** Show OK button instead of X button */
   showOkButton?: boolean;
-  /** Label for OK button */
   okLabel?: string;
-  /** Called when OK button is pressed */
   onOk?: () => void;
+  headerActions?: React.ReactNode;
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -30,6 +28,7 @@ export function BottomSheet({
   showOkButton = false,
   okLabel = 'OK',
   onOk,
+  headerActions,
 }: BottomSheetProps) {
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -123,21 +122,20 @@ export function BottomSheet({
             )}
             {(title || showCloseButton || showOkButton) && (
               <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                {title ? (
-                  <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title}</Text>
-                ) : (
-                  <View />
-                )}
-                {showOkButton ? (
-                  <Pressable
-                    onPress={onOk || handleClose}
-                    className="px-4 py-1.5 bg-primary-500 rounded-full active:bg-primary-600"
-                  >
-                    <Text className="text-white font-medium text-sm">{okLabel}</Text>
-                  </Pressable>
-                ) : showCloseButton ? (
-                  <IconButton icon="times" variant="ghost" size="sm" onPress={handleClose} />
-                ) : null}
+                <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title || ''}</Text>
+                <View className="flex-row items-center gap-2">
+                  {headerActions}
+                  {showOkButton ? (
+                    <Pressable
+                      onPress={onOk || handleClose}
+                      className="px-4 py-1.5 bg-primary-500 rounded-full active:bg-primary-600"
+                    >
+                      <Text className="text-white font-medium text-sm">{okLabel}</Text>
+                    </Pressable>
+                  ) : showCloseButton ? (
+                    <IconButton icon="chevron-down" variant="ghost" size="sm" onPress={handleClose} />
+                  ) : null}
+                </View>
               </View>
             )}
           </View>

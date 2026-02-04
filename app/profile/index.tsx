@@ -131,15 +131,8 @@ export default function ProfileScreen() {
           <ListGroup>
             <ListItem
               leftIcon="user"
-              title={t('profile.basicInfo')}
-              subtitle={t('profile.basicInfoDesc')}
-              showChevron
-              onPress={() => router.push('/profile/edit-basic' as any)}
-            />
-            <ListItem
-              leftIcon="heartbeat"
-              title={t('profile.personalInfo')}
-              subtitle={t('profile.personalInfoDesc')}
+              title={t('profile.profileInfo')}
+              subtitle={t('profile.profileInfoDesc')}
               showChevron
               onPress={() => router.push('/profile/edit-personal' as any)}
             />

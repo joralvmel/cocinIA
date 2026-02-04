@@ -18,6 +18,7 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   multiline?: boolean;
   numberOfLines?: number;
   className?: string;
+  showClearButton?: boolean;
 }
 
 export function Input({
@@ -35,6 +36,7 @@ export function Input({
   multiline = false,
   numberOfLines = 1,
   className = '',
+  showClearButton = false,
   ...rest
 }: InputProps) {
   const { colors } = useAppTheme();
@@ -89,6 +91,16 @@ export function Input({
           style={{ textAlignVertical: multiline ? 'top' : 'center' }}
           {...rest}
         />
+        {showClearButton && value && value.length > 0 && !secureTextEntry && (
+          <Pressable
+            onPress={() => onChangeText?.('')}
+            className="ml-2 p-1"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ alignSelf: multiline ? 'flex-start' : 'center', marginTop: multiline ? 12 : 0 }}
+          >
+            <FontAwesome name="times-circle" size={18} color={colors.textMuted} />
+          </Pressable>
+        )}
         {secureTextEntry && (
           <Pressable onPress={togglePasswordVisibility} className="ml-2 p-1">
             <FontAwesome
@@ -98,7 +110,7 @@ export function Input({
             />
           </Pressable>
         )}
-        {rightIcon && !secureTextEntry && (
+        {rightIcon && !secureTextEntry && !showClearButton && (
           <Pressable onPress={onRightIconPress} className="ml-2 p-1" disabled={!onRightIconPress}>
             <FontAwesome name={rightIcon} size={18} color={colors.textSecondary} />
           </Pressable>

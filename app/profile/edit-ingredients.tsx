@@ -1,19 +1,21 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, BackHandler } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Button,
   Input,
   Section,
+  Chip,
   Loader,
   AlertModal,
   ScreenHeader,
   Switch,
-  IconButton,
+  MultiActionButton,
+  BottomSheet,
+  type ActionOption,
 } from '@/components/ui';
-import { profileService } from '@/services';
+import { profileService, recipeService } from '@/services';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -30,7 +32,6 @@ export default function EditIngredientsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
   // Form state
   const [ingredients, setIngredients] = useState<IngredientState[]>([]);
@@ -40,6 +41,10 @@ export default function EditIngredientsScreen() {
   const [newIngredientName, setNewIngredientName] = useState('');
   const [newAlwaysAvailable, setNewAlwaysAvailable] = useState(false);
 
+  // Ingredients from saved recipes
+  const [recipeIngredients, setRecipeIngredients] = useState<string[]>([]);
+  const [showRecipeIngredients, setShowRecipeIngredients] = useState(false);
+
   // Load ingredients on mount
   useEffect(() => {
     loadIngredients();
@@ -48,7 +53,10 @@ export default function EditIngredientsScreen() {
   const loadIngredients = async () => {
     try {
       setLoading(true);
-      const data = await profileService.getFavoriteIngredients();
+      const [data, recipeIngs] = await Promise.all([
+        profileService.getFavoriteIngredients(),
+        recipeService.getIngredientsFromRecipes(),
+      ]);
       if (data) {
         setIngredients(
           data.map((i) => ({
@@ -58,6 +66,7 @@ export default function EditIngredientsScreen() {
           }))
         );
       }
+      setRecipeIngredients(recipeIngs);
     } catch (error) {
       console.error('Error loading ingredients:', error);
     } finally {
@@ -66,6 +75,7 @@ export default function EditIngredientsScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await profileService.saveFavoriteIngredients(
@@ -74,22 +84,39 @@ export default function EditIngredientsScreen() {
           always_available: i.alwaysAvailable,
         }))
       );
-      setAlertType('success');
-      setAlertVisible(true);
+      return true;
     } catch (error) {
       console.error('Error saving ingredients:', error);
-      setAlertType('error');
       setAlertVisible(true);
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  // Auto-save when navigating back
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleSave().then(() => {
+          router.back();
+        });
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [ingredients])
+  );
+
+  // Handle back from ScreenHeader
+  const handleBack = async () => {
+    await handleSave();
+    router.back();
+  };
+
   const handleAlertClose = () => {
     setAlertVisible(false);
-    if (alertType === 'success') {
-      router.back();
-    }
   };
 
   const handleAddIngredient = () => {
@@ -109,6 +136,44 @@ export default function EditIngredientsScreen() {
     setNewAlwaysAvailable(false);
     setShowAddInput(false);
   };
+
+  const addIngredientFromRecipe = (name: string) => {
+    // Check if already in favorites
+    if (ingredients.some(i => i.ingredientName.toLowerCase() === name.toLowerCase())) {
+      return;
+    }
+    const id = `recipe_${Date.now()}`;
+    setIngredients((prev) => [
+      ...prev,
+      {
+        id,
+        ingredientName: name,
+        alwaysAvailable: false,
+      },
+    ]);
+  };
+
+  const isIngredientInFavorites = (name: string) => {
+    return ingredients.some(i => i.ingredientName.toLowerCase() === name.toLowerCase());
+  };
+
+  // Action options for MultiActionButton
+  const addActionOptions: ActionOption[] = [
+    {
+      id: 'manual',
+      label: t('profile.addManual' as any),
+      icon: 'pencil',
+      color: 'primary',
+      onPress: () => setShowAddInput(true)
+    },
+    {
+      id: 'from-recipes',
+      label: t('profile.fromRecipes' as any),
+      icon: 'book',
+      color: 'amber',
+      onPress: () => setShowRecipeIngredients(true)
+    },
+  ];
 
   const removeIngredient = (id: string) => {
     setIngredients((prev) => prev.filter((i) => i.id !== id));
@@ -133,7 +198,7 @@ export default function EditIngredientsScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.favoriteIngredients')} />
+        <ScreenHeader title={t('profile.favoriteIngredients')} onBack={handleBack} />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -195,67 +260,6 @@ export default function EditIngredientsScreen() {
               )}
             </Section>
 
-            {/* Add ingredient section */}
-            <Section title={`➕ ${t('profile.addIngredient')}`} className="mb-6">
-              {showAddInput ? (
-                <View className="mt-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
-                  <Input
-                    placeholder={t('profile.ingredientPlaceholder')}
-                    value={newIngredientName}
-                    onChangeText={setNewIngredientName}
-                    className="mb-3"
-                  />
-                  <View className="flex-row items-center justify-between mb-4 px-1">
-                    <View className="flex-1 mr-3">
-                      <Text className="text-sm text-gray-900 dark:text-gray-50">
-                        {t('profile.alwaysAvailable')}
-                      </Text>
-                      <Text className="text-xs text-gray-500 dark:text-gray-400">
-                        {t('profile.alwaysAvailableDesc')}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={newAlwaysAvailable}
-                      onValueChange={setNewAlwaysAvailable}
-                    />
-                  </View>
-                  <View className="flex-row gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onPress={() => {
-                        setShowAddInput(false);
-                        setNewIngredientName('');
-                        setNewAlwaysAvailable(false);
-                      }}
-                      className="flex-1"
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onPress={handleAddIngredient}
-                      disabled={!newIngredientName.trim()}
-                      className="flex-1"
-                    >
-                      {t('common.save')}
-                    </Button>
-                  </View>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => setShowAddInput(true)}
-                  className="flex-row items-center justify-center mt-2 py-3 rounded-xl border border-dashed border-gray-300 dark:border-gray-600"
-                >
-                  <FontAwesome name="plus" size={14} color={colors.textSecondary} />
-                  <Text className="ml-2 text-gray-500 dark:text-gray-400">
-                    {t('profile.addIngredient')}
-                  </Text>
-                </Pressable>
-              )}
-            </Section>
-
             {/* Selected count */}
             {ingredients.length > 0 && (
               <View className="mb-4">
@@ -270,33 +274,94 @@ export default function EditIngredientsScreen() {
           </ScrollView>
         </View>
 
-        {/* Floating Save Button */}
-        <View
-          className="absolute bottom-6 right-6"
-          style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
-        >
-          {saving ? (
-            <View className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center">
-              <ActivityIndicator color="#ffffff" size="small" />
-            </View>
-          ) : (
-            <IconButton
-              icon="check"
-              size="xl"
-              variant="primary"
-              onPress={handleSave}
-            />
-          )}
+        {/* Floating Add Button */}
+        <View className="absolute bottom-6 right-6">
+          <MultiActionButton
+            icon="plus"
+            options={addActionOptions}
+            variant="floating"
+            floatingColor="primary-500"
+            loading={saving}
+          />
         </View>
+
+        {/* Manual Add BottomSheet */}
+        <BottomSheet
+          visible={showAddInput}
+          onClose={() => {
+            setShowAddInput(false);
+            setNewIngredientName('');
+            setNewAlwaysAvailable(false);
+          }}
+          title={t('profile.addIngredient')}
+          showOkButton
+          okLabel={t('common.add')}
+          onOk={handleAddIngredient}
+        >
+          <View className="gap-4 pb-4">
+            <Input
+              placeholder={t('profile.ingredientPlaceholder')}
+              value={newIngredientName}
+              onChangeText={setNewIngredientName}
+              showClearButton
+            />
+            <View className="flex-row items-center justify-between px-1">
+              <View className="flex-1 mr-3">
+                <Text className="text-sm text-gray-900 dark:text-gray-50">
+                  {t('profile.alwaysAvailable')}
+                </Text>
+                <Text className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('profile.alwaysAvailableDesc')}
+                </Text>
+              </View>
+              <Switch
+                value={newAlwaysAvailable}
+                onValueChange={setNewAlwaysAvailable}
+              />
+            </View>
+          </View>
+        </BottomSheet>
+
+        {/* Recipe Ingredients BottomSheet */}
+        <BottomSheet
+          visible={showRecipeIngredients}
+          onClose={() => setShowRecipeIngredients(false)}
+          title={t('profile.fromRecipes' as any)}
+        >
+          <View className="pb-4">
+            {recipeIngredients.length > 0 ? (
+              <>
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  {t('profile.selectFromRecipes' as any)}
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {recipeIngredients.map((name) => (
+                    <Chip
+                      key={name}
+                      label={name}
+                      selected={isIngredientInFavorites(name)}
+                      onPress={() => addIngredientFromRecipe(name)}
+                      size="sm"
+                    />
+                  ))}
+                </View>
+              </>
+            ) : (
+              <Text className="text-gray-400 dark:text-gray-500 text-center py-6">
+                {t('profile.noRecipeIngredients' as any)}
+              </Text>
+            )}
+          </View>
+        </BottomSheet>
 
         {/* Alert Modal */}
         <AlertModal
           visible={alertVisible}
           onClose={handleAlertClose}
-          title={alertType === 'success' ? t('common.done') : t('common.error')}
-          message={alertType === 'success' ? t('profile.profileUpdated') : t('profile.updateError')}
-          variant={alertType === 'success' ? 'info' : 'danger'}
-          confirmLabel={t('common.done')}
+          title={t('common.error')}
+          message={t('profile.updateError')}
+          variant="danger"
+          confirmLabel={t('common.ok')}
         />
       </SafeAreaView>
     </View>

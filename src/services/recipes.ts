@@ -142,4 +142,33 @@ export const recipeService = {
     if (error) throw error;
     return data;
   },
+
+  /**
+   * Get unique ingredient names from user's saved recipes
+   */
+  async getIngredientsFromRecipes(): Promise<string[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('ingredients')
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Extract unique ingredient names
+    const ingredientSet = new Set<string>();
+    data?.forEach(recipe => {
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        recipe.ingredients.forEach((ing: { name: string }) => {
+          if (ing.name) {
+            ingredientSet.add(ing.name.toLowerCase());
+          }
+        });
+      }
+    });
+
+    return Array.from(ingredientSet).sort();
+  },
 };

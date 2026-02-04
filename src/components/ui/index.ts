@@ -47,3 +47,7 @@ export { ScreenHeader, type ScreenHeaderProps } from './ScreenHeader';
 export { AlertModal, type AlertModalProps } from './AlertModal';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { FullScreenModal, type FullScreenModalProps } from './FullScreenModal';
+
+// Action Buttons
+export { MultiActionButton, type MultiActionButtonProps, type ActionOption } from './MultiActionButton';
+

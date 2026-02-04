@@ -12,6 +12,8 @@ import {
   BottomSheet,
   Input,
   Button,
+  MultiActionButton,
+  type ActionOption,
 } from '@/components/ui';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { type AIRecipeResponse } from '@/types';
@@ -43,7 +45,6 @@ export function RecipeResultModal({
 }: RecipeResultModalProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const [showFabMenu, setShowFabMenu] = useState(false);
   const [expandedTips, setExpandedTips] = useState<Record<number, boolean>>({});
   const [showModifySheet, setShowModifySheet] = useState(false);
   const [modifyText, setModifyText] = useState('');
@@ -56,7 +57,6 @@ export function RecipeResultModal({
   };
 
   const handleModifyPress = () => {
-    setShowFabMenu(false);
     setShowModifySheet(true);
   };
 
@@ -68,20 +68,42 @@ export function RecipeResultModal({
     }
   };
 
-  const handleRegeneratePress = () => {
-    setShowFabMenu(false);
-    onRegenerate();
-  };
-
-  const handleDiscardPress = () => {
-    setShowFabMenu(false);
-    onDiscard();
-  };
-
-  const handleSavePress = () => {
-    setShowFabMenu(false);
-    onSave();
-  };
+  // FAB action options
+  const fabOptions: ActionOption[] = [
+    {
+      id: 'save',
+      label: t('recipeGeneration.saveRecipe'),
+      icon: 'bookmark',
+      color: 'green',
+      onPress: onSave,
+      disabled: isSaving,
+      loading: isSaving,
+    },
+    {
+      id: 'modify',
+      label: t('recipeGeneration.modify'),
+      icon: 'pencil',
+      color: 'amber',
+      onPress: handleModifyPress,
+      disabled: isModifying,
+    },
+    {
+      id: 'regenerate',
+      label: t('recipeGeneration.regenerate'),
+      icon: 'refresh',
+      color: 'blue',
+      onPress: onRegenerate,
+      disabled: isModifying || isSaving,
+    },
+    {
+      id: 'discard',
+      label: t('recipeGeneration.discard'),
+      icon: 'trash',
+      color: 'red',
+      onPress: onDiscard,
+      disabled: isModifying || isSaving,
+    },
+  ];
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -386,108 +408,17 @@ export function RecipeResultModal({
           </View>
         </ScrollView>
 
-        {/* FAB Menu Overlay */}
-        {showFabMenu && (
-          <Pressable
-            className="absolute inset-0 bg-black/30"
-            onPress={() => setShowFabMenu(false)}
+        {/* Floating Action Button */}
+        <View className="absolute bottom-6 right-4">
+          <MultiActionButton
+            icon="ellipsis-v"
+            variant="floating"
+            floatingColor="primary-600"
+            loading={isSaving || isModifying}
+            disabled={isSaving || isModifying}
+            options={fabOptions}
           />
-        )}
-
-        {/* FAB Menu Options */}
-        {showFabMenu && (
-          <View className="absolute bottom-24 right-4 items-end gap-3">
-            {/* Save Option */}
-            <Pressable
-              onPress={handleSavePress}
-              disabled={isSaving}
-              className="flex-row items-center"
-            >
-              <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
-                <Text className="text-gray-900 dark:text-gray-50 font-medium">
-                  {t('recipeGeneration.saveRecipe')}
-                </Text>
-              </View>
-              <View className="w-12 h-12 rounded-full bg-green-500 items-center justify-center shadow-lg">
-                {isSaving ? (
-                  <Loader size="sm" />
-                ) : (
-                  <FontAwesome name="bookmark" size={20} color="white" />
-                )}
-              </View>
-            </Pressable>
-
-            {/* Modify Option */}
-            <Pressable
-              onPress={handleModifyPress}
-              disabled={isModifying}
-              className="flex-row items-center"
-            >
-              <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
-                <Text className="text-gray-900 dark:text-gray-50 font-medium">
-                  {t('recipeGeneration.modify')}
-                </Text>
-              </View>
-              <View className="w-12 h-12 rounded-full bg-amber-500 items-center justify-center shadow-lg">
-                {isModifying ? (
-                  <Loader size="sm" />
-                ) : (
-                  <FontAwesome name="pencil" size={20} color="white" />
-                )}
-              </View>
-            </Pressable>
-
-            {/* Regenerate Option */}
-            <Pressable
-              onPress={handleRegeneratePress}
-              disabled={isModifying || isSaving}
-              className="flex-row items-center"
-            >
-              <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
-                <Text className="text-gray-900 dark:text-gray-50 font-medium">
-                  {t('recipeGeneration.regenerate')}
-                </Text>
-              </View>
-              <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center shadow-lg">
-                <FontAwesome name="refresh" size={20} color="white" />
-              </View>
-            </Pressable>
-
-            {/* Discard Option */}
-            <Pressable
-              onPress={handleDiscardPress}
-              disabled={isModifying || isSaving}
-              className="flex-row items-center"
-            >
-              <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
-                <Text className="text-gray-900 dark:text-gray-50 font-medium">
-                  {t('recipeGeneration.discard')}
-                </Text>
-              </View>
-              <View className="w-12 h-12 rounded-full bg-red-500 items-center justify-center shadow-lg">
-                <FontAwesome name="trash" size={20} color="white" />
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Main FAB Button */}
-        <Pressable
-          onPress={() => setShowFabMenu(!showFabMenu)}
-          disabled={isSaving || isModifying}
-          className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary-600 items-center justify-center shadow-lg"
-          style={{ elevation: 8 }}
-        >
-          {isSaving || isModifying ? (
-            <Loader size="sm" />
-          ) : (
-            <FontAwesome
-              name={showFabMenu ? "times" : "ellipsis-v"}
-              size={24}
-              color="white"
-            />
-          )}
-        </Pressable>
+        </View>
       </FullScreenModal>
 
       {/* Modify Recipe BottomSheet */}

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, BackHandler } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  Input,
   NumberInput,
   DatePicker,
   SelectTrigger,
@@ -12,10 +13,11 @@ import {
   Loader,
   AlertModal,
   ScreenHeader,
-  IconButton,
+  Section,
 } from '@/components/ui';
 import { profileService } from '@/services';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg } from '@/utils';
+import { countries, currencies, getCountryByCode } from '@/constants';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 type GenderType = 'male' | 'female' | 'other' | null;
@@ -29,10 +31,14 @@ export default function EditPersonalScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
   // Measurement system
   const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>('metric');
+
+  // Basic info state
+  const [displayName, setDisplayName] = useState('');
+  const [country, setCountry] = useState('');
+  const [currency, setCurrency] = useState('');
 
   // Form state (stored in metric internally)
   const [heightCm, setHeightCm] = useState<number>(170);
@@ -49,11 +55,23 @@ export default function EditPersonalScreen() {
   // Bottom sheet visibility
   const [genderSheetVisible, setGenderSheetVisible] = useState(false);
   const [activitySheetVisible, setActivitySheetVisible] = useState(false);
+  const [countrySheetVisible, setCountrySheetVisible] = useState(false);
+  const [currencySheetVisible, setCurrencySheetVisible] = useState(false);
 
   // Load profile data
   useEffect(() => {
     loadProfile();
   }, []);
+
+  // Auto-select currency when country changes
+  useEffect(() => {
+    if (country) {
+      const selectedCountry = getCountryByCode(country);
+      if (selectedCountry && !currency) {
+        setCurrency(selectedCountry.defaultCurrency);
+      }
+    }
+  }, [country]);
 
   // Sync imperial values when metric values change
   useEffect(() => {
@@ -71,6 +89,11 @@ export default function EditPersonalScreen() {
       setLoading(true);
       const profile = await profileService.getProfile();
       if (profile) {
+        // Basic info
+        setDisplayName(profile.display_name || '');
+        setCountry(profile.country || '');
+        setCurrency(profile.currency || '');
+        // Personal info
         setHeightCm(profile.height_cm || 170);
         setWeightKg(profile.weight_kg || 70);
         setBirthDate(profile.birth_date || '');
@@ -86,9 +109,15 @@ export default function EditPersonalScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await profileService.updateProfile({
+        // Basic info
+        display_name: displayName || undefined,
+        country: country || undefined,
+        currency: currency || undefined,
+        // Personal info
         height_cm: heightCm,
         weight_kg: weightKg,
         birth_date: birthDate || undefined,
@@ -96,22 +125,39 @@ export default function EditPersonalScreen() {
         activity_level: activityLevel || undefined,
         measurement_system: measurementSystem,
       });
-      setAlertType('success');
-      setAlertVisible(true);
+      return true;
     } catch (error) {
       console.error('Error saving profile:', error);
-      setAlertType('error');
       setAlertVisible(true);
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
+  // Auto-save when navigating back
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleSave().then(() => {
+          router.back();
+        });
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [displayName, country, currency, heightCm, weightKg, birthDate, gender, activityLevel, measurementSystem])
+  );
+
+  // Handle back from ScreenHeader
+  const handleBack = async () => {
+    await handleSave();
+    router.back();
+  };
+
   const handleAlertClose = () => {
     setAlertVisible(false);
-    if (alertType === 'success') {
-      router.back();
-    }
   };
 
   // Handle imperial height changes
@@ -176,6 +222,32 @@ export default function EditPersonalScreen() {
   const selectedGender = genderOptions.find((g) => g.value === gender);
   const selectedActivity = activityOptions.find((a) => a.value === activityLevel);
 
+  // Country options
+  const countryOptions = useMemo(
+    () =>
+      countries.map((c) => ({
+        value: c.code,
+        label: c.name,
+        icon: c.flag,
+      })),
+    []
+  );
+
+  // Currency options
+  const currencyOptions = useMemo(
+    () =>
+      currencies.map((c) => ({
+        value: c.code,
+        label: `${c.name} (${c.code})`,
+        subtitle: c.symbol,
+      })),
+    []
+  );
+
+  // Get selected country/currency display values
+  const selectedCountry = countries.find((c) => c.code === country);
+  const selectedCurrency = currencies.find((c) => c.code === currency);
+
   // Measurement system toggle options
   const measurementOptions = [
     { value: 'metric', label: t('profile.metric') },
@@ -193,7 +265,7 @@ export default function EditPersonalScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.personalInfo')} />
+        <ScreenHeader title={t('profile.profileInfo')} onBack={handleBack} />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -201,20 +273,52 @@ export default function EditPersonalScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Measurement System Toggle */}
-        <View className="mb-6">
-          <Text className="font-medium mb-2 text-sm text-gray-900 dark:text-gray-50">
-            {t('profile.measurementSystem')}
-          </Text>
-          <SegmentControl
-            options={measurementOptions}
-            value={measurementSystem}
-            onChange={(v) => setMeasurementSystem(v as MeasurementSystem)}
-          />
-        </View>
+        {/* Basic Info Section */}
+        <Section title={`👤 ${t('profile.basicInfo')}`} className="mb-6">
+          <View className="gap-4">
+            <Input
+              label={t('profile.displayName')}
+              placeholder={t('profile.displayNamePlaceholder')}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+              showClearButton
+            />
 
-        {/* Height & Weight */}
-        <View className="gap-5">
+            <SelectTrigger
+              label={t('profile.country')}
+              value={country}
+              displayValue={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : ''}
+              placeholder={t('profile.countryPlaceholder')}
+              onPress={() => setCountrySheetVisible(true)}
+            />
+
+            <SelectTrigger
+              label={t('profile.currency')}
+              value={currency}
+              displayValue={selectedCurrency ? `${selectedCurrency.symbol} ${selectedCurrency.name} (${selectedCurrency.code})` : ''}
+              placeholder={t('profile.currencyPlaceholder')}
+              onPress={() => setCurrencySheetVisible(true)}
+            />
+          </View>
+        </Section>
+
+        {/* Physical Info Section */}
+        <Section title={`📏 ${t('profile.personalInfo')}`} className="mb-6">
+          {/* Measurement System Toggle */}
+          <View className="mb-4">
+            <Text className="font-medium mb-2 text-sm text-gray-900 dark:text-gray-50">
+              {t('profile.measurementSystem')}
+            </Text>
+            <SegmentControl
+              options={measurementOptions}
+              value={measurementSystem}
+              onChange={(v) => setMeasurementSystem(v as MeasurementSystem)}
+            />
+          </View>
+
+          {/* Height & Weight */}
+          <View className="gap-5">
           {measurementSystem === 'metric' ? (
             <View className="flex-row gap-4">
               <View className="flex-1">
@@ -298,30 +402,36 @@ export default function EditPersonalScreen() {
             onPress={() => setActivitySheetVisible(true)}
           />
         </View>
+        </Section>
 
-        {/* Spacer for floating button */}
-        <View className="h-24" />
+        {/* Spacer for safe area */}
+        <View className="h-6" />
         </ScrollView>
       </View>
 
-      {/* Floating Save Button */}
-      <View
-        className="absolute bottom-6 right-6"
-        style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
-      >
-        {saving ? (
-          <View className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center">
-            <ActivityIndicator color="#ffffff" size="small" />
-          </View>
-        ) : (
-          <IconButton
-            icon="check"
-            size="xl"
-            variant="primary"
-            onPress={handleSave}
-          />
-        )}
-      </View>
+      {/* Country Selector */}
+      <SelectBottomSheet
+        visible={countrySheetVisible}
+        onClose={() => setCountrySheetVisible(false)}
+        title={t('profile.country')}
+        options={countryOptions}
+        value={country}
+        onChange={(v) => setCountry(v)}
+        searchable
+        searchPlaceholder={t('profile.searchCountry')}
+      />
+
+      {/* Currency Selector */}
+      <SelectBottomSheet
+        visible={currencySheetVisible}
+        onClose={() => setCurrencySheetVisible(false)}
+        title={t('profile.currency')}
+        options={currencyOptions}
+        value={currency}
+        onChange={(v) => setCurrency(v)}
+        searchable
+        searchPlaceholder={t('profile.searchCurrency')}
+      />
 
       {/* Gender Selector */}
       <SelectBottomSheet
@@ -347,10 +457,10 @@ export default function EditPersonalScreen() {
       <AlertModal
         visible={alertVisible}
         onClose={handleAlertClose}
-        title={alertType === 'success' ? t('common.done') : t('common.error')}
-        message={alertType === 'success' ? t('profile.profileUpdated') : t('profile.updateError')}
-        variant={alertType === 'success' ? 'info' : 'danger'}
-        confirmLabel={t('common.done')}
+        title={t('common.error')}
+        message={t('profile.updateError')}
+        variant="danger"
+        confirmLabel={t('common.ok')}
       />
       </SafeAreaView>
     </View>
