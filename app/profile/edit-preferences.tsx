@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
-import {View, Text, ScrollView, Pressable} from 'react-native';
+import {View, Text, ScrollView, Pressable, ActivityIndicator} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Button,
   Input,
+  Button,
   Chip,
   Section,
   SearchInput,
@@ -13,14 +13,17 @@ import {
   Loader,
   AlertModal,
   ScreenHeader,
+  IconButton,
 } from '@/components/ui';
 import { profileService } from '@/services';
 import {
   allergies,
   preferences,
   cuisines,
+  equipment as equipmentList,
   type DietaryRestriction,
 } from '@/constants';
+import { QUICK_FILTERS } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 
@@ -43,6 +46,8 @@ export default function EditPreferencesScreen() {
   // Form state
   const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>([]);
   const [preferredCuisines, setPreferredCuisines] = useState<string[]>([]);
+  const [selectedQuickFilters, setSelectedQuickFilters] = useState<string[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
 
   // Custom restriction input
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -52,6 +57,7 @@ export default function EditPreferencesScreen() {
   // Search
   const [restrictionSearch, setRestrictionSearch] = useState('');
   const [cuisineSearch, setCuisineSearch] = useState('');
+  const [equipmentSearch, setEquipmentSearch] = useState('');
 
   // Load profile data
   useEffect(() => {
@@ -61,13 +67,15 @@ export default function EditPreferencesScreen() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const [profile, restrictions] = await Promise.all([
+      const [profile, restrictions, equipment] = await Promise.all([
         profileService.getProfile(),
         profileService.getRestrictions(),
+        profileService.getEquipment(),
       ]);
 
       if (profile) {
         setPreferredCuisines(profile.preferred_cuisines || []);
+        setSelectedQuickFilters(profile.quick_filters || ['quick', 'healthy', 'vegetarian', 'cheap']);
       }
 
       if (restrictions) {
@@ -79,6 +87,10 @@ export default function EditPreferencesScreen() {
             isAllergy: r.is_allergy,
           }))
         );
+      }
+
+      if (equipment) {
+        setSelectedEquipment(equipment.map(e => e.equipment_type));
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -99,9 +111,17 @@ export default function EditPreferencesScreen() {
         }))
       );
 
-      // Save cuisines
+      // Save equipment
+      await profileService.saveEquipment(
+        selectedEquipment.map((e) => ({
+          equipment_type: e,
+        }))
+      );
+
+      // Save cuisines and quick filters
       await profileService.updateProfile({
         preferred_cuisines: preferredCuisines,
+        quick_filters: selectedQuickFilters,
       });
 
       setAlertType('success');
@@ -151,6 +171,16 @@ export default function EditPreferencesScreen() {
     });
   }, [cuisineSearch, t]);
 
+  // Filter equipment
+  const filteredEquipment = useMemo(() => {
+    if (!equipmentSearch.trim()) return equipmentList;
+    const query = equipmentSearch.toLowerCase();
+    return equipmentList.filter((e) => {
+      const translatedLabel = t(e.labelKey, { defaultValue: e.defaultLabel });
+      return translatedLabel.toLowerCase().includes(query) || e.defaultLabel.toLowerCase().includes(query);
+    });
+  }, [equipmentSearch, t]);
+
   // Get custom restrictions
   const customRestrictions = selectedRestrictions.filter(
     (r) => r.customValue && !allergies.find((a) => a.id === r.id) && !preferences.find((p) => p.id === r.id)
@@ -180,6 +210,27 @@ export default function EditPreferencesScreen() {
       setPreferredCuisines((prev) => prev.filter((c) => c !== id));
     } else {
       setPreferredCuisines((prev) => [...prev, id]);
+    }
+  };
+
+  const isEquipmentSelected = (id: string) => selectedEquipment.includes(id);
+
+  const toggleEquipment = (id: string) => {
+    if (isEquipmentSelected(id)) {
+      setSelectedEquipment((prev) => prev.filter((e) => e !== id));
+    } else {
+      setSelectedEquipment((prev) => [...prev, id]);
+    }
+  };
+
+  const isQuickFilterSelected = (id: string) => selectedQuickFilters.includes(id);
+
+  const toggleQuickFilter = (id: string) => {
+    if (isQuickFilterSelected(id)) {
+      setSelectedQuickFilters((prev) => prev.filter((f) => f !== id));
+    } else if (selectedQuickFilters.length < 4) {
+      // Max 4 filters
+      setSelectedQuickFilters((prev) => [...prev, id]);
     }
   };
 
@@ -343,16 +394,75 @@ export default function EditPreferencesScreen() {
           </View>
         </Section>
 
-        <Button
-          onPress={handleSave}
-          variant="primary"
-          size="lg"
-          disabled={saving}
-          className="mt-4"
-        >
-          {saving ? t('profile.saving') : t('profile.saveChanges')}
-        </Button>
+        {/* Quick Filters */}
+        <Section title={`⚡ ${t('profile.quickFilters' as any)}`} className="mb-6">
+          <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            {t('recipeGeneration.selectUpTo4' as any)}
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {QUICK_FILTERS.map((filter) => (
+              <Chip
+                key={filter.id}
+                label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
+                selected={isQuickFilterSelected(filter.id)}
+                onPress={() => toggleQuickFilter(filter.id)}
+                size="sm"
+              />
+            ))}
+          </View>
+          <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            {t('recipeGeneration.selectedCount' as any, { count: selectedQuickFilters.length, max: 4 })}
+          </Text>
+        </Section>
+
+        {/* Kitchen Equipment */}
+        <Section title={`🔧 ${t('profile.equipment')}`} className="mb-6">
+          <SearchInput
+            value={equipmentSearch}
+            onChangeText={setEquipmentSearch}
+            placeholder={t('common.search')}
+            className="mt-2 mb-3"
+          />
+          <View className="flex-row flex-wrap gap-2">
+            {filteredEquipment.map((eq) => (
+              <Chip
+                key={eq.id}
+                label={`${eq.icon} ${t(eq.labelKey, { defaultValue: eq.defaultLabel })}`}
+                selected={isEquipmentSelected(eq.id)}
+                onPress={() => toggleEquipment(eq.id)}
+                size="sm"
+              />
+            ))}
+          </View>
+          {selectedEquipment.length > 0 && (
+            <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              {t('profile.selectedCount', { count: selectedEquipment.length })}
+            </Text>
+          )}
+        </Section>
+
+        {/* Spacer for floating button */}
+        <View className="h-24" />
         </ScrollView>
+      </View>
+
+      {/* Floating Save Button */}
+      <View
+        className="absolute bottom-6 right-6"
+        style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
+      >
+        {saving ? (
+          <View className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center">
+            <ActivityIndicator color="#ffffff" size="small" />
+          </View>
+        ) : (
+          <IconButton
+            icon="check"
+            size="xl"
+            variant="primary"
+            onPress={handleSave}
+          />
+        )}
       </View>
 
       {/* Alert Modal */}

@@ -158,13 +158,6 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profile/edit-preferences' as any)}
             />
             <ListItem
-              leftIcon="microchip"
-              title={t('profile.equipment')}
-              subtitle={t('profile.equipmentDesc')}
-              showChevron
-              onPress={() => router.push('/profile/edit-equipment' as any)}
-            />
-            <ListItem
               leftIcon="lemon-o"
               title={t('profile.favoriteIngredients')}
               subtitle={t('profile.favoriteIngredientsDesc')}

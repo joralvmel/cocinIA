@@ -64,6 +64,7 @@ export const appColors = {
     borderLight: brandColors.gray[600],
     error: '#f87171',
     success: brandColors.primary[400],
+    warning: '#fbbf24',
   },
 };
 

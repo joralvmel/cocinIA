@@ -65,7 +65,7 @@
     nutritionGoals: 'Nutrition Goals',
     nutritionGoalsDesc: 'Calories and macros',
     cookingPreferences: 'Cooking Preferences',
-    cookingPreferencesDesc: 'Restrictions and favorite cuisines',
+    cookingPreferencesDesc: 'Restrictions, cuisines, equipment & filters',
     equipment: 'Kitchen Equipment',
     equipmentDesc: 'Appliances and utensils',
     favoriteIngredients: 'Favorite Ingredients',
@@ -136,6 +136,7 @@
     isAllergy: 'Is it an allergy?',
     // Cuisines
     favoriteCuisines: 'Favorite Cuisines',
+    quickFilters: 'Quick Filters',
     // Equipment
     kitchenEquipment: 'Equipment',
     addCustomEquipment: 'Add Equipment',
@@ -344,10 +345,19 @@
     subtitle: 'Describe what you want and AI will create a personalized recipe for you',
     promptPlaceholder: 'E.g: A creamy pasta with chicken, something quick for dinner...',
     quickFiltersLabel: 'Quick filters',
+    editQuickFilters: 'Edit Quick Filters',
+    selectUpTo4: 'Select up to 4 filters to show on the home screen',
+    selectedCount: '{{count}} of {{max}} selected',
     advancedOptions: 'Advanced options',
     activeFilters: 'Active filters',
     noFiltersActive: 'Tap to add filters',
     resetFilters: 'Reset filters',
+    resetToProfile: 'Restore profile',
+    clearAll: 'Clear all',
+    activeRestrictions: 'Active restrictions from your profile',
+    viewRecipe: 'View recipe',
+    generateNew: 'Generate new',
+    surprisePrompt: 'Surprise me with something delicious',
     generateButton: 'Generate Recipe',
     generating: 'Generating recipe...',
     generatingMessage: 'Our AI is creating a personalized recipe for you',
@@ -430,8 +440,12 @@
     modify: 'Modify',
     modifyDescription: 'Describe the changes you want to make to the recipe',
     saveRecipe: 'Save Recipe',
+    discard: 'Discard',
     modifyPlaceholder: 'E.g: Reduce servings to 2, no avocado, make it spicier...',
     applyChanges: 'Apply changes',
+
+    // Retry errors
+    retryError: 'We had trouble generating your recipe. Please try again or adjust your filters.',
 
     // Messages
     emptyPromptError: 'Write what you want to cook',
@@ -446,7 +460,7 @@
     // AI Prompt translations
     prompt: {
       systemIntro: 'You are CocinIA, an expert chef and AI cooking assistant.',
-      systemTask: 'Your task is to generate detailed and accurate recipes based on user preferences.',
+      systemTask: 'Your task is to generate detailed and accurate recipes based on user preferences. CRITICAL: You MUST strictly respect all dietary restrictions (vegetarian, vegan, etc.) and allergies. If a user is vegetarian/vegan, NEVER include meat, poultry, or seafood. Always prioritize dietary restrictions over the specific dish name requested.',
       jsonInstruction: 'IMPORTANT: You must respond ONLY with a valid JSON object, no additional text.',
       jsonStructure: 'The JSON must follow exactly this structure:',
       userContext: '--- USER CONTEXT ---',
@@ -466,7 +480,7 @@
         eat_healthy: 'Eat healthy',
       },
       allergiesWarning: '⚠️ ALLERGIES (NEVER use these ingredients)',
-      dietaryPreferences: 'Dietary preferences',
+      dietaryPreferences: '🚫 STRICT DIETARY RESTRICTIONS (MUST follow these - no exceptions)',
       availableEquipment: 'Available equipment',
       wantRecipe: 'I want a recipe for',
       requirements: 'Requirements',

@@ -14,5 +14,5 @@ export function useAppTheme() {
     colorScheme: mode,
     mode,
     colors,
-  } as const;
+  };
 }

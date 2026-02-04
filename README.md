@@ -109,8 +109,8 @@ CocinIA is a mobile meal planning and recipe generation app that uses AI to help
    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
-   # OpenAI Configuration
-   EXPO_PUBLIC_OPENAI_API_KEY=sk-your-openai-key-here
+   # Google Gemini Configuration
+   EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-api-key-here
    ```
 
 4. **Start the development server**

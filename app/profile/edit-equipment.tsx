@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import {View, Text, ScrollView, Pressable} from 'react-native';
+import {View, Text, ScrollView, Pressable, ActivityIndicator} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import {
   Loader,
   AlertModal,
   ScreenHeader,
+  IconButton,
 } from '@/components/ui';
 import { profileService } from '@/services';
 import { equipment as equipmentList, type Equipment } from '@/constants';
@@ -252,16 +253,28 @@ export default function EditEquipmentScreen() {
           </View>
         )}
 
-        <Button
-          onPress={handleSave}
-          variant="primary"
-          size="lg"
-          disabled={saving}
-          className="mt-4"
-        >
-          {saving ? t('profile.saving') : t('profile.saveChanges')}
-        </Button>
+        {/* Spacer for floating button */}
+        <View className="h-24" />
         </ScrollView>
+      </View>
+
+      {/* Floating Save Button */}
+      <View
+        className="absolute bottom-6 right-6"
+        style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
+      >
+        {saving ? (
+          <View className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center">
+            <ActivityIndicator color="#ffffff" size="small" />
+          </View>
+        ) : (
+          <IconButton
+            icon="check"
+            size="xl"
+            variant="primary"
+            onPress={handleSave}
+          />
+        )}
       </View>
 
       {/* Alert Modal */}

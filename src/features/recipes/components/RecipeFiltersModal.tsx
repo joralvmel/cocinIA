@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { BottomSheet, Input, Button, ChipGroup, Checkbox, Section, RangeSlider } from '@/components/ui';
+import { BottomSheet, Input, ChipGroup, Checkbox, Section, RangeSlider } from '@/components/ui';
 import { useRecipeGenerationStore } from '@/stores';
 import { cuisines } from '@/constants/cuisines';
 import { equipment as equipmentConstants } from '@/constants/equipment';
@@ -154,6 +154,22 @@ export function RecipeFiltersModal({
     onClose();
   };
 
+  // Clear all filters completely
+  const handleClearAll = () => {
+    setIngredientsToUseText('');
+    setIngredientsToExcludeText('');
+    setFormField('ingredientsToUse', []);
+    setFormField('ingredientsToExclude', []);
+    setFormField('useFavoriteIngredients', false);
+    setFormField('mealTypes', []);
+    setFormField('servings', undefined);
+    setFormField('maxTime', undefined);
+    setFormField('maxCalories', undefined);
+    setFormField('cuisines', []);
+    setFormField('equipment', []);
+    setFormField('difficulty', undefined);
+  };
+
   // Handle max calorie change from slider
   const handleMaxCaloriesChange = (value: number) => {
     // If value is at max (1500), treat as no limit
@@ -161,18 +177,37 @@ export function RecipeFiltersModal({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={handleApply} title={String(t('recipeGeneration.advancedOptions'))}>
+    <BottomSheet
+      visible={visible}
+      onClose={handleApply}
+      title={String(t('recipeGeneration.advancedOptions'))}
+      showOkButton
+      okLabel={String(t('common.apply'))}
+      onOk={handleApply}
+      showCloseButton={false}
+    >
       <View className="pb-10 gap-5">
-        {/* Reset Button */}
-        <Pressable
-          onPress={handleReset}
-          className="flex-row items-center self-end"
-        >
-          <FontAwesome name="refresh" size={14} color={colors.error} style={{ marginRight: 6 }} />
-          <Text className="text-red-500 dark:text-red-400 text-sm font-medium">
-            {String(t('recipeGeneration.resetFilters' as any))}
-          </Text>
-        </Pressable>
+        {/* Reset Buttons */}
+        <View className="flex-row justify-end gap-3">
+          <Pressable
+            onPress={handleClearAll}
+            className="flex-row items-center"
+          >
+            <FontAwesome name="trash-o" size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
+            <Text className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              {String(t('recipeGeneration.clearAll' as any))}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={handleReset}
+            className="flex-row items-center"
+          >
+            <FontAwesome name="refresh" size={14} color={colors.primary} style={{ marginRight: 6 }} />
+            <Text className="text-primary-500 dark:text-primary-400 text-sm font-medium">
+              {String(t('recipeGeneration.resetToProfile' as any))}
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Ingredients to Use */}
         <Section title={String(t('recipeGeneration.ingredientsToUse'))}>
@@ -206,11 +241,16 @@ export function RecipeFiltersModal({
               strikethrough={false}
             />
             {form.useFavoriteIngredients && (
-              <View className="mt-2 flex-row flex-wrap gap-1">
+              <View className="mt-2 ml-7 flex-row flex-wrap" style={{ gap: 6 }}>
                 {profileFavoriteIngredients.map((ing) => (
-                  <Text key={ing.ingredient_name} className="text-xs bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full">
-                    {ing.ingredient_name}
-                  </Text>
+                  <View
+                    key={ing.ingredient_name}
+                    className="bg-primary-100 dark:bg-primary-900 px-2.5 py-1 rounded-full"
+                  >
+                    <Text className="text-xs text-primary-700 dark:text-primary-300">
+                      {ing.ingredient_name}
+                    </Text>
+                  </View>
                 ))}
               </View>
             )}
@@ -288,11 +328,6 @@ export function RecipeFiltersModal({
             multiple={false}
           />
         </Section>
-
-        {/* Apply Button */}
-        <Button onPress={handleApply} className="mt-4">
-          {t('common.apply')}
-        </Button>
       </View>
     </BottomSheet>
   );

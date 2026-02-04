@@ -20,6 +20,7 @@ export interface Profile {
   fat_goal_g: number | null;
   default_servings: number | null;
   preferred_cuisines: string[] | null;
+  quick_filters: string[] | null;
   measurement_system: 'metric' | 'imperial' | null;
   onboarding_completed: boolean;
   onboarding_step: number | null;
@@ -69,6 +70,7 @@ export interface ProfileUpdatePayload {
   fat_goal_g?: number;
   default_servings?: number;
   preferred_cuisines?: string[];
+  quick_filters?: string[];
   measurement_system?: 'metric' | 'imperial';
   onboarding_completed?: boolean;
   onboarding_step?: number;

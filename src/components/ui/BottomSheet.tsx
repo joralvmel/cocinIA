@@ -9,6 +9,12 @@ export interface BottomSheetProps {
   children: React.ReactNode;
   showHandle?: boolean;
   showCloseButton?: boolean;
+  /** Show OK button instead of X button */
+  showOkButton?: boolean;
+  /** Label for OK button */
+  okLabel?: string;
+  /** Called when OK button is pressed */
+  onOk?: () => void;
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -21,6 +27,9 @@ export function BottomSheet({
   children,
   showHandle = true,
   showCloseButton = true,
+  showOkButton = false,
+  okLabel = 'OK',
+  onOk,
 }: BottomSheetProps) {
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -112,16 +121,23 @@ export function BottomSheet({
                 <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
               </View>
             )}
-            {(title || showCloseButton) && (
+            {(title || showCloseButton || showOkButton) && (
               <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 {title ? (
                   <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title}</Text>
                 ) : (
                   <View />
                 )}
-                {showCloseButton && (
+                {showOkButton ? (
+                  <Pressable
+                    onPress={onOk || handleClose}
+                    className="px-4 py-1.5 bg-primary-500 rounded-full active:bg-primary-600"
+                  >
+                    <Text className="text-white font-medium text-sm">{okLabel}</Text>
+                  </Pressable>
+                ) : showCloseButton ? (
                   <IconButton icon="times" variant="ghost" size="sm" onPress={handleClose} />
-                )}
+                ) : null}
               </View>
             )}
           </View>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Input, Button, Chip, AlertModal } from '@/components/ui';
+import { useFocusEffect } from 'expo-router';
+import { Input, Button, Chip, AlertModal, BottomSheet, IconButton } from '@/components/ui';
 import { RecipeFiltersModal, RecipeResultModal } from '@/features';
 import { useRecipeGenerationStore } from '@/stores';
 import { profileService, recipeGenerationService, recipeService } from '@/services';
@@ -43,30 +44,61 @@ export default function HomeScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [hasUnsavedRecipe, setHasUnsavedRecipe] = useState(false);
+  const [showRetryErrorModal, setShowRetryErrorModal] = useState(false);
+  const [showQuickFiltersModal, setShowQuickFiltersModal] = useState(false);
+  const [editingQuickFilters, setEditingQuickFilters] = useState<string[]>([]);
+  const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false);
 
-  // Load profile data
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const [profileData, restrictionsData, equipmentData, favoriteIngredientsData] = await Promise.all([
-          profileService.getProfile(),
-          profileService.getRestrictions(),
-          profileService.getEquipment(),
-          profileService.getFavoriteIngredients(),
-        ]);
-        setProfile(profileData);
-        setRestrictions(restrictionsData);
-        setEquipment(equipmentData);
-        setFavoriteIngredients(favoriteIngredientsData.map(i => ({
-          ingredient_name: i.ingredient_name,
-          is_always_available: i.always_available,
-        })));
-      } catch (err) {
-        console.error('Error loading profile:', err);
+  // Get user's quick filters or default
+  const userQuickFilters = profile?.quick_filters || ['quick', 'healthy', 'vegetarian', 'cheap'];
+  const displayedFilters = QUICK_FILTERS.filter(f => userQuickFilters.includes(f.id));
+
+  // Function to load profile data (restrictions, equipment, etc.)
+  const loadProfileData = useCallback(async (applyDefaults: boolean = false) => {
+    try {
+      const [profileData, restrictionsData, equipmentData, favoriteIngredientsData] = await Promise.all([
+        profileService.getProfile(),
+        profileService.getRestrictions(),
+        profileService.getEquipment(),
+        profileService.getFavoriteIngredients(),
+      ]);
+      setProfile(profileData);
+      setRestrictions(restrictionsData);
+      setEquipment(equipmentData);
+      setFavoriteIngredients(favoriteIngredientsData.map(i => ({
+        ingredient_name: i.ingredient_name,
+        is_always_available: i.always_available,
+      })));
+
+      // Only apply profile defaults on initial load, not on subsequent focus
+      if (applyDefaults && !hasAppliedDefaults) {
+        if (profileData?.preferred_cuisines && profileData.preferred_cuisines.length > 0) {
+          setFormField('cuisines', profileData.preferred_cuisines);
+        }
+        if (equipmentData && equipmentData.length > 0) {
+          setFormField('equipment', equipmentData.map(e => e.equipment_type));
+        }
+        setHasAppliedDefaults(true);
       }
-    };
-    loadProfileData();
+    } catch (err) {
+      console.error('Error loading profile:', err);
+    }
+  }, [hasAppliedDefaults]);
+
+  // Load profile data on mount with defaults
+  useEffect(() => {
+    loadProfileData(true);
   }, []);
+
+  // Reload restrictions when screen comes into focus (after editing profile)
+  // But don't reapply defaults
+  useFocusEffect(
+    useCallback(() => {
+      loadProfileData(false);
+    }, [loadProfileData])
+  );
 
   // Get user's first name for greeting
   const userName = profile?.display_name?.split(' ')[0] || '';
@@ -84,37 +116,54 @@ export default function HomeScreen() {
     form.maxCalories ||
     form.useFavoriteIngredients;
 
-  // Generate recipe
+  // Generate recipe with retry logic
   const handleGenerate = async () => {
-    if (!form.prompt.trim()) {
-      setError(t('recipeGeneration.emptyPromptError'));
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setShowRecipeResult(true);
-    setOriginalPrompt(form.prompt);
+
+    // If no prompt, use a random/surprise prompt
+    const actualPrompt = form.prompt.trim() || t('recipeGeneration.surprisePrompt');
+    setOriginalPrompt(actualPrompt);
+
+    // Temporarily set the prompt for generation if empty
+    const formToUse = form.prompt.trim() ? form : { ...form, prompt: actualPrompt };
 
     // Get favorite ingredient names to pass to the service
     const favIngredientNames = favoriteIngredients.map(i => i.ingredient_name);
 
-    const result = await recipeGenerationService.generateRecipe(
-      form,
-      profile,
-      restrictions,
-      favIngredientNames,
-      currentLang
-    );
+    // Retry up to 3 times
+    const maxRetries = 3;
+    let lastError: string | null = null;
 
-    setLoading(false);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const result = await recipeGenerationService.generateRecipe(
+        formToUse,
+        profile,
+        restrictions,
+        favIngredientNames,
+        currentLang
+      );
 
-    if (result.success && result.recipe) {
-      setGeneratedRecipe(result.recipe);
-    } else {
-      setError(result.error || t('recipeGeneration.generateError'));
-      setShowRecipeResult(false);
+      if (result.success && result.recipe) {
+        setLoading(false);
+        setGeneratedRecipe(result.recipe);
+        setHasUnsavedRecipe(true);
+        return;
+      }
+
+      lastError = result.error || t('recipeGeneration.generateError');
+
+      // If it's the last attempt, don't retry
+      if (attempt < maxRetries) {
+        console.log(`Recipe generation attempt ${attempt} failed, retrying...`);
+      }
     }
+
+    // All retries failed
+    setLoading(false);
+    setShowRecipeResult(false);
+    setShowRetryErrorModal(true);
   };
 
   // Regenerate recipe
@@ -137,6 +186,7 @@ export default function HomeScreen() {
 
     if (result.success && result.recipe) {
       setGeneratedRecipe(result.recipe);
+      setHasUnsavedRecipe(true);
     } else {
       setError(result.error || t('recipeGeneration.generateError'));
     }
@@ -192,12 +242,62 @@ export default function HomeScreen() {
   const handleSaveSuccessConfirm = () => {
     setShowSaveSuccessModal(false);
     setShowRecipeResult(false);
+    setHasUnsavedRecipe(false);
+    setGeneratedRecipe(null);
     resetForm();
   };
 
   // Close result modal
   const handleCloseResult = () => {
     setShowRecipeResult(false);
+    // Don't clear hasUnsavedRecipe - keep it so user can reopen
+  };
+
+  // Discard recipe and reset
+  const handleDiscard = () => {
+    setShowRecipeResult(false);
+    setHasUnsavedRecipe(false);
+    setGeneratedRecipe(null);
+    resetForm();
+  };
+
+  // Open quick filters editor
+  const handleOpenQuickFiltersEdit = () => {
+    setEditingQuickFilters(userQuickFilters);
+    setShowQuickFiltersModal(true);
+  };
+
+  // Toggle a quick filter in edit mode
+  const handleToggleEditFilter = (filterId: string) => {
+    setEditingQuickFilters(prev => {
+      if (prev.includes(filterId)) {
+        return prev.filter(id => id !== filterId);
+      }
+      if (prev.length >= 4) {
+        // Max 4 filters, remove first and add new
+        return [...prev.slice(1), filterId];
+      }
+      return [...prev, filterId];
+    });
+  };
+
+  // Save quick filters
+  const handleSaveQuickFilters = async () => {
+    try {
+      await profileService.updateProfile({ quick_filters: editingQuickFilters });
+      // Reload profile to get updated data
+      await loadProfileData();
+      setShowQuickFiltersModal(false);
+    } catch (err) {
+      console.error('Error saving quick filters:', err);
+    }
+  };
+
+  // Reopen unsaved recipe
+  const handleReopenRecipe = () => {
+    if (generatedRecipe) {
+      setShowRecipeResult(true);
+    }
   };
 
   // Build greeting with user name first, then question
@@ -289,11 +389,16 @@ export default function HomeScreen() {
 
         {/* Quick Filters */}
         <View className="mb-5">
-          <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            {t('recipeGeneration.quickFiltersLabel')}
-          </Text>
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {t('recipeGeneration.quickFiltersLabel')}
+            </Text>
+            <Pressable onPress={handleOpenQuickFiltersEdit} className="p-1">
+              <FontAwesome name="pencil" size={14} color={colors.textSecondary} />
+            </Pressable>
+          </View>
           <View className="flex-row flex-wrap gap-2">
-            {QUICK_FILTERS.map((filter) => (
+            {displayedFilters.map((filter) => (
               <Chip
                 key={filter.id}
                 label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
@@ -303,6 +408,38 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {/* Profile Restrictions/Allergies Banner - Below quick filters */}
+        {restrictions.length > 0 && (
+          <View className="mb-5 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+            <View className="flex-row items-center mb-2">
+              <FontAwesome name="shield" size={14} color={(colors as any).warning || '#f59e0b'} style={{ marginRight: 6 }} />
+              <Text className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                {t('recipeGeneration.activeRestrictions' as any)}
+              </Text>
+            </View>
+            <View className="flex-row flex-wrap" style={{ gap: 6 }}>
+              {restrictions.map((r) => (
+                <View
+                  key={r.id}
+                  className={`px-2.5 py-1 rounded-full ${
+                    r.is_allergy 
+                      ? 'bg-red-100 dark:bg-red-900/40' 
+                      : 'bg-amber-100 dark:bg-amber-900/40'
+                  }`}
+                >
+                  <Text className={`text-xs font-medium ${
+                    r.is_allergy 
+                      ? 'text-red-700 dark:text-red-300' 
+                      : 'text-amber-700 dark:text-amber-300'
+                  }`}>
+                    {r.is_allergy ? '⚠️ ' : '🥗 '}{t(`restrictions.${r.restriction_type}`, { defaultValue: r.restriction_type })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Active Filters - Tappable to open modal */}
         <Pressable
@@ -337,23 +474,8 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Generate Button */}
-        <Button
-          size="lg"
-          onPress={handleGenerate}
-          loading={isLoading}
-          disabled={isLoading}
-        >
-          <View className="flex-row items-center justify-center">
-            <FontAwesome name="magic" size={18} color="#ffffff" style={{ marginRight: 8 }} />
-            <Text className="text-white font-semibold text-lg">
-              {t('recipeGeneration.generateButton')}
-            </Text>
-          </View>
-        </Button>
-
-        {/* Spacer for better centering */}
-        <View className="h-8" />
+        {/* Spacer for FAB */}
+        <View className="h-24" />
       </ScrollView>
 
       {/* Filters Modal */}
@@ -374,6 +496,7 @@ export default function HomeScreen() {
         onRegenerate={handleRegenerate}
         onModify={handleModify}
         onSave={handleSave}
+        onDiscard={handleDiscard}
         isSaving={isSaving}
         isModifying={isModifying}
       />
@@ -387,6 +510,148 @@ export default function HomeScreen() {
         confirmLabel={String(t('common.ok'))}
         onClose={handleSaveSuccessConfirm}
       />
+
+      {/* Retry Error Modal */}
+      <AlertModal
+        visible={showRetryErrorModal}
+        title={String(t('common.error'))}
+        message={String(t('recipeGeneration.retryError'))}
+        variant="danger"
+        confirmLabel={String(t('common.ok'))}
+        onClose={() => setShowRetryErrorModal(false)}
+      />
+
+      {/* Quick Filters Edit Modal */}
+      <BottomSheet
+        visible={showQuickFiltersModal}
+        onClose={() => setShowQuickFiltersModal(false)}
+        title={String(t('recipeGeneration.editQuickFilters' as any))}
+        showOkButton
+        okLabel={String(t('common.save'))}
+        onOk={handleSaveQuickFilters}
+        showCloseButton={false}
+      >
+        <View className="pb-6">
+          <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            {t('recipeGeneration.selectUpTo4' as any)}
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {QUICK_FILTERS.map((filter) => (
+              <Chip
+                key={filter.id}
+                label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
+                selected={editingQuickFilters.includes(filter.id)}
+                onPress={() => handleToggleEditFilter(filter.id)}
+              />
+            ))}
+          </View>
+          <Text className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+            {t('recipeGeneration.selectedCount' as any, { count: editingQuickFilters.length, max: 4 })}
+          </Text>
+        </View>
+      </BottomSheet>
+
+      {/* FAB Menu Overlay */}
+      {showFabMenu && (
+        <Pressable
+          className="absolute inset-0 bg-black/30"
+          onPress={() => setShowFabMenu(false)}
+        />
+      )}
+
+      {/* FAB Menu Options - when there's an unsaved recipe */}
+      {showFabMenu && hasUnsavedRecipe && generatedRecipe && (
+        <View className="absolute bottom-24 right-6 items-end gap-3">
+          {/* View Recipe Option */}
+          <Pressable
+            onPress={() => {
+              setShowFabMenu(false);
+              handleReopenRecipe();
+            }}
+            className="flex-row items-center"
+          >
+            <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
+              <Text className="text-gray-900 dark:text-gray-50 font-medium">
+                {t('recipeGeneration.viewRecipe' as any)}
+              </Text>
+            </View>
+            <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center shadow-lg">
+              <FontAwesome name="file-text-o" size={18} color="white" />
+            </View>
+          </Pressable>
+
+          {/* Generate New Option */}
+          <Pressable
+            onPress={() => {
+              setShowFabMenu(false);
+              handleGenerate();
+            }}
+            disabled={isLoading}
+            className="flex-row items-center"
+          >
+            <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
+              <Text className="text-gray-900 dark:text-gray-50 font-medium">
+                {t('recipeGeneration.generateNew' as any)}
+              </Text>
+            </View>
+            <View className="w-12 h-12 rounded-full bg-green-500 items-center justify-center shadow-lg">
+              <FontAwesome name="magic" size={18} color="white" />
+            </View>
+          </Pressable>
+
+          {/* Discard Option */}
+          <Pressable
+            onPress={() => {
+              setShowFabMenu(false);
+              handleDiscard();
+            }}
+            className="flex-row items-center"
+          >
+            <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
+              <Text className="text-gray-900 dark:text-gray-50 font-medium">
+                {t('recipeGeneration.discard')}
+              </Text>
+            </View>
+            <View className="w-12 h-12 rounded-full bg-red-500 items-center justify-center shadow-lg">
+              <FontAwesome name="trash" size={18} color="white" />
+            </View>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Main FAB Button */}
+      <View
+        className="absolute bottom-6 right-6"
+        style={{ elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65, borderRadius: 28 }}
+      >
+        {hasUnsavedRecipe && generatedRecipe ? (
+          // Has unsaved recipe - show menu toggle
+          <Pressable
+            onPress={() => setShowFabMenu(!showFabMenu)}
+            disabled={isLoading}
+            className="w-14 h-14 rounded-full bg-amber-500 items-center justify-center active:bg-amber-600"
+          >
+            <FontAwesome
+              name={showFabMenu ? "times" : "ellipsis-v"}
+              size={24}
+              color="white"
+            />
+          </Pressable>
+        ) : (
+          // No unsaved recipe - show generate button
+          <Pressable
+            onPress={handleGenerate}
+            disabled={isLoading}
+            className="w-14 h-14 rounded-full bg-primary-500 items-center justify-center active:bg-primary-600"
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <FontAwesome name="magic" size={24} color="white" />
+            )}
+          </Pressable>
+        )}
+      </View>
     </KeyboardAvoidingView>
   );
 }

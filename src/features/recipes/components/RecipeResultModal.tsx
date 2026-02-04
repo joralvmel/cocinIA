@@ -24,6 +24,7 @@ interface RecipeResultModalProps {
   onRegenerate: () => void;
   onModify: (modification: string) => void;
   onSave: () => void;
+  onDiscard: () => void;
   isSaving?: boolean;
   isModifying?: boolean;
 }
@@ -36,6 +37,7 @@ export function RecipeResultModal({
   onRegenerate,
   onModify,
   onSave,
+  onDiscard,
   isSaving = false,
   isModifying = false,
 }: RecipeResultModalProps) {
@@ -69,6 +71,11 @@ export function RecipeResultModal({
   const handleRegeneratePress = () => {
     setShowFabMenu(false);
     onRegenerate();
+  };
+
+  const handleDiscardPress = () => {
+    setShowFabMenu(false);
+    onDiscard();
   };
 
   const handleSavePress = () => {
@@ -115,6 +122,7 @@ export function RecipeResultModal({
         visible={visible}
         onClose={onClose}
         title={recipe.title}
+        useChevron
       >
         {/* Loading overlay when modifying */}
         {isModifying && (
@@ -442,6 +450,22 @@ export function RecipeResultModal({
               </View>
               <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center shadow-lg">
                 <FontAwesome name="refresh" size={20} color="white" />
+              </View>
+            </Pressable>
+
+            {/* Discard Option */}
+            <Pressable
+              onPress={handleDiscardPress}
+              disabled={isModifying || isSaving}
+              className="flex-row items-center"
+            >
+              <View className="bg-white dark:bg-gray-800 rounded-lg px-3 py-2 mr-2 shadow-md">
+                <Text className="text-gray-900 dark:text-gray-50 font-medium">
+                  {t('recipeGeneration.discard')}
+                </Text>
+              </View>
+              <View className="w-12 h-12 rounded-full bg-red-500 items-center justify-center shadow-lg">
+                <FontAwesome name="trash" size={20} color="white" />
               </View>
             </Pressable>
           </View>
