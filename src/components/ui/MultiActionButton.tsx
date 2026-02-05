@@ -54,9 +54,12 @@ export function MultiActionButton({
   // Measure button position when expanded
   useEffect(() => {
     if (expanded && buttonRef.current) {
-      buttonRef.current.measureInWindow((x, y, width, height) => {
-        setButtonLayout({ x, y, width, height });
-      });
+      // Small delay to ensure accurate measurement after render
+      setTimeout(() => {
+        buttonRef.current?.measureInWindow((x, y, width, height) => {
+          setButtonLayout({ x, y, width, height });
+        });
+      }, 50);
     }
   }, [expanded]);
 
@@ -175,12 +178,17 @@ export function MultiActionButton({
 
   // Calculate positions for modal content based on button layout
   const getModalPositions = () => {
-    if (!buttonLayout) return { bottom: 0, right: 0 };
+    if (!buttonLayout) return { bottom: 24, right: 24 };
 
-    return {
-      bottom: SCREEN_HEIGHT - buttonLayout.y - buttonLayout.height,
-      right: SCREEN_WIDTH - buttonLayout.x - buttonLayout.width,
-    };
+    // Calculate from bottom and right edges for more reliable positioning
+    const bottomFromEdge = SCREEN_HEIGHT - buttonLayout.y - buttonLayout.height;
+    const rightFromEdge = SCREEN_WIDTH - buttonLayout.x - buttonLayout.width;
+
+    // Ensure minimum spacing from edges
+    const bottom = Math.max(16, bottomFromEdge);
+    const right = Math.max(16, rightFromEdge);
+
+    return { bottom, right };
   };
 
   const positions = getModalPositions();
@@ -289,7 +297,7 @@ export function MultiActionButton({
             <View
               style={{
                 position: 'absolute',
-                bottom: positions.bottom - 36,
+                bottom: positions.bottom -36,
                 right: positions.right,
               }}
             >

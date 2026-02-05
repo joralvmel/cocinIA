@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconButton } from './IconButton';
 
 export interface FullScreenModalProps {
@@ -22,7 +23,7 @@ export function FullScreenModal({
 }: FullScreenModalProps) {
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 bg-white dark:bg-gray-900">
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
         <View className="flex-row items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <IconButton
             icon={useChevron ? "chevron-down" : "times"}
@@ -40,7 +41,7 @@ export function FullScreenModal({
           {rightAction || <View className="w-10" />}
         </View>
         <View className="flex-1">{children}</View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

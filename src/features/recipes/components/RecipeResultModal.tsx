@@ -409,7 +409,7 @@ export function RecipeResultModal({
         </ScrollView>
 
         {/* Floating Action Button */}
-        <View className="absolute bottom-6 right-4">
+        <View className="absolute bottom-6 right-6">
           <MultiActionButton
             icon="ellipsis-v"
             variant="floating"
