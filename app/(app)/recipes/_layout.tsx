@@ -12,7 +12,7 @@ export default function RecipesLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.card },
-        headerTintColor: colors.text,
+        headerTintColor: colors.primary,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.background },
       }}
@@ -34,7 +34,8 @@ export default function RecipesLayout() {
       <Stack.Screen
         name="[id]"
         options={{
-          title: 'Recipe Details',
+          title: String(t('recipes.detail.headerTitle' as any)),
+          headerBackTitle: String(t('recipes.title')),
         }}
       />
     </Stack>

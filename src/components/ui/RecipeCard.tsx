@@ -115,37 +115,33 @@ export function RecipeCard({
         onPress={onPress}
         className={`flex-row rounded-xl overflow-hidden bg-gray-50 dark:bg-gray-800 ${className}`}
       >
-        {image ? (
+        {image && (
           <Image source={imageSource as ImageSourcePropType} className="w-28 h-28" resizeMode="cover" />
-        ) : (
-          <View className="w-28 h-28 items-center justify-center bg-primary-100 dark:bg-primary-900">
-            <FontAwesome name="cutlery" size={32} color={colors.primary} />
-          </View>
         )}
-        <View className="flex-1 p-3 justify-between">
+        <View className={`flex-1 p-3 justify-between ${!image ? 'py-4' : ''}`}>
           <View>
-            <Text className="font-semibold text-gray-900 dark:text-gray-50" numberOfLines={2}>{title}</Text>
+            <Text className="font-semibold text-gray-900 dark:text-gray-50" numberOfLines={1}>{title}</Text>
             {description && (
               <Text className="text-sm mt-1 text-gray-500 dark:text-gray-400" numberOfLines={2}>{description}</Text>
             )}
           </View>
-          <View className="flex-row items-center flex-wrap gap-3">
+          <View className="flex-row items-center flex-wrap gap-3 mt-2">
             {time && (
               <View className="flex-row items-center">
-                <FontAwesome name="clock-o" size={12} color={colors.textMuted} />
-                <Text className="text-xs ml-1 text-gray-400 dark:text-gray-500">{time}</Text>
+                <FontAwesome name="clock-o" size={12} color={colors.primary} />
+                <Text className="text-xs ml-1 font-medium text-gray-700 dark:text-gray-300">{time}</Text>
               </View>
             )}
             {servings && (
               <View className="flex-row items-center">
-                <FontAwesome name="users" size={12} color={colors.textMuted} />
-                <Text className="text-xs ml-1 text-gray-400 dark:text-gray-500">{servings}</Text>
+                <FontAwesome name="users" size={12} color={colors.primary} />
+                <Text className="text-xs ml-1 font-medium text-gray-700 dark:text-gray-300">{servings}</Text>
               </View>
             )}
             {calories && (
               <View className="flex-row items-center">
-                <FontAwesome name="fire" size={12} color={colors.textMuted} />
-                <Text className="text-xs ml-1 text-gray-400 dark:text-gray-500">{calories} kcal</Text>
+                <FontAwesome name="fire" size={12} color={colors.primary} />
+                <Text className="text-xs ml-1 font-medium text-gray-700 dark:text-gray-300">{calories} kcal</Text>
               </View>
             )}
             {difficulty && (
