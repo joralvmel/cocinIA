@@ -29,8 +29,8 @@ export const authService = {
 
   async signInWithGoogle() {
     const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-      ? `${window.location.origin}/auth/callback`
-      : Linking.createURL('auth/callback');
+        ? `${window.location.origin}/auth/callback`
+        : 'cocinia://auth/callback';
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -42,36 +42,56 @@ export const authService = {
 
     if (error) throw error;
 
-    // On web, browser handles redirect
+    // On web, browser handles redirect automatically
     if (Platform.OS === 'web') {
       return data;
     }
 
     // On mobile, handle OAuth with WebBrowser
     if (data?.url) {
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
+      );
 
       if (result.type === 'success' && result.url) {
-        const urlParts = result.url.split('#');
-        const hash = urlParts[1] || urlParts[0].split('?')[1];
+        // Parse the URL to get tokens
+        const url = new URL(result.url);
+        const accessToken = url.searchParams.get('access_token');
+        const refreshToken = url.searchParams.get('refresh_token');
 
-        if (hash) {
-          const params = new URLSearchParams(hash);
-          const accessToken = params.get('access_token');
-          const refreshToken = params.get('refresh_token');
+        // Also check in hash fragment
+        if (!accessToken && url.hash) {
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          const hashAccessToken = hashParams.get('access_token');
+          const hashRefreshToken = hashParams.get('refresh_token');
 
-          if (accessToken && refreshToken) {
+          if (hashAccessToken && hashRefreshToken) {
             const { data: sessionData, error: sessionError } =
-              await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
+                await supabase.auth.setSession({
+                  access_token: hashAccessToken,
+                  refresh_token: hashRefreshToken,
+                });
 
             if (sessionError) throw sessionError;
             return sessionData;
           }
         }
+
+        if (accessToken && refreshToken) {
+          const { data: sessionData, error: sessionError } =
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+
+          if (sessionError) throw sessionError;
+          return sessionData;
+        }
       }
+
+      // If we got here, something went wrong
+      throw new Error('OAuth failed: No tokens received');
     }
 
     return null;
@@ -84,8 +104,8 @@ export const authService = {
 
   async resetPassword(email: string) {
     const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined'
-      ? `${window.location.origin}/auth/reset-password`
-      : Linking.createURL('auth/reset-password');
+        ? `${window.location.origin}/auth/reset-password`
+        : 'cocinia://auth/reset-password';
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
