@@ -531,59 +531,63 @@
     // AI Prompt translations
     prompt: {
       systemIntro: 'You are CocinIA, an expert chef and AI cooking assistant.',
-      systemTask: 'Your task is to generate detailed and accurate recipes based on user preferences. CRITICAL: You MUST strictly respect all dietary restrictions (vegetarian, vegan, etc.) and allergies. If a user is vegetarian/vegan, NEVER include meat, poultry, or seafood. Always prioritize dietary restrictions over the specific dish name requested.',
-      jsonInstruction: 'IMPORTANT: You must respond ONLY with a valid JSON object, no additional text.',
-      jsonStructure: 'The JSON must follow exactly this structure:',
+      systemTask: 'Generate detailed and accurate recipes based on the current user request. Respond ONLY with a valid JSON object following the specified structure.',
+
+      restrictionsImportant: 'IMPORTANT about dietary restrictions:',
+      restrictionsRule: '- If the user has ALLERGIES or DIETARY RESTRICTIONS listed below, DO NOT use those ingredients under any circumstances.',
+      restrictionsConditional: '- If NO allergies or restrictions are listed, generate the recipe normally without modifications.',
+      restrictionsNoAssumptions: '- DO NOT assume restrictions that are not explicitly stated.',
+
+      descriptionRule: 'DESCRIPTION RULE: Write a brief description (1 sentence, max 15 words) that is appealing and direct. No filler phrases.',
+
+      jsonInstruction: 'RESPONSE FORMAT: Respond ONLY with the JSON object. Do not add explanations, comments, or additional text.',
+      jsonStructure: 'Required JSON structure:',
+
       userContext: '--- USER CONTEXT ---',
       country: 'Country',
-      currency: 'Currency for costs',
-      preferredServings: 'Preferred servings',
+      currency: 'Currency',
       measurementSystem: 'Measurement system',
       metric: 'Metric',
       imperial: 'Imperial',
-      favoriteCuisines: 'Favorite cuisines',
-      dailyCalorieGoal: 'Daily calorie goal',
-      fitnessGoal: 'Health goal',
-      fitnessGoals: {
-        lose_weight: 'Lose weight',
-        maintain: 'Maintain weight',
-        gain_muscle: 'Build muscle',
-        eat_healthy: 'Eat healthy',
-      },
-      allergiesWarning: '⚠️ ALLERGIES (NEVER use these ingredients)',
-      dietaryPreferences: '🚫 STRICT DIETARY RESTRICTIONS (MUST follow these - no exceptions)',
+
+      allergiesWarning: '⚠️ CRITICAL ALLERGIES - FORBIDDEN to use',
+      dietaryPreferences: '🔒 ACTIVE DIETARY RESTRICTIONS - Strictly respect',
+      noRestrictionsActive: '✓ No dietary restrictions - Generate recipe without modifications',
+
       availableEquipment: 'Available equipment',
-      wantRecipe: 'I want a recipe for',
-      requirements: 'Requirements',
-      filterDescriptions: {
-        quick: 'that can be prepared in less than 30 minutes',
+
+      requirements: 'Recipe requirements',
+      userRequest: 'User request',
+
+      // Default filter descriptions (fallback when custom_name is not set)
+      defaultFilterDescriptions: {
+        quick: 'preparation time under 30 minutes',
         healthy: 'healthy and nutritious',
-        vegetarian: 'vegetarian',
+        vegetarian: 'vegetarian (no meat, poultry, or fish)',
         cheap: 'budget-friendly',
         easy: 'easy to prepare',
-        high_protein: 'high in protein',
+        high_protein: 'high in protein (minimum 25g per serving)',
       },
-      useIngredients: 'Use these ingredients',
-      excludeIngredients: 'DO NOT use these ingredients',
+
+      useIngredients: 'MUST include these ingredients',
+      excludeIngredients: 'DO NOT include these ingredients',
       mealType: 'Meal type',
       servings: 'Servings',
-      maxTime: 'Maximum time',
+      maxTime: 'Maximum preparation time',
       minutes: 'minutes',
-      caloriesPerServing: 'Calories per serving',
-      between: 'between',
-      and: 'and',
+      caloriesPerServing: 'calories per serving',
       maximum: 'Maximum',
-      minimum: 'Minimum',
-      cuisineType: 'Cuisine type',
-      difficultyLabel: 'Difficulty',
+      cuisineType: 'Cuisine style',
+      difficultyLabel: 'Difficulty level',
       difficultyLevels: {
         easy: 'easy',
         medium: 'medium',
         hard: 'hard',
       },
-      modifyRequest: 'Please modify it according to this request',
-      currentRecipe: 'I have this current recipe',
-      returnModified: 'Return the complete modified recipe in the same JSON format.',
+
+      modifyRequest: 'Requested modification',
+      currentRecipe: 'Current recipe to modify',
+      returnModified: 'Return the complete modified recipe in JSON format.',
     },
   },
 };

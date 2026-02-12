@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import i18n from '@/i18n';
-import { AIRecipeResponseSchema, type AIRecipeResponse, type RecipeSearchForm } from '@/types';
-import { type Profile, type ProfileRestriction } from './profile';
+import { AIRecipeResponseSchema, type AIRecipeResponse, type RecipeSearchForm, type MealType } from '@/types';
+import { type Profile, type ProfileRestriction, type ProfileQuickFilter } from './profile';
 import { AI_CONFIG } from '@/config';
 
 // Initialize the Gemini client
@@ -51,10 +51,59 @@ function getNestedPromptTranslation(key: string, subKey: string, lang: Language)
   return i18n.t(`recipeGeneration.prompt.${key}.${subKey}` as any, { lng: lang }) as string;
 }
 
+/**
+ * Transform invalid meal_types to valid ones with intelligent mapping
+ */
+function normalizeMealTypes(mealTypes: string[]): MealType[] {
+  const validMealTypes: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+
+  // Mapping of common invalid values to valid ones
+  const mapping: Record<string, MealType> = {
+    'side dish': 'lunch',
+    'side': 'lunch',
+    'condiment': 'lunch',
+    'sauce': 'lunch',
+    'appetizer': 'snack',
+    'starter': 'snack',
+    'main course': 'dinner',
+    'main': 'dinner',
+    'brunch': 'breakfast',
+    'accompaniment': 'lunch',
+  };
+
+  const normalized = mealTypes
+      .map(type => {
+        const lowerType = type.toLowerCase().trim();
+
+        // If it's already valid, return it
+        if (validMealTypes.includes(lowerType as MealType)) {
+          return lowerType as MealType;
+        }
+
+        // Try to map invalid value
+        if (mapping[lowerType]) {
+          console.warn(`Normalizing meal_type "${type}" to "${mapping[lowerType]}"`);
+          return mapping[lowerType];
+        }
+
+        // Default fallback
+        console.warn(`Unknown meal_type "${type}", defaulting to "lunch"`);
+        return 'lunch' as MealType;
+      })
+      .filter((type, index, self) => self.indexOf(type) === index); // Remove duplicates
+
+  // Ensure at least one meal type
+  return normalized.length > 0 ? normalized : ['lunch'];
+}
+
 function getJsonStructureExample(lang: Language): string {
   const descriptionHint = lang === 'es'
-    ? 'Descripción breve y atractiva de 1 oración'
-    : 'Brief and appealing 1-sentence description';
+      ? 'Descripción breve de máximo 15 palabras'
+      : 'Brief description of max 15 words';
+
+  const mealTypesNote = lang === 'es'
+      ? '// CRÍTICO: meal_types SOLO puede ser: "breakfast", "lunch", "dinner", "snack", "dessert"'
+      : '// CRITICAL: meal_types can ONLY be: "breakfast", "lunch", "dinner", "snack", "dessert"';
 
   return `{
   "title": "Recipe name",
@@ -83,6 +132,7 @@ function getJsonStructureExample(lang: Language): string {
   "cost_currency": "USD",
   "cost_per_serving": 3.12,
   "meal_types": ["lunch", "dinner"],
+  ${mealTypesNote}
   "cuisine": "mexican",
   "tags": ["quick", "healthy"],
   "chef_tips": ["Tip 1", "Tip 2"],
@@ -91,31 +141,96 @@ function getJsonStructureExample(lang: Language): string {
 }`;
 }
 
+/**
+ * Get filter description with support for custom names
+ */
+function getFilterDescription(
+    filterType: string,
+    customName: string | null | undefined,
+    lang: Language
+): string {
+  // If there's a custom name, use it directly
+  if (customName) {
+    return customName;
+  }
+
+  // Try to get the default translation for known filter types
+  const translationKey = `recipeGeneration.prompt.defaultFilterDescriptions.${filterType}` as const;
+
+  try {
+    const translation = i18n.t(translationKey as any, { lng: lang });
+
+    // If translation is found and it's not the key itself, return it
+    if (translation && typeof translation === 'string' && translation !== translationKey) {
+      return translation;
+    }
+  } catch (error) {
+    // Translation not found, continue to fallback
+  }
+
+  // Fallback: return the filter_type as-is
+  return filterType;
+}
+
+/**
+ * Build the system prompt with improved structure and clearer instructions
+ */
 function buildRecipeSystemPrompt(
-  profile: Profile | null,
-  restrictions: ProfileRestriction[],
-  lang: Language = 'es'
+    profile: Profile | null,
+    restrictions: ProfileRestriction[],
+    lang: Language = 'es'
 ): string {
   const t = (key: string) => getPromptTranslation(key, lang);
 
-  const descriptionInstruction = lang === 'es'
-    ? 'IMPORTANTE: La descripción debe ser breve (1 oración), atractiva y directa. No uses frases de relleno.'
-    : 'IMPORTANT: Description must be brief (1 sentence), appealing and direct. No filler phrases.';
+  const mealTypesRule = lang === 'es'
+      ? `REGLA CRÍTICA DE meal_types:
+El campo "meal_types" SOLO puede contener estos valores EXACTOS (sin excepciones):
+• "breakfast" - para desayunos
+• "lunch" - para comidas/almuerzos (también para salsas, acompañamientos, guarniciones)
+• "dinner" - para cenas (también para platos principales)
+• "snack" - para meriendas, aperitivos, entrantes
+• "dessert" - para postres
+
+NO INVENTES otros valores como "side dish", "condiment", "appetizer", "main course", etc.
+Si es una salsa o acompañamiento, usa "lunch" o "dinner" según cuándo se sirva.`
+      : `CRITICAL meal_types RULE:
+The "meal_types" field can ONLY contain these EXACT values (no exceptions):
+• "breakfast" - for breakfast dishes
+• "lunch" - for lunch meals (also for sauces, sides, accompaniments)
+• "dinner" - for dinner meals (also for main courses)
+• "snack" - for snacks, appetizers, starters
+• "dessert" - for desserts
+
+DO NOT INVENT other values like "side dish", "condiment", "appetizer", "main course", etc.
+If it's a sauce or side, use "lunch" or "dinner" depending on when it's served.`;
 
   const parts: string[] = [
     t('systemIntro'),
     t('systemTask'),
     '',
-    descriptionInstruction,
+    '='.repeat(50),
+    t('restrictionsImportant'),
+    t('restrictionsRule'),
+    t('restrictionsConditional'),
+    t('restrictionsNoAssumptions'),
+    '='.repeat(50),
+    '',
+    t('descriptionRule'),
+    '',
+    mealTypesRule,
     '',
     t('jsonInstruction'),
+    '',
     t('jsonStructure'),
     '',
     getJsonStructureExample(lang),
+    '',
+    '='.repeat(50),
   ];
 
+  // Add user context
   if (profile) {
-    parts.push('', t('userContext'));
+    parts.push(t('userContext'));
 
     if (profile.country) {
       parts.push(`${t('country')}: ${profile.country}`);
@@ -126,89 +241,120 @@ function buildRecipeSystemPrompt(
     if (profile.measurement_system) {
       parts.push(`${t('measurementSystem')}: ${profile.measurement_system === 'metric' ? t('metric') : t('imperial')}`);
     }
+
+    parts.push('');
   }
 
-  if (restrictions.length > 0) {
-    const allergies = restrictions.filter(r => r.is_allergy).map(r => r.restriction_type);
-    const preferences = restrictions.filter(r => !r.is_allergy).map(r => r.restriction_type);
+  // Handle restrictions with conditional logic
+  const allergies = restrictions.filter(r => r.is_allergy).map(r => r.custom_value || r.restriction_type);
+  const preferences = restrictions.filter(r => !r.is_allergy).map(r => r.custom_value || r.restriction_type);
 
+  if (allergies.length > 0 || preferences.length > 0) {
     if (allergies.length > 0) {
       parts.push(`${t('allergiesWarning')}: ${allergies.join(', ')}`);
     }
     if (preferences.length > 0) {
       parts.push(`${t('dietaryPreferences')}: ${preferences.join(', ')}`);
     }
+  } else {
+    parts.push(t('noRestrictionsActive'));
   }
+
+  parts.push('='.repeat(50));
 
   return parts.join('\n');
 }
 
+/**
+ * Build user prompt with clear formatting and support for custom quick filters
+ */
 function buildUserPrompt(
-  form: RecipeSearchForm,
-  favoriteIngredients: string[] = [],
-  lang: Language = 'es'
+    form: RecipeSearchForm,
+    favoriteIngredients: string[] = [],
+    quickFiltersData: ProfileQuickFilter[] = [],
+    lang: Language = 'es'
 ): string {
   const t = (key: string) => getPromptTranslation(key, lang);
-  const tNested = (key: string, subKey: string) => getNestedPromptTranslation(key, subKey, lang);
-  const parts: string[] = [];
 
+  const parts: string[] = [t('requirements')];
+  const requirements: string[] = [];
+
+  // User's free-text prompt
   if (form.prompt) {
-    parts.push(form.prompt);
+    requirements.push(`- ${t('userRequest')}: ${form.prompt}`);
   }
 
+  // Quick filters - match with ProfileQuickFilter data to get custom names
   if (form.quickFilters.length > 0) {
-    const filters = form.quickFilters
-      .map(f => tNested('filterDescriptions', f))
-      .filter(Boolean);
-    if (filters.length > 0) {
-      parts.push(`${t('requirements')}: ${filters.join(', ')}`);
+    const filterDescriptions: string[] = [];
+
+    for (const filterType of form.quickFilters) {
+      // Find matching ProfileQuickFilter to get custom_name if available
+      const quickFilterData = quickFiltersData.find(qf => qf.filter_type === filterType);
+      const description = getFilterDescription(filterType, quickFilterData?.custom_name, lang);
+      filterDescriptions.push(description);
+    }
+
+    if (filterDescriptions.length > 0) {
+      requirements.push(`- ${filterDescriptions.join(', ')}`);
     }
   }
 
+  // Ingredients to use
   if (form.ingredientsToUse.length > 0) {
-    parts.push(`${t('useIngredients')}: ${form.ingredientsToUse.join(', ')}`);
+    requirements.push(`- ${t('useIngredients')}: ${form.ingredientsToUse.join(', ')}`);
   }
 
+  // Favorite ingredients preference
   if (form.useFavoriteIngredients && favoriteIngredients.length > 0) {
     const favNote = lang === 'es'
-      ? `Ingredientes favoritos del usuario (dar preferencia a estos): ${favoriteIngredients.join(', ')}`
-      : `User's favorite ingredients (prefer these): ${favoriteIngredients.join(', ')}`;
-    parts.push(favNote);
+        ? `- Preferir usar estos ingredientes favoritos: ${favoriteIngredients.join(', ')}`
+        : `- Prefer using these favorite ingredients: ${favoriteIngredients.join(', ')}`;
+    requirements.push(favNote);
   }
 
+  // Ingredients to exclude
   if (form.ingredientsToExclude.length > 0) {
-    parts.push(`${t('excludeIngredients')}: ${form.ingredientsToExclude.join(', ')}`);
+    requirements.push(`- ${t('excludeIngredients')}: ${form.ingredientsToExclude.join(', ')}`);
   }
 
+  // Meal types
   if (form.mealTypes.length > 0) {
     const mealNames = form.mealTypes.map(m => i18n.t(`recipeGeneration.mealTypes.${m}`, { lng: lang }));
-    parts.push(`${t('mealType')}: ${mealNames.join(', ')}`);
+    requirements.push(`- ${t('mealType')}: ${mealNames.join(', ')}`);
   }
 
+  // Servings
   if (form.servings) {
-    parts.push(`${t('servings')}: ${form.servings}`);
+    requirements.push(`- ${t('servings')}: ${form.servings}`);
   }
 
+  // Maximum time
   if (form.maxTime) {
-    parts.push(`${t('maxTime')}: ${form.maxTime} ${t('minutes')}`);
+    requirements.push(`- ${t('maxTime')}: ${form.maxTime} ${t('minutes')}`);
   }
 
+  // Maximum calories
   if (form.maxCalories) {
-    parts.push(`${t('maximum')} ${form.maxCalories} ${t('caloriesPerServing').toLowerCase()}`);
+    requirements.push(`- ${t('maximum')} ${form.maxCalories} ${t('caloriesPerServing').toLowerCase()}`);
   }
 
+  // Cuisine types
   if (form.cuisines.length > 0) {
-    parts.push(`${t('cuisineType')}: ${form.cuisines.join(', ')}`);
+    requirements.push(`- ${t('cuisineType')}: ${form.cuisines.join(', ')}`);
   }
 
+  // Difficulty
   if (form.difficulty) {
-    parts.push(`${t('difficultyLabel')}: ${tNested('difficultyLevels', form.difficulty)}`);
+    requirements.push(`- ${t('difficultyLabel')}: ${getNestedPromptTranslation('difficultyLevels', form.difficulty, lang)}`);
   }
 
+  // Available equipment
   if (form.equipment && form.equipment.length > 0) {
-    parts.push(`${t('availableEquipment')}: ${form.equipment.join(', ')}`);
+    requirements.push(`- ${t('availableEquipment')}: ${form.equipment.join(', ')}`);
   }
 
+  parts.push(requirements.join('\n'));
   return parts.join('\n');
 }
 
@@ -223,7 +369,7 @@ function extractJsonFromResponse(text: string): string {
   }
 
   // If no code blocks, try to find JSON object directly
-  const jsonObjectMatch = text.match(/\{[\s\S]*}/);
+  const jsonObjectMatch = text.match(/\{[\s\S]*\}/);
   if (jsonObjectMatch) {
     return jsonObjectMatch[0];
   }
@@ -231,23 +377,24 @@ function extractJsonFromResponse(text: string): string {
   return text;
 }
 
-
 /**
  * Gemini Recipe Generation Service
  */
 export const geminiRecipeGenerationService = {
   async generateRecipe(
-    form: RecipeSearchForm,
-    profile: Profile | null,
-    restrictions: ProfileRestriction[],
-    favoriteIngredients: string[] = [],
-    lang: Language = 'es'
+      form: RecipeSearchForm,
+      profile: Profile | null,
+      restrictions: ProfileRestriction[],
+      favoriteIngredients: string[] = [],
+      quickFiltersData: ProfileQuickFilter[] = [],
+      lang: Language = 'es'
   ): Promise<RecipeGenerationResponse> {
     const normalizedLang = getLanguage(lang);
     const zodError = i18n.t('recipeGeneration.zodError', { lng: normalizedLang }) as string;
     const unknownError = i18n.t('recipeGeneration.unknownError', { lng: normalizedLang }) as string;
 
     try {
+      // Create a fresh model instance for each request
       const model = genAI.getGenerativeModel({
         model: AI_CONFIG.model,
         safetySettings,
@@ -259,10 +406,17 @@ export const geminiRecipeGenerationService = {
       });
 
       const systemPrompt = buildRecipeSystemPrompt(profile, restrictions, normalizedLang);
-      const userPrompt = buildUserPrompt(form, favoriteIngredients, normalizedLang);
+      const userPrompt = buildUserPrompt(form, favoriteIngredients, quickFiltersData, normalizedLang);
 
-      // Gemini uses a combined prompt approach
-      const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`;
+      // Combine prompts with clear separation
+      const fullPrompt = `${systemPrompt}\n\n${'='.repeat(50)}\n\n${userPrompt}`;
+
+      // Debug log (remove in production)
+      if (__DEV__) {
+        console.log('=== FULL PROMPT SENT TO GEMINI ===');
+        console.log(fullPrompt);
+        console.log('='.repeat(50));
+      }
 
       const result = await model.generateContent(fullPrompt);
       const response = result.response;
@@ -279,6 +433,12 @@ export const geminiRecipeGenerationService = {
       try {
         const jsonText = extractJsonFromResponse(rawResponse);
         const parsed = JSON.parse(jsonText);
+
+        // Normalize meal_types before validation to handle AI mistakes
+        if (parsed.meal_types && Array.isArray(parsed.meal_types)) {
+          parsed.meal_types = normalizeMealTypes(parsed.meal_types);
+        }
+
         const validated = AIRecipeResponseSchema.parse(parsed);
 
         return {
@@ -308,11 +468,11 @@ export const geminiRecipeGenerationService = {
   },
 
   async modifyRecipe(
-    currentRecipe: AIRecipeResponse,
-    modification: string,
-    profile: Profile | null,
-    restrictions: ProfileRestriction[],
-    lang: Language = 'es'
+      currentRecipe: AIRecipeResponse,
+      modification: string,
+      profile: Profile | null,
+      restrictions: ProfileRestriction[],
+      lang: Language = 'es'
   ): Promise<RecipeGenerationResponse> {
     const normalizedLang = getLanguage(lang);
     const t = (key: string) => getPromptTranslation(key, normalizedLang);
@@ -320,6 +480,7 @@ export const geminiRecipeGenerationService = {
     const unknownError = i18n.t('recipeGeneration.unknownError', { lng: normalizedLang }) as string;
 
     try {
+      // Create a fresh model instance
       const model = genAI.getGenerativeModel({
         model: AI_CONFIG.model,
         safetySettings,
@@ -332,16 +493,23 @@ export const geminiRecipeGenerationService = {
 
       const systemPrompt = buildRecipeSystemPrompt(profile, restrictions, normalizedLang);
 
-      const userPrompt = `
-${t('currentRecipe')}:
+      const userPrompt = `${t('currentRecipe')}:
 ${JSON.stringify(currentRecipe, null, 2)}
+
+${'='.repeat(50)}
 
 ${t('modifyRequest')}: ${modification}
 
-${t('returnModified')}
-`;
+${t('returnModified')}`;
 
-      const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`;
+      const fullPrompt = `${systemPrompt}\n\n${'='.repeat(50)}\n\n${userPrompt}`;
+
+      // Debug log (remove in production)
+      if (__DEV__) {
+        console.log('=== MODIFICATION PROMPT ===');
+        console.log(fullPrompt);
+        console.log('='.repeat(50));
+      }
 
       const result = await model.generateContent(fullPrompt);
       const response = result.response;
@@ -358,6 +526,12 @@ ${t('returnModified')}
       try {
         const jsonText = extractJsonFromResponse(rawResponse);
         const parsed = JSON.parse(jsonText);
+
+        // Normalize meal_types before validation
+        if (parsed.meal_types && Array.isArray(parsed.meal_types)) {
+          parsed.meal_types = normalizeMealTypes(parsed.meal_types);
+        }
+
         const validated = AIRecipeResponseSchema.parse(parsed);
 
         return {

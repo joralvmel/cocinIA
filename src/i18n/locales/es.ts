@@ -531,59 +531,63 @@
     // AI Prompt translations
     prompt: {
       systemIntro: 'Eres CocinIA, un chef experto y asistente de cocina con IA.',
-      systemTask: 'Tu tarea es generar recetas detalladas y precisas basadas en las preferencias del usuario. CRÍTICO: DEBES respetar estrictamente todas las restricciones dietéticas (vegetariano, vegano, etc.) y alergias. Si un usuario es vegetariano/vegano, NUNCA incluyas carne, pollo o mariscos. Siempre prioriza las restricciones dietéticas sobre el nombre específico del plato solicitado.',
-      jsonInstruction: 'IMPORTANTE: Debes responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional.',
-      jsonStructure: 'El JSON debe seguir exactamente esta estructura:',
+      systemTask: 'Genera recetas detalladas y precisas basadas en la petición actual del usuario. Responde ÚNICAMENTE con un objeto JSON válido siguiendo la estructura especificada.',
+
+      restrictionsImportant: 'IMPORTANTE sobre restricciones dietéticas:',
+      restrictionsRule: '- Si el usuario tiene ALERGIAS o RESTRICCIONES DIETÉTICAS listadas más abajo, NO uses esos ingredientes bajo ninguna circunstancia.',
+      restrictionsConditional: '- Si NO hay alergias ni restricciones listadas, genera la receta normalmente sin modificaciones.',
+      restrictionsNoAssumptions: '- NO asumas restricciones que no estén explícitamente indicadas.',
+
+      descriptionRule: 'REGLA DE DESCRIPCIÓN: Escribe una descripción breve (1 oración, máximo 15 palabras) que sea atractiva y directa. No uses frases de relleno.',
+
+      jsonInstruction: 'FORMATO DE RESPUESTA: Responde ÚNICAMENTE con el objeto JSON. No agregues explicaciones, comentarios ni texto adicional.',
+      jsonStructure: 'Estructura JSON requerida:',
+
       userContext: '--- CONTEXTO DEL USUARIO ---',
       country: 'País',
-      currency: 'Moneda para costos',
-      preferredServings: 'Porciones preferidas',
+      currency: 'Moneda',
       measurementSystem: 'Sistema de medidas',
       metric: 'Métrico',
       imperial: 'Imperial',
-      favoriteCuisines: 'Cocinas favoritas',
-      dailyCalorieGoal: 'Objetivo calórico diario',
-      fitnessGoal: 'Objetivo de salud',
-      fitnessGoals: {
-        lose_weight: 'Perder peso',
-        maintain: 'Mantener peso',
-        gain_muscle: 'Ganar músculo',
-        eat_healthy: 'Comer saludable',
-      },
-      allergiesWarning: '⚠️ ALERGIAS (NUNCA usar estos ingredientes)',
-      dietaryPreferences: '🚫 RESTRICCIONES DIETÉTICAS ESTRICTAS (DEBE seguir estas - sin excepciones)',
+
+      allergiesWarning: '⚠️ ALERGIAS CRÍTICAS - PROHIBIDO usar',
+      dietaryPreferences: '🔒 RESTRICCIONES DIETÉTICAS ACTIVAS - Respetar estrictamente',
+      noRestrictionsActive: '✓ Sin restricciones dietéticas - Genera receta sin modificaciones',
+
       availableEquipment: 'Equipamiento disponible',
-      wantRecipe: 'Quiero una receta de',
-      requirements: 'Requisitos',
-      filterDescriptions: {
-        quick: 'que se prepare en menos de 30 minutos',
+
+      requirements: 'Requisitos de la receta',
+      userRequest: 'Solicitud del usuario',
+
+      // Default filter descriptions (fallback when custom_name is not set)
+      defaultFilterDescriptions: {
+        quick: 'tiempo de preparación menor a 30 minutos',
         healthy: 'saludable y nutritiva',
-        vegetarian: 'vegetariana',
+        vegetarian: 'vegetariana (sin carne, pollo ni pescado)',
         cheap: 'económica',
         easy: 'fácil de preparar',
-        high_protein: 'alta en proteínas',
+        high_protein: 'alta en proteínas (mínimo 25g por porción)',
       },
-      useIngredients: 'Usar estos ingredientes',
-      excludeIngredients: 'NO usar estos ingredientes',
+
+      useIngredients: 'DEBE incluir estos ingredientes',
+      excludeIngredients: 'NO incluir estos ingredientes',
       mealType: 'Tipo de comida',
       servings: 'Porciones',
-      maxTime: 'Tiempo máximo',
+      maxTime: 'Tiempo máximo de preparación',
       minutes: 'minutos',
-      caloriesPerServing: 'Calorías por porción',
-      between: 'entre',
-      and: 'y',
+      caloriesPerServing: 'calorías por porción',
       maximum: 'Máximo',
-      minimum: 'Mínimo',
-      cuisineType: 'Tipo de cocina',
-      difficultyLabel: 'Dificultad',
+      cuisineType: 'Estilo de cocina',
+      difficultyLabel: 'Nivel de dificultad',
       difficultyLevels: {
         easy: 'fácil',
         medium: 'intermedio',
         hard: 'difícil',
       },
-      modifyRequest: 'Por favor modifícala según esta solicitud',
-      currentRecipe: 'Tengo esta receta actual',
-      returnModified: 'Devuelve la receta modificada completa en el mismo formato JSON.',
+
+      modifyRequest: 'Modificación solicitada',
+      currentRecipe: 'Receta actual a modificar',
+      returnModified: 'Devuelve la receta modificada completa en formato JSON.',
     },
   },
 };
