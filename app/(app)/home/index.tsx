@@ -5,7 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { Input, Chip, AlertModal, BottomSheet, MultiActionButton, type ActionOption } from '@/components/ui';
 import { RecipeFiltersModal, RecipeResultModal } from '@/features';
 import { useRecipeGenerationStore } from '@/stores';
-import { profileService, recipeGenerationService, recipeService } from '@/services';
+import {ProfileQuickFilter, profileService, recipeGenerationService, recipeService} from '@/services';
 import { QUICK_FILTERS } from '@/types';
 import { type Profile, type ProfileRestriction, type ProfileEquipment } from '@/services';
 import { AI_CONFIG } from '@/config';
@@ -51,6 +51,7 @@ export default function HomeScreen() {
   const [showQuickFiltersModal, setShowQuickFiltersModal] = useState(false);
   const [editingQuickFilters, setEditingQuickFilters] = useState<{ filter: string; isSelected: boolean }[]>([]);
   const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const [quickFiltersData, setQuickFiltersData] = useState<ProfileQuickFilter[]>([]);
 
   // Get user's quick filters or default
   // Build from the loaded quick filters data
@@ -97,6 +98,7 @@ export default function HomeScreen() {
       if (quickFiltersData && quickFiltersData.length > 0) {
         const filters = quickFiltersData.map(f => f.custom_name || f.filter_type);
         setUserQuickFilters(filters);
+        setQuickFiltersData(quickFiltersData);
       }
 
       // Only apply profile defaults on initial load, not on subsequent focus
@@ -177,11 +179,12 @@ export default function HomeScreen() {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       const result = await recipeGenerationService.generateRecipe(
-        formToSend,
-        profile,
-        restrictions,
-        favIngredientNames,
-        currentLang
+          formToSend,
+          profile,
+          restrictions,
+          favIngredientNames,
+          quickFiltersData,
+          currentLang
       );
 
       if (result.success && result.recipe) {
@@ -226,11 +229,12 @@ export default function HomeScreen() {
     const formToSend = { ...form, cuisines: transformedCuisines };
 
     const result = await recipeGenerationService.generateRecipe(
-      formToSend,
-      profile,
-      restrictions,
-      favIngredientNames,
-      currentLang
+        formToSend,
+        profile,
+        restrictions,
+        favIngredientNames,
+        quickFiltersData,
+        currentLang
     );
 
     setLoading(false);
