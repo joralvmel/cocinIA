@@ -21,6 +21,7 @@ import {
 import { recipeService } from '@/services';
 import { type Recipe } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { recipeEvents } from '@/utils';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -125,6 +126,7 @@ export default function RecipeDetailScreen() {
         try {
           setIsDeleting(true);
           await recipeService.deleteRecipe(id!);
+          recipeEvents.emit();
           router.back();
         } catch (error) {
           console.error('Error deleting recipe:', error);
@@ -173,6 +175,7 @@ export default function RecipeDetailScreen() {
         estimated_cost: adjustedCost,
       };
       await recipeService.updateRecipe(id!, updates);
+      recipeEvents.emit();
       await loadRecipe();
       setIsEditing(false);
     } catch (error) {

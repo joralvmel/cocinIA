@@ -69,7 +69,7 @@
     nutritionGoals: 'Nutrition Goals',
     nutritionGoalsDesc: 'Calories and macros',
     cookingPreferences: 'Cooking Preferences',
-    cookingPreferencesDesc: 'Restrictions, cuisines, equipment & filters',
+    cookingPreferencesDesc: 'Restrictions, cuisines & equipment',
     equipment: 'Kitchen Equipment',
     equipmentDesc: 'Appliances and utensils',
     favoriteIngredients: 'Favorite Ingredients',
@@ -141,19 +141,15 @@
     addPreference: 'Add Preference',
     addCuisine: 'Add Cuisine',
     addEquipment: 'Add Equipment',
-    addFilter: 'Add Filter',
     addAllergyDesc: 'Add a custom allergy that\'s not in the list',
     addPreferenceDesc: 'Add a custom dietary preference',
     addCuisineDesc: 'Add a custom cuisine type',
     addEquipmentDesc: 'Add a custom kitchen equipment',
-    addFilterDesc: 'Add a custom quick filter',
     customValuePlaceholder: 'Enter name...',
     customRestrictionLabel: 'Custom restriction',
     isAllergy: 'Is it an allergy?',
     // Cuisines
     favoriteCuisines: 'Favorite Cuisines',
-    quickFilters: 'Quick Filters',
-    selectFilters: 'Select the filters you want to use',
     // Equipment
     kitchenEquipment: 'Equipment',
     addCustomEquipment: 'Add Equipment',
@@ -413,10 +409,6 @@
     greeting: 'Hello',
     subtitle: 'Describe what you want and AI will create a personalized recipe for you',
     promptPlaceholder: 'E.g: A creamy pasta with chicken, something quick for dinner...',
-    quickFiltersLabel: 'Quick filters',
-    editQuickFilters: 'Edit Quick Filters',
-    selectUpTo4: 'Select up to 4 filters to show on the home screen',
-    selectedCount: '{{count}} of {{max}} selected',
     advancedOptions: 'Advanced options',
     activeFilters: 'Active filters',
     noFiltersActive: 'Tap to add filters',
@@ -434,15 +426,6 @@
     generatingMessage: 'Our AI is creating a personalized recipe for you',
     modifyingMessage: 'Modifying your recipe...',
 
-    // Filters
-    filters: {
-      quick: '< 30 min',
-      healthy: 'Healthy',
-      vegetarian: 'Vegetarian',
-      cheap: 'Budget-friendly',
-      easy: 'Easy',
-      high_protein: 'High protein',
-    },
 
     // Advanced options
     recipeName: 'Recipe name',
@@ -559,15 +542,6 @@
       requirements: 'Recipe requirements',
       userRequest: 'User request',
 
-      // Default filter descriptions (fallback when custom_name is not set)
-      defaultFilterDescriptions: {
-        quick: 'preparation time under 30 minutes',
-        healthy: 'healthy and nutritious',
-        vegetarian: 'vegetarian (no meat, poultry, or fish)',
-        cheap: 'budget-friendly',
-        easy: 'easy to prepare',
-        high_protein: 'high in protein (minimum 25g per serving)',
-      },
 
       useIngredients: 'MUST include these ingredients',
       excludeIngredients: 'DO NOT include these ingredients',

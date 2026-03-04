@@ -23,7 +23,6 @@ import {
   equipment as equipmentList,
   type DietaryRestriction,
 } from '@/constants';
-import { QUICK_FILTERS } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface RestrictionState {
@@ -48,12 +47,6 @@ interface EquipmentState {
   isSelected: boolean;
 }
 
-interface QuickFilterState {
-  id: string;
-  filter: string;
-  isCustom: boolean;
-  isSelected: boolean;
-}
 
 export default function EditPreferencesScreen() {
   const router = useRouter();
@@ -67,12 +60,11 @@ export default function EditPreferencesScreen() {
   const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>([]);
   const [selectedCuisines, setSelectedCuisines] = useState<CuisineState[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentState[]>([]);
-  const [selectedQuickFilters, setSelectedQuickFilters] = useState<QuickFilterState[]>([]);
 
   // Custom input
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customValue, setCustomValue] = useState('');
-  const [customType, setCustomType] = useState<'allergy' | 'preference' | 'cuisine' | 'equipment' | 'filter'>('allergy');
+  const [customType, setCustomType] = useState<'allergy' | 'preference' | 'cuisine' | 'equipment'>('allergy');
 
   // Global search
   const [globalSearch, setGlobalSearch] = useState('');
@@ -85,12 +77,11 @@ export default function EditPreferencesScreen() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const [profile, restrictions, equipment, cuisineData, quickFiltersData] = await Promise.all([
+      const [profile, restrictions, equipment, cuisineData] = await Promise.all([
         profileService.getProfile(),
         profileService.getRestrictions(),
         profileService.getEquipment(),
         profileService.getCuisines(),
-        profileService.getQuickFilters(),
       ]);
 
       if (profile) {
@@ -109,17 +100,6 @@ export default function EditPreferencesScreen() {
         }));
 
         setSelectedCuisines([...legacyCuisines, ...dbCuisines]);
-
-        // Load quick filters from new table
-        if (quickFiltersData && quickFiltersData.length > 0) {
-          const filters = quickFiltersData.map(f => ({
-            id: f.id,
-            filter: f.custom_name || f.filter_type,
-            isCustom: f.filter_type === 'custom',
-            isSelected: true, // Already in DB = already selected
-          }));
-          setSelectedQuickFilters(filters);
-        }
       }
 
       if (restrictions) {
@@ -195,18 +175,6 @@ export default function EditPreferencesScreen() {
         preferred_cuisines: predefinedCuisines,
       });
 
-      // Save quick filters to new table
-      const filtersToSave = selectedQuickFilters
-        .filter(f => f.isSelected) // Only save selected ones
-        .map(f => {
-          if (f.isCustom) {
-            return { filter_type: 'custom', custom_name: f.filter };
-          } else {
-            return { filter_type: f.filter };
-          }
-        });
-
-      await profileService.saveQuickFilters(filtersToSave);
 
       return true;
     } catch (error) {
@@ -230,7 +198,7 @@ export default function EditPreferencesScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [selectedRestrictions, selectedCuisines, selectedQuickFilters, selectedEquipment])
+    }, [selectedRestrictions, selectedCuisines, selectedEquipment])
   );
 
   const handleBack = async () => {
@@ -345,29 +313,6 @@ export default function EditPreferencesScreen() {
     }
   };
 
-  const isQuickFilterSelected = (id: string) => {
-    const filter = selectedQuickFilters.find(f => f.filter === id && !f.isCustom);
-    return filter?.isSelected ?? false;
-  };
-
-  const toggleQuickFilter = (id: string) => {
-    const existing = selectedQuickFilters.find(f => f.filter === id && !f.isCustom);
-    if (existing) {
-      // Toggle the isSelected state
-      setSelectedQuickFilters((prev) =>
-        prev.map((f) =>
-          f.id === existing.id ? { ...f, isSelected: !f.isSelected } : f
-        )
-      );
-    } else {
-      // Add new filter in selected state
-      setSelectedQuickFilters((prev) => [
-        ...prev,
-        { id: `new_${Date.now()}`, filter: id, isCustom: false, isSelected: true }
-      ]);
-    }
-  };
-
   // Remove custom items
   const removeCustomRestriction = (id: string) => {
     setSelectedRestrictions((prev) => prev.filter((r) => r.id !== id));
@@ -381,9 +326,6 @@ export default function EditPreferencesScreen() {
     setSelectedEquipment((prev) => prev.filter((e) => e.id !== id));
   };
 
-  const removeCustomFilter = (filter: string) => {
-    setSelectedQuickFilters((prev) => prev.filter((f) => f.filter !== filter));
-  };
 
   // Add custom item
   const handleAddCustom = () => {
@@ -412,11 +354,6 @@ export default function EditPreferencesScreen() {
         ...prev,
         { id, type: 'custom', customName: value, isSelected: true },
       ]);
-    } else if (customType === 'filter') {
-      setSelectedQuickFilters((prev) => [
-        ...prev,
-        { id, filter: value, isCustom: true, isSelected: true }
-      ]);
     }
 
     setCustomValue('');
@@ -433,7 +370,6 @@ export default function EditPreferencesScreen() {
     { id: 'preference', label: t('profile.addPreference' as any), icon: 'leaf', color: 'green', onPress: () => openCustomInput('preference') },
     { id: 'cuisine', label: t('profile.addCuisine' as any), icon: 'cutlery', color: 'amber', onPress: () => openCustomInput('cuisine') },
     { id: 'equipment', label: t('profile.addEquipment' as any), icon: 'wrench', color: 'blue', onPress: () => openCustomInput('equipment') },
-    { id: 'filter', label: t('profile.addFilter' as any), icon: 'bolt', color: 'purple', onPress: () => openCustomInput('filter') },
   ];
 
   if (loading) {
@@ -643,51 +579,6 @@ export default function EditPreferencesScreen() {
               )}
             </Section>
 
-            {/* Quick Filters */}
-            <Section title={`⚡ ${t('profile.quickFilters' as any)}`} className="mb-6">
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3 mt-2">
-                {t('profile.selectFilters' as any)}
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {/* Predefined filters */}
-                {QUICK_FILTERS.map((filter) => (
-                  <Chip
-                    key={filter.id}
-                    label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
-                    selected={isQuickFilterSelected(filter.id)}
-                    onPress={() => toggleQuickFilter(filter.id)}
-                    size="sm"
-                  />
-                ))}
-              </View>
-              {/* Custom filters - can be toggled AND removed */}
-              {selectedQuickFilters.filter(f => f.isCustom).length > 0 && (
-                <View className="flex-row flex-wrap gap-2 mt-3">
-                  {selectedQuickFilters
-                    .filter(f => f.isCustom)
-                    .map((filterObj) => (
-                      <Chip
-                        key={filterObj.id}
-                        label={`⚡ ${filterObj.filter}`}
-                        selected={filterObj.isSelected}
-                        onPress={() => {
-                          setSelectedQuickFilters((prev) =>
-                            prev.map((f) =>
-                              f.id === filterObj.id ? { ...f, isSelected: !f.isSelected } : f
-                            )
-                          );
-                        }}
-                        onRemove={() => removeCustomFilter(filterObj.filter)}
-                        size="sm"
-                      />
-                    ))}
-                </View>
-              )}
-              <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                {t('profile.selectedCount', { count: selectedQuickFilters.filter(f => f.isSelected).length })}
-              </Text>
-            </Section>
-
             {/* Spacer for floating button */}
             <View className="h-24" />
           </ScrollView>
@@ -719,7 +610,6 @@ export default function EditPreferencesScreen() {
               {customType === 'preference' && t('profile.addPreferenceDesc' as any)}
               {customType === 'cuisine' && t('profile.addCuisineDesc' as any)}
               {customType === 'equipment' && t('profile.addEquipmentDesc' as any)}
-              {customType === 'filter' && t('profile.addFilterDesc' as any)}
             </Text>
             <Input
               placeholder={t('profile.customValuePlaceholder' as any)}

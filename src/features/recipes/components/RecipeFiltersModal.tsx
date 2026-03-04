@@ -6,7 +6,7 @@ import { useRecipeGenerationStore } from '@/stores';
 import { cuisines } from '@/constants/cuisines';
 import { equipment as equipmentConstants } from '@/constants/equipment';
 import { type MealType, type DifficultyLevel } from '@/types';
-import { type ProfileEquipment, type ProfileCuisine, profileService } from '@/services';
+import { type ProfileEquipment, type ProfileCuisine } from '@/services';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -109,11 +109,11 @@ export function RecipeFiltersModal({
     label: `${c.icon} ${String(t(c.labelKey as any, { defaultValue: c.defaultLabel }))}`,
   }));
 
-  // Add custom cuisines from profile
+  // Add custom cuisines from profile - use unique ID based on cuisine_type + index to avoid duplicates
   const customCuisineOptions = profileCustomCuisines
     .filter(c => c.custom_name)
-    .map(c => ({
-      id: c.cuisine_type,
+    .map((c, index) => ({
+      id: c.cuisine_type === 'custom' ? `custom_cuisine_${index}` : c.cuisine_type,
       label: `🍽️ ${c.custom_name}`,
     }));
 
@@ -126,10 +126,11 @@ export function RecipeFiltersModal({
   }));
 
   // Add custom equipment from profile that aren't in the standard list
+  // Use unique ID based on equipment_type + index to avoid duplicate keys
   const customEquipmentFromProfile = profileEquipment
     .filter(e => e.custom_name && !equipmentConstants.find(std => std.id === e.equipment_type))
-    .map(e => ({
-      id: e.equipment_type,
+    .map((e, index) => ({
+      id: e.equipment_type === 'custom' ? `custom_equipment_${index}` : e.equipment_type,
       label: `🔧 ${e.custom_name}`,
     }));
 

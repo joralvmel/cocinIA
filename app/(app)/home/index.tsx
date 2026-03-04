@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from 'expo-router';
-import { Input, Chip, AlertModal, BottomSheet, MultiActionButton, type ActionOption } from '@/components/ui';
+import { Input, Chip, AlertModal, MultiActionButton } from '@/components/ui';
 import { RecipeFiltersModal, RecipeResultModal } from '@/features';
 import { useRecipeGenerationStore } from '@/stores';
-import {ProfileQuickFilter, profileService, recipeGenerationService, recipeService} from '@/services';
-import { QUICK_FILTERS } from '@/types';
+import { profileService, recipeGenerationService, recipeService} from '@/services';
 import { type Profile, type ProfileRestriction, type ProfileEquipment } from '@/services';
 import { AI_CONFIG } from '@/config';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { recipeEvents } from '@/utils';
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const currentLang = (i18n.language?.startsWith('es') ? 'es' : 'en') as 'es' | 'en';
 
   // Store
@@ -26,7 +28,6 @@ export default function HomeScreen() {
     showAdvancedOptions,
     showRecipeResult,
     setFormField,
-    toggleQuickFilter,
     setGeneratedRecipe,
     setLoading,
     setError,
@@ -42,44 +43,41 @@ export default function HomeScreen() {
   const [equipment, setEquipment] = useState<ProfileEquipment[]>([]);
   const [favoriteIngredients, setFavoriteIngredients] = useState<{ ingredient_name: string; is_always_available: boolean }[]>([]);
   const [customCuisines, setCustomCuisines] = useState<{ id: string; cuisine_type: string; custom_name: string | null }[]>([]);
-  const [userQuickFilters, setUserQuickFilters] = useState<string[]>(['quick', 'healthy', 'vegetarian', 'cheap']);
   const [isSaving, setIsSaving] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [hasUnsavedRecipe, setHasUnsavedRecipe] = useState(false);
   const [showRetryErrorModal, setShowRetryErrorModal] = useState(false);
-  const [showQuickFiltersModal, setShowQuickFiltersModal] = useState(false);
-  const [editingQuickFilters, setEditingQuickFilters] = useState<{ filter: string; isSelected: boolean }[]>([]);
   const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
-  const [quickFiltersData, setQuickFiltersData] = useState<ProfileQuickFilter[]>([]);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // Get user's quick filters or default
-  // Build from the loaded quick filters data
-  const buildQuickFiltersArray = useCallback(() => {
-    if (!profile) return ['quick', 'healthy', 'vegetarian', 'cheap'];
-    // This will be populated after loadProfileData runs
-    // For now, return empty - it will be set via setEditingQuickFilters
-    return [];
-  }, [profile]);
+  // Track keyboard visibility for FAB positioning
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-  // Get predefined filters that are in user's selection
-  const predefinedFilters = QUICK_FILTERS.filter(f => userQuickFilters.includes(f.id));
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
 
-  // Get custom filters (those not in QUICK_FILTERS)
-  const customFilters = userQuickFilters
-    .filter(f => !QUICK_FILTERS.some(qf => qf.id === f))
-    .map(f => ({ id: f, icon: '⚡', label: f }));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Function to load profile data (restrictions, equipment, etc.)
   const loadProfileData = useCallback(async (applyDefaults: boolean = false) => {
     try {
-      const [profileData, restrictionsData, equipmentData, favoriteIngredientsData, cuisinesData, quickFiltersData] = await Promise.all([
+      const [profileData, restrictionsData, equipmentData, favoriteIngredientsData, cuisinesData] = await Promise.all([
         profileService.getProfile(),
         profileService.getRestrictions(),
         profileService.getEquipment(),
         profileService.getFavoriteIngredients(),
         profileService.getCuisines(),
-        profileService.getQuickFilters(),
       ]);
       setProfile(profileData);
       setRestrictions(restrictionsData);
@@ -93,13 +91,6 @@ export default function HomeScreen() {
         cuisine_type: c.cuisine_type,
         custom_name: c.custom_name,
       })));
-
-      // Set quick filters from the new table
-      if (quickFiltersData && quickFiltersData.length > 0) {
-        const filters = quickFiltersData.map(f => f.custom_name || f.filter_type);
-        setUserQuickFilters(filters);
-        setQuickFiltersData(quickFiltersData);
-      }
 
       // Only apply profile defaults on initial load, not on subsequent focus
       if (applyDefaults && !hasAppliedDefaults) {
@@ -183,7 +174,6 @@ export default function HomeScreen() {
           profile,
           restrictions,
           favIngredientNames,
-          quickFiltersData,
           currentLang
       );
 
@@ -233,7 +223,6 @@ export default function HomeScreen() {
         profile,
         restrictions,
         favIngredientNames,
-        quickFiltersData,
         currentLang
     );
 
@@ -285,6 +274,7 @@ export default function HomeScreen() {
         aiModel: AI_CONFIG.model,
       });
 
+      recipeEvents.emit();
       setShowSaveSuccessModal(true);
     } catch (err) {
       Alert.alert(String(t('common.error')), String(t('recipeGeneration.saveError')));
@@ -314,56 +304,6 @@ export default function HomeScreen() {
     setHasUnsavedRecipe(false);
     setGeneratedRecipe(null);
     resetForm();
-  };
-
-  // Open quick filters editor
-  const handleOpenQuickFiltersEdit = () => {
-    const filters = userQuickFilters.map(f => ({
-      filter: f,
-      isSelected: true,
-    }));
-    setEditingQuickFilters(filters);
-    setShowQuickFiltersModal(true);
-  };
-
-  // Toggle a quick filter in edit mode
-  const handleToggleEditFilter = (filterId: string) => {
-    setEditingQuickFilters(prev => {
-      const existing = prev.find(f => f.filter === filterId);
-      if (existing) {
-        // Toggle the isSelected state
-        return prev.map(f =>
-          f.filter === filterId ? { ...f, isSelected: !f.isSelected } : f
-        );
-      }
-      // If not found, add it as selected
-      return [...prev, { filter: filterId, isSelected: true }];
-    });
-  };
-
-  // Save quick filters
-  const handleSaveQuickFilters = async () => {
-    try {
-      // Only save filters with isSelected: true
-      const selectedFilters = editingQuickFilters.filter(f => f.isSelected);
-
-      // Convert filter strings to ProfileQuickFilter format
-      const filtersToSave = selectedFilters.map(f => {
-        const isPredefined = QUICK_FILTERS.some(qf => qf.id === f.filter);
-        if (isPredefined) {
-          return { filter_type: f.filter };
-        } else {
-          return { filter_type: 'custom', custom_name: f.filter };
-        }
-      });
-
-      await profileService.saveQuickFilters(filtersToSave);
-      // Reload profile to get updated data
-      await loadProfileData();
-      setShowQuickFiltersModal(false);
-    } catch (err) {
-      console.error('Error saving quick filters:', err);
-    }
   };
 
   // Reopen unsaved recipe
@@ -435,7 +375,7 @@ export default function HomeScreen() {
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="flex-grow px-4 pt-6 pb-8 justify-center"
+        contentContainerClassName="flex-grow px-4 pt-4 pb-8"
         keyboardShouldPersistTaps="handled"
       >
         {/* Header - Left aligned */}
@@ -466,39 +406,7 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Quick Filters */}
-        <View className="mb-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {t('recipeGeneration.quickFiltersLabel')}
-            </Text>
-            <Pressable onPress={handleOpenQuickFiltersEdit} className="p-1">
-              <FontAwesome name="pencil" size={14} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-          <View className="flex-row flex-wrap gap-2">
-            {/* Predefined filters */}
-            {predefinedFilters.map((filter) => (
-              <Chip
-                key={filter.id}
-                label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
-                selected={form.quickFilters.includes(filter.id)}
-                onPress={() => toggleQuickFilter(filter.id)}
-              />
-            ))}
-            {/* Custom filters */}
-            {customFilters.map((filter) => (
-              <Chip
-                key={filter.id}
-                label={`${filter.icon} ${filter.label}`}
-                selected={form.quickFilters.includes(filter.id)}
-                onPress={() => toggleQuickFilter(filter.id)}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Profile Restrictions/Allergies Banner - Below quick filters */}
+        {/* Profile Restrictions/Allergies Banner */}
         {restrictions.length > 0 && (
           <View className="mb-5 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
             <View className="flex-row items-center mb-2">
@@ -617,62 +525,11 @@ export default function HomeScreen() {
         onClose={() => setShowRetryErrorModal(false)}
       />
 
-      {/* Quick Filters Edit Modal */}
-      <BottomSheet
-        visible={showQuickFiltersModal}
-        onClose={() => setShowQuickFiltersModal(false)}
-        title={String(t('recipeGeneration.editQuickFilters' as any))}
-        showOkButton
-        okLabel={String(t('common.save'))}
-        onOk={handleSaveQuickFilters}
-        showCloseButton={false}
-      >
-        <View className="pb-6">
-          <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            {t('profile.selectFilters' as any)}
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {/* Predefined filters */}
-            {QUICK_FILTERS.map((filter) => {
-              const editingFilter = editingQuickFilters.find(f => f.filter === filter.id);
-              return (
-                <Chip
-                  key={filter.id}
-                  label={`${filter.icon} ${t(`recipeGeneration.filters.${filter.id}`)}`}
-                  selected={editingFilter?.isSelected ?? false}
-                  onPress={() => handleToggleEditFilter(filter.id)}
-                />
-              );
-            })}
-          </View>
-          {/* Custom filters from profile */}
-          {editingQuickFilters.filter(f => !QUICK_FILTERS.some(qf => qf.id === f.filter)).length > 0 && (
-            <View className="mt-4">
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                {t('profile.customItems' as any)} • {t('profile.manageInPreferences' as any)}
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {editingQuickFilters
-                  .filter(f => !QUICK_FILTERS.some(qf => qf.id === f.filter))
-                  .map((filterObj) => (
-                    <Chip
-                      key={filterObj.filter}
-                      label={`⚡ ${filterObj.filter}`}
-                      selected={true}
-                    />
-                  ))
-                }
-              </View>
-            </View>
-          )}
-          <Text className="text-xs text-gray-400 dark:text-gray-500 mt-3">
-            {t('profile.selectedCount' as any, { count: editingQuickFilters.filter(f => f.isSelected).length })}
-          </Text>
-        </View>
-      </BottomSheet>
-
       {/* Floating Action Button */}
-      <View className="absolute bottom-6 right-6">
+      <View
+        className="absolute right-6"
+        style={{ bottom: keyboardHeight > 0 ? keyboardHeight - (50 + insets.bottom) + 12 : 24 }}
+      >
         {hasUnsavedRecipe && generatedRecipe ? (
           // Has unsaved recipe - show multi-action menu
           <MultiActionButton
@@ -707,9 +564,10 @@ export default function HomeScreen() {
             ]}
           />
         ) : (
-          // No unsaved recipe - show single generate button
+          // No unsaved recipe - show single generate button with label
           <MultiActionButton
             icon="magic"
+            label={String(t('recipeGeneration.generateButton'))}
             variant="floating"
             floatingColor="primary-500"
             loading={isLoading}

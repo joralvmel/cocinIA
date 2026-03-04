@@ -17,6 +17,7 @@ import { recipeService } from '@/services';
 import { type Recipe, type MealType, type DifficultyLevel } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { recipeEvents } from '@/utils';
 
 interface RecipeFilters {
   searchQuery?: string;
@@ -85,6 +86,15 @@ export default function RecipesScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Subscribe to recipe change events (save, edit, delete from other screens)
+  useEffect(() => {
+    const unsubscribe = recipeEvents.subscribe(() => {
+      loadData();
+    });
+    return unsubscribe;
+  }, [loadData]);
+
 
   // Filter by search query (instant)
   const filteredRecipes = useMemo(() => {

@@ -103,8 +103,6 @@ export const RecipeSearchFormSchema = z.object({
   // Main prompt
   prompt: z.string().min(1, 'Escribe qué quieres cocinar'),
 
-  // Quick filters
-  quickFilters: z.array(z.string()).default([]),
 
   // Advanced options
   recipeName: z.string().optional(),
@@ -121,16 +119,3 @@ export const RecipeSearchFormSchema = z.object({
 });
 export type RecipeSearchForm = z.infer<typeof RecipeSearchFormSchema>;
 
-/**
- * Quick filter options
- */
-export const QUICK_FILTERS = [
-  { id: 'quick', label: '< 30 min', icon: '⚡' },
-  { id: 'healthy', label: 'Saludable', icon: '🥗' },
-  { id: 'vegetarian', label: 'Vegetariano', icon: '🥬' },
-  { id: 'cheap', label: 'Económico', icon: '💰' },
-  { id: 'easy', label: 'Fácil', icon: '👌' },
-  { id: 'high_protein', label: 'Alto en proteína', icon: '💪' },
-] as const;
-
-export type QuickFilterId = typeof QUICK_FILTERS[number]['id'];

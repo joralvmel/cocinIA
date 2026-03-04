@@ -20,7 +20,7 @@
     "android": {
       "package": "com.joralvmel.cocinIA",
       "versionCode": 1,
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#111827"

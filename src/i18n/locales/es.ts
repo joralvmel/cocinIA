@@ -69,7 +69,7 @@
     nutritionGoals: 'Objetivos Nutricionales',
     nutritionGoalsDesc: 'Calorías y macros',
     cookingPreferences: 'Preferencias de Cocina',
-    cookingPreferencesDesc: 'Restricciones, cocinas, equipamiento y filtros',
+    cookingPreferencesDesc: 'Restricciones, cocinas y equipamiento',
     equipment: 'Equipamiento de Cocina',
     equipmentDesc: 'Electrodomésticos y utensilios',
     favoriteIngredients: 'Ingredientes Favoritos',
@@ -141,19 +141,15 @@
     addPreference: 'Añadir Preferencia',
     addCuisine: 'Añadir Cocina',
     addEquipment: 'Añadir Equipo',
-    addFilter: 'Añadir Filtro',
     addAllergyDesc: 'Añade una alergia personalizada que no esté en la lista',
     addPreferenceDesc: 'Añade una preferencia dietética personalizada',
     addCuisineDesc: 'Añade un tipo de cocina personalizado',
     addEquipmentDesc: 'Añade un equipo de cocina personalizado',
-    addFilterDesc: 'Añade un filtro rápido personalizado',
     customValuePlaceholder: 'Ingresa el nombre...',
     customRestrictionLabel: 'Restricción personalizada',
     isAllergy: '¿Es alergia?',
     // Cuisines
     favoriteCuisines: 'Cocinas Favoritas',
-    quickFilters: 'Filtros Rápidos',
-    selectFilters: 'Selecciona los filtros que deseas usar',
     // Equipment
     kitchenEquipment: 'Equipamiento',
     addCustomEquipment: 'Añadir Equipo',
@@ -413,10 +409,6 @@
     greeting: 'Hola',
     subtitle: 'Describe lo que quieres y la IA creará una receta personalizada para ti',
     promptPlaceholder: 'Ej: Una pasta cremosa con pollo, algo rápido para cenar...',
-    quickFiltersLabel: 'Filtros rápidos',
-    editQuickFilters: 'Editar Filtros Rápidos',
-    selectUpTo4: 'Selecciona hasta 4 filtros para mostrar en la pantalla principal',
-    selectedCount: '{{count}} de {{max}} seleccionados',
     advancedOptions: 'Opciones avanzadas',
     activeFilters: 'Filtros activos',
     noFiltersActive: 'Toca para agregar filtros',
@@ -434,15 +426,6 @@
     generatingMessage: 'Nuestra IA está creando una receta personalizada para ti',
     modifyingMessage: 'Modificando tu receta...',
 
-    // Filters
-    filters: {
-      quick: '< 30 min',
-      healthy: 'Saludable',
-      vegetarian: 'Vegetariano',
-      cheap: 'Económico',
-      easy: 'Fácil',
-      high_protein: 'Alto en proteína',
-    },
 
     // Advanced options
     recipeName: 'Nombre de receta',
@@ -559,15 +542,6 @@
       requirements: 'Requisitos de la receta',
       userRequest: 'Solicitud del usuario',
 
-      // Default filter descriptions (fallback when custom_name is not set)
-      defaultFilterDescriptions: {
-        quick: 'tiempo de preparación menor a 30 minutos',
-        healthy: 'saludable y nutritiva',
-        vegetarian: 'vegetariana (sin carne, pollo ni pescado)',
-        cheap: 'económica',
-        easy: 'fácil de preparar',
-        high_protein: 'alta en proteínas (mínimo 25g por porción)',
-      },
 
       useIngredients: 'DEBE incluir estos ingredientes',
       excludeIngredients: 'NO incluir estos ingredientes',

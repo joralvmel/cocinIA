@@ -25,3 +25,6 @@ export {
   type ProfileCompletionResult,
 } from './profileCompletion';
 
+// Recipe events
+export { recipeEvents } from './recipeEvents';
+

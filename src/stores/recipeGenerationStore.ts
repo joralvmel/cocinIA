@@ -19,7 +19,6 @@ interface RecipeGenerationState {
 
   // Actions
   setFormField: <K extends keyof RecipeSearchForm>(field: K, value: RecipeSearchForm[K]) => void;
-  toggleQuickFilter: (filterId: string) => void;
   resetForm: () => void;
   setGeneratedRecipe: (recipe: AIRecipeResponse | null) => void;
   setLoading: (loading: boolean) => void;
@@ -32,7 +31,6 @@ interface RecipeGenerationState {
 
 const initialForm: RecipeSearchForm = {
   prompt: '',
-  quickFilters: [],
   recipeName: '',
   ingredientsToUse: [],
   ingredientsToExclude: [],
@@ -63,17 +61,6 @@ export const useRecipeGenerationStore = create<RecipeGenerationState>((set, get)
     }));
   },
 
-  toggleQuickFilter: (filterId) => {
-    set((state) => {
-      const currentFilters = state.form.quickFilters;
-      const newFilters = currentFilters.includes(filterId)
-        ? currentFilters.filter((f) => f !== filterId)
-        : [...currentFilters, filterId];
-      return {
-        form: { ...state.form, quickFilters: newFilters },
-      };
-    });
-  },
 
   resetForm: () => {
     set({ form: initialForm, error: null });

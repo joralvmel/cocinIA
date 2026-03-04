@@ -20,7 +20,6 @@ export interface Profile {
   fat_goal_g: number | null;
   default_servings: number | null;
   preferred_cuisines: string[] | null;
-  // REMOVED: quick_filters - now in profile_quick_filters table
   measurement_system: 'metric' | 'imperial' | null;
   onboarding_completed: boolean;
   onboarding_step: number | null;
@@ -61,15 +60,6 @@ export interface ProfileCuisine {
   created_at: string;
 }
 
-export interface ProfileQuickFilter {
-  id: string;
-  profile_id: string;
-  filter_type: string;
-  custom_name: string | null;
-  display_order: number;
-  created_at: string;
-}
-
 // Profile update payload
 export interface ProfileUpdatePayload {
   display_name?: string;
@@ -87,7 +77,6 @@ export interface ProfileUpdatePayload {
   fat_goal_g?: number;
   default_servings?: number;
   preferred_cuisines?: string[];
-  // REMOVED: quick_filters - now in profile_quick_filters table
   measurement_system?: 'metric' | 'imperial';
   onboarding_completed?: boolean;
   onboarding_step?: number;
@@ -374,56 +363,6 @@ export const profileService = {
           }))
         );
 
-      if (error) throw error;
-    }
-  },
-
-  /**
-   * Get user's quick filters from profile_quick_filters table
-   */
-  async getQuickFilters(): Promise<ProfileQuickFilter[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-
-    const { data, error } = await supabase
-      .from('profile_quick_filters')
-      .select('*')
-      .eq('profile_id', user.id)
-      .order('display_order', { ascending: true });
-
-    if (error) {
-      // Table might not exist yet or migration not run
-      console.error('Error fetching quick filters:', error);
-      return [];
-    }
-    return data || [];
-  },
-
-  /**
-   * Save quick filters (replaces all existing ones)
-   */
-  async saveQuickFilters(filters: { filter_type: string; custom_name?: string }[]): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Delete existing filters
-    await supabase
-      .from('profile_quick_filters')
-      .delete()
-      .eq('profile_id', user.id);
-
-    // Insert new filters if any, maintaining order
-    if (filters.length > 0) {
-      const { error } = await supabase
-        .from('profile_quick_filters')
-        .insert(
-          filters.map((f, index) => ({
-            profile_id: user.id,
-            filter_type: f.filter_type,
-            custom_name: f.custom_name || null,
-            display_order: index,
-          }))
-        );
 
       if (error) throw error;
     }

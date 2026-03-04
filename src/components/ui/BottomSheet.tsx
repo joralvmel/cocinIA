@@ -9,7 +9,6 @@ import {
   PanResponder,
   Dimensions,
   KeyboardAvoidingView,
-  Platform
 } from 'react-native';
 import { IconButton } from './IconButton';
 
@@ -111,7 +110,7 @@ export function BottomSheet({
   return (
       <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior="padding"
             className="flex-1 justify-end"
         >
           {/* Backdrop */}

@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import i18n from '@/i18n';
 import { AIRecipeResponseSchema, type AIRecipeResponse, type RecipeSearchForm, type MealType } from '@/types';
-import { type Profile, type ProfileRestriction, type ProfileQuickFilter } from './profile';
+import { type Profile, type ProfileRestriction } from './profile';
 import { AI_CONFIG } from '@/config';
 
 // Initialize the Gemini client
@@ -142,37 +142,6 @@ function getJsonStructureExample(lang: Language): string {
 }
 
 /**
- * Get filter description with support for custom names
- */
-function getFilterDescription(
-    filterType: string,
-    customName: string | null | undefined,
-    lang: Language
-): string {
-  // If there's a custom name, use it directly
-  if (customName) {
-    return customName;
-  }
-
-  // Try to get the default translation for known filter types
-  const translationKey = `recipeGeneration.prompt.defaultFilterDescriptions.${filterType}` as const;
-
-  try {
-    const translation = i18n.t(translationKey as any, { lng: lang });
-
-    // If translation is found and it's not the key itself, return it
-    if (translation && typeof translation === 'string' && translation !== translationKey) {
-      return translation;
-    }
-  } catch (error) {
-    // Translation not found, continue to fallback
-  }
-
-  // Fallback: return the filter_type as-is
-  return filterType;
-}
-
-/**
  * Build the system prompt with improved structure and clearer instructions
  */
 function buildRecipeSystemPrompt(
@@ -266,12 +235,11 @@ If it's a sauce or side, use "lunch" or "dinner" depending on when it's served.`
 }
 
 /**
- * Build user prompt with clear formatting and support for custom quick filters
+ * Build user prompt with clear formatting
  */
 function buildUserPrompt(
     form: RecipeSearchForm,
     favoriteIngredients: string[] = [],
-    quickFiltersData: ProfileQuickFilter[] = [],
     lang: Language = 'es'
 ): string {
   const t = (key: string) => getPromptTranslation(key, lang);
@@ -284,21 +252,6 @@ function buildUserPrompt(
     requirements.push(`- ${t('userRequest')}: ${form.prompt}`);
   }
 
-  // Quick filters - match with ProfileQuickFilter data to get custom names
-  if (form.quickFilters.length > 0) {
-    const filterDescriptions: string[] = [];
-
-    for (const filterType of form.quickFilters) {
-      // Find matching ProfileQuickFilter to get custom_name if available
-      const quickFilterData = quickFiltersData.find(qf => qf.filter_type === filterType);
-      const description = getFilterDescription(filterType, quickFilterData?.custom_name, lang);
-      filterDescriptions.push(description);
-    }
-
-    if (filterDescriptions.length > 0) {
-      requirements.push(`- ${filterDescriptions.join(', ')}`);
-    }
-  }
 
   // Ingredients to use
   if (form.ingredientsToUse.length > 0) {
@@ -386,7 +339,6 @@ export const geminiRecipeGenerationService = {
       profile: Profile | null,
       restrictions: ProfileRestriction[],
       favoriteIngredients: string[] = [],
-      quickFiltersData: ProfileQuickFilter[] = [],
       lang: Language = 'es'
   ): Promise<RecipeGenerationResponse> {
     const normalizedLang = getLanguage(lang);
@@ -406,7 +358,7 @@ export const geminiRecipeGenerationService = {
       });
 
       const systemPrompt = buildRecipeSystemPrompt(profile, restrictions, normalizedLang);
-      const userPrompt = buildUserPrompt(form, favoriteIngredients, quickFiltersData, normalizedLang);
+      const userPrompt = buildUserPrompt(form, favoriteIngredients, normalizedLang);
 
       // Combine prompts with clear separation
       const fullPrompt = `${systemPrompt}\n\n${'='.repeat(50)}\n\n${userPrompt}`;

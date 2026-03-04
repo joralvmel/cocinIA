@@ -267,28 +267,49 @@ export function MultiActionButton({
         )}
 
         {/* Main FAB - Aumentado el tamaño */}
-        <Animated.View style={{ transform: [{ rotate: rotation }], zIndex: 2 }}>
-          <Pressable
+        <View className="flex-row items-center">
+          {/* Label pill for single-action FAB */}
+          {label && options.length === 1 && !expanded && (
+            <Pressable
               onPress={handleMainPress}
               disabled={disabled || loading}
-              className={`w-16 h-16 rounded-full items-center justify-center shadow-xl bg-${floatingColor} ${
-                  disabled ? 'opacity-50' : ''
-              }`}
+              className="mr-3 px-4 py-2.5 rounded-full bg-white dark:bg-gray-800 shadow-lg"
               style={{
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+                elevation: 4,
               }}
-          >
-            {loading ? (
-                <ActivityIndicator size="small" color="white" />
-            ) : (
-                <FontAwesome name={expanded ? 'times' : (icon as any)} size={26} color="white" />
-            )}
-          </Pressable>
-        </Animated.View>
+            >
+              <Text className="text-sm font-semibold text-gray-900 dark:text-gray-50" numberOfLines={1}>
+                {label}
+              </Text>
+            </Pressable>
+          )}
+          <Animated.View style={{ transform: [{ rotate: rotation }], zIndex: 2 }}>
+            <Pressable
+                onPress={handleMainPress}
+                disabled={disabled || loading}
+                className={`w-16 h-16 rounded-full items-center justify-center shadow-xl bg-${floatingColor} ${
+                    disabled ? 'opacity-50' : ''
+                }`}
+                style={{
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+            >
+              {loading ? (
+                  <ActivityIndicator size="small" color="white" />
+              ) : (
+                  <FontAwesome name={expanded ? 'times' : (icon as any)} size={26} color="white" />
+              )}
+            </Pressable>
+          </Animated.View>
+        </View>
       </View>
   );
 }
