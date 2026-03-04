@@ -5,12 +5,12 @@ import { useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLanguageStore } from '@/stores/languageStore';
+import { useProfileStore } from '@/stores/profileStore';
 import { supportedLanguages, type LanguageCode } from '@/i18n';
 import { useAuth } from '@/hooks';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { authService, profileService, type Profile, type ProfileRestriction, type ProfileEquipment, type FavoriteIngredient } from '@/services';
+import { authService, profileService } from '@/services';
 import { getCountryByCode } from '@/constants';
-import { calculateProfileCompletion } from '@/utils';
 import {
   Avatar,
   Section,
@@ -21,7 +21,6 @@ import {
   ScreenHeader,
   SelectBottomSheet,
   AlertModal,
-  ProfileCompletionCard,
 } from '@/components/ui';
 
 export default function ProfileScreen() {
@@ -31,38 +30,23 @@ export default function ProfileScreen() {
   const { mode, setMode } = useThemeStore();
   const { language, setLanguage } = useLanguageStore();
   const { user, isAuthenticated } = useAuth();
+
+  // Read from shared profile store — already populated by home screen
+  const { profile, isLoaded, setProfile, clear: clearProfileStore } = useProfileStore();
+
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const [signOutAlertVisible, setSignOutAlertVisible] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [restrictions, setRestrictions] = useState<ProfileRestriction[]>([]);
-  const [equipment, setEquipment] = useState<ProfileEquipment[]>([]);
-  const [favoriteIngredients, setFavoriteIngredients] = useState<FavoriteIngredient[]>([]);
 
   const isDarkMode = mode === 'dark';
 
-  // Load profile when screen comes into focus
+  // Refresh profile data in background when screen gains focus
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
+      profileService.getProfile().then((data) => {
+        if (data) setProfile(data);
+      }).catch(console.error);
     }, [])
   );
-
-  const loadProfile = async () => {
-    try {
-      const [profileData, restrictionsData, equipmentData, ingredientsData] = await Promise.all([
-        profileService.getProfile(),
-        profileService.getRestrictions(),
-        profileService.getEquipment(),
-        profileService.getFavoriteIngredients(),
-      ]);
-      setProfile(profileData);
-      setRestrictions(restrictionsData || []);
-      setEquipment(equipmentData || []);
-      setFavoriteIngredients(ingredientsData || []);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    }
-  };
 
   const handleThemeToggle = (value: boolean) => {
     setMode(value ? 'dark' : 'light');
@@ -75,6 +59,7 @@ export default function ProfileScreen() {
   const confirmSignOut = async () => {
     try {
       await authService.signOut();
+      clearProfileStore();
       setSignOutAlertVisible(false);
       router.replace('/(auth)/login');
     } catch (error: any) {
@@ -83,11 +68,9 @@ export default function ProfileScreen() {
   };
 
   const currentLanguage = supportedLanguages.find((l) => l.code === language);
-  const displayName = profile?.display_name || user?.email || t('profile.guestUser');
+  const displayName = profile?.display_name || (isLoaded ? (user?.email || t('profile.guestUser')) : '');
   const countryData = profile?.country ? getCountryByCode(profile.country) : null;
 
-  // Calculate profile completion
-  const profileCompletion = calculateProfileCompletion(profile, restrictions, equipment, favoriteIngredients);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
@@ -103,27 +86,26 @@ export default function ProfileScreen() {
       {/* Profile Header */}
       <View className="items-center mb-6">
         <Avatar size="xl" name={displayName} className="mb-3" />
-        <Text className="text-xl font-bold text-gray-900 dark:text-gray-50">
-          {displayName}
-        </Text>
-        {countryData && (
-          <Text className="text-sm text-gray-500 dark:text-gray-400">
-            {countryData.flag} {countryData.name}
-          </Text>
-        )}
-        {!isAuthenticated && (
-          <Text className="text-sm text-gray-500 dark:text-gray-400">
-            {t('profile.signInToSync')}
-          </Text>
+        {!isLoaded ? (
+          <View className="h-6 w-32 rounded-full bg-gray-200 dark:bg-gray-700" />
+        ) : (
+          <>
+            <Text className="text-xl font-bold text-gray-900 dark:text-gray-50">
+              {displayName}
+            </Text>
+            {countryData && (
+              <Text className="text-sm text-gray-500 dark:text-gray-400">
+                {countryData.flag} {countryData.name}
+              </Text>
+            )}
+            {!isAuthenticated && (
+              <Text className="text-sm text-gray-500 dark:text-gray-400">
+                {t('profile.signInToSync')}
+              </Text>
+            )}
+          </>
         )}
       </View>
-
-      {/* Profile Completion */}
-      {isAuthenticated && profileCompletion.percentage < 100 && (
-        <View className="mb-6">
-          <ProfileCompletionCard completion={profileCompletion} />
-        </View>
-      )}
 
       {/* Profile Settings Section */}
       {isAuthenticated && (
@@ -201,8 +183,8 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {/* Developer Section */}
-      <View className="mt-4">
+      {/* Developer Section - commented out for production */}
+      {/* <View className="mt-4">
         <Button
           variant="ghost"
           size="sm"
@@ -211,7 +193,7 @@ export default function ProfileScreen() {
         >
           🎨 Components Demo
         </Button>
-      </View>
+      </View> */}
 
       {/* Language Selector Bottom Sheet */}
       <SelectBottomSheet

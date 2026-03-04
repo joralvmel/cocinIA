@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, BackHandler } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +55,7 @@ export default function EditPreferencesScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+  const isNavigating = useRef(false);
 
   // Form state
   const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>([]);
@@ -190,6 +191,8 @@ export default function EditPreferencesScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        if (saving || isNavigating.current) return true; // Block back during save
+        isNavigating.current = true;
         handleSave().then(() => {
           router.back();
         });
@@ -198,10 +201,12 @@ export default function EditPreferencesScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [selectedRestrictions, selectedCuisines, selectedEquipment])
+    }, [selectedRestrictions, selectedCuisines, selectedEquipment, saving])
   );
 
   const handleBack = async () => {
+    if (saving || isNavigating.current) return;
+    isNavigating.current = true;
     await handleSave();
     router.back();
   };

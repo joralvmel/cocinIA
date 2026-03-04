@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, BackHandler } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -6,13 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Input,
   Section,
-  Chip,
   Loader,
   AlertModal,
   ScreenHeader,
   Switch,
   MultiActionButton,
   BottomSheet,
+  SearchInput,
   type ActionOption,
 } from '@/components/ui';
 import { profileService, recipeService } from '@/services';
@@ -32,6 +32,7 @@ export default function EditIngredientsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+  const isNavigating = useRef(false);
 
   // Form state
   const [ingredients, setIngredients] = useState<IngredientState[]>([]);
@@ -44,6 +45,9 @@ export default function EditIngredientsScreen() {
   // Ingredients from saved recipes
   const [recipeIngredients, setRecipeIngredients] = useState<string[]>([]);
   const [showRecipeIngredients, setShowRecipeIngredients] = useState(false);
+
+  // Recipe ingredients search
+  const [recipeSearch, setRecipeSearch] = useState('');
 
   // Load ingredients on mount
   useEffect(() => {
@@ -98,6 +102,8 @@ export default function EditIngredientsScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        if (saving || isNavigating.current) return true;
+        isNavigating.current = true;
         handleSave().then(() => {
           router.back();
         });
@@ -106,11 +112,13 @@ export default function EditIngredientsScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [ingredients])
+    }, [ingredients, saving])
   );
 
   // Handle back from ScreenHeader
   const handleBack = async () => {
+    if (saving || isNavigating.current) return;
+    isNavigating.current = true;
     await handleSave();
     router.back();
   };
@@ -268,9 +276,6 @@ export default function EditIngredientsScreen() {
                 </Text>
               </View>
             )}
-
-            {/* Spacer for floating button */}
-            <View className="h-24" />
           </ScrollView>
         </View>
 
@@ -325,26 +330,48 @@ export default function EditIngredientsScreen() {
         {/* Recipe Ingredients BottomSheet */}
         <BottomSheet
           visible={showRecipeIngredients}
-          onClose={() => setShowRecipeIngredients(false)}
+          onClose={() => {
+            setShowRecipeIngredients(false);
+            setRecipeSearch('');
+          }}
           title={t('profile.fromRecipes' as any)}
         >
           <View className="pb-4">
             {recipeIngredients.length > 0 ? (
               <>
-                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                  {t('profile.selectFromRecipes' as any)}
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {recipeIngredients.map((name) => (
-                    <Chip
-                      key={name}
-                      label={name}
-                      selected={isIngredientInFavorites(name)}
-                      onPress={() => addIngredientFromRecipe(name)}
-                      size="sm"
-                    />
-                  ))}
-                </View>
+                <SearchInput
+                  value={recipeSearch}
+                  onChangeText={setRecipeSearch}
+                  placeholder={t('common.searchAll' as any)}
+                  className="mb-3"
+                />
+                <ScrollView className="max-h-72" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  {recipeIngredients
+                    .filter(name => !recipeSearch.trim() || name.toLowerCase().includes(recipeSearch.toLowerCase()))
+                    .map((name) => {
+                      const isAdded = isIngredientInFavorites(name);
+                      return (
+                        <Pressable
+                          key={name}
+                          onPress={() => addIngredientFromRecipe(name)}
+                          className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${
+                            isAdded ? 'bg-primary-50 dark:bg-primary-900/30' : ''
+                          }`}
+                        >
+                          <Text className={`flex-1 text-base ${
+                            isAdded
+                              ? 'text-primary-600 dark:text-primary-400 font-medium'
+                              : 'text-gray-900 dark:text-gray-50'
+                          }`}>
+                            {name}
+                          </Text>
+                          {isAdded && (
+                            <FontAwesome name="check" size={16} color={colors.primary} />
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                </ScrollView>
               </>
             ) : (
               <Text className="text-gray-400 dark:text-gray-500 text-center py-6">

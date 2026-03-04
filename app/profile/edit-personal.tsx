@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, BackHandler } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ export default function EditPersonalScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+  const isNavigating = useRef(false);
 
   // Measurement system
   const [measurementSystem, setMeasurementSystem] = useState<MeasurementSystem>('metric');
@@ -139,6 +140,8 @@ export default function EditPersonalScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        if (saving || isNavigating.current) return true;
+        isNavigating.current = true;
         handleSave().then(() => {
           router.back();
         });
@@ -147,11 +150,13 @@ export default function EditPersonalScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [displayName, country, currency, heightCm, weightKg, birthDate, gender, activityLevel, measurementSystem])
+    }, [displayName, country, currency, heightCm, weightKg, birthDate, gender, activityLevel, measurementSystem, saving])
   );
 
   // Handle back from ScreenHeader
   const handleBack = async () => {
+    if (saving || isNavigating.current) return;
+    isNavigating.current = true;
     await handleSave();
     router.back();
   };

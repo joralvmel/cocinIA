@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, Pressable, Keyboard } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from 'expo-router';
-import { Input, Chip, AlertModal, MultiActionButton } from '@/components/ui';
+import { Input, Chip, AlertModal, MultiActionButton, Loader } from '@/components/ui';
 import { RecipeFiltersModal, RecipeResultModal } from '@/features';
-import { useRecipeGenerationStore } from '@/stores';
+import { useRecipeGenerationStore, useProfileStore } from '@/stores';
 import { profileService, recipeGenerationService, recipeService} from '@/services';
-import { type Profile, type ProfileRestriction, type ProfileEquipment } from '@/services';
+import { type Profile, type ProfileEquipment } from '@/services';
 import { AI_CONFIG } from '@/config';
 import { getRestrictionById } from '@/constants';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -38,12 +38,24 @@ export default function HomeScreen() {
     resetForm,
   } = useRecipeGenerationStore();
 
-  // Profile data
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [restrictions, setRestrictions] = useState<ProfileRestriction[]>([]);
-  const [equipment, setEquipment] = useState<ProfileEquipment[]>([]);
-  const [favoriteIngredients, setFavoriteIngredients] = useState<{ ingredient_name: string; is_always_available: boolean }[]>([]);
-  const [customCuisines, setCustomCuisines] = useState<{ id: string; cuisine_type: string; custom_name: string | null }[]>([]);
+  // Profile store — shared cache across screens
+  const {
+    profile,
+    restrictions,
+    equipment,
+    favoriteIngredients,
+    customCuisines,
+    isLoaded: storeIsLoaded,
+    setProfile,
+    setRestrictions,
+    setEquipment,
+    setFavoriteIngredients: setStoreFavoriteIngredients,
+    setCustomCuisines,
+    setLoaded,
+  } = useProfileStore();
+
+  // profileLoaded is true from the first render if the store already has data
+  const [profileLoaded, setProfileLoaded] = useState(storeIsLoaded);
   const [isSaving, setIsSaving] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
@@ -90,7 +102,7 @@ export default function HomeScreen() {
     return { cuisines: allCuisines, equipment: allEquipment };
   }, []);
 
-  // Function to load profile data and sync to form
+  // Function to load profile data and sync to form + store
   const loadProfileData = useCallback(async () => {
     try {
       const [profileData, restrictionsData, equipmentData, favoriteIngredientsData, cuisinesData] = await Promise.all([
@@ -107,14 +119,18 @@ export default function HomeScreen() {
         custom_name: c.custom_name,
       }));
 
+      const mappedFavorites = favoriteIngredientsData.map(i => ({
+        ingredient_name: i.ingredient_name,
+        is_always_available: i.always_available,
+      }));
+
+      // Write to shared store (makes data available to profile screen instantly)
       setProfile(profileData);
       setRestrictions(restrictionsData);
       setEquipment(equipmentData);
-      setFavoriteIngredients(favoriteIngredientsData.map(i => ({
-        ingredient_name: i.ingredient_name,
-        is_always_available: i.always_available,
-      })));
+      setStoreFavoriteIngredients(mappedFavorites);
       setCustomCuisines(mappedCuisines);
+      setLoaded(true);
 
       // Always sync profile defaults to form
       const defaults = buildFormDefaults(profileData, equipmentData, mappedCuisines);
@@ -124,10 +140,12 @@ export default function HomeScreen() {
       if (defaults.equipment.length > 0) {
         setFormField('equipment', defaults.equipment);
       }
+      setProfileLoaded(true);
     } catch (err) {
       console.error('Error loading profile:', err);
+      setProfileLoaded(true); // Still show UI even on error
     }
-  }, [buildFormDefaults, setFormField]);
+  }, [buildFormDefaults, setFormField, setProfile, setRestrictions, setEquipment, setStoreFavoriteIngredients, setCustomCuisines, setLoaded]);
 
   // Load profile data on every focus (initial + returning from preferences)
   useFocusEffect(
@@ -372,6 +390,15 @@ export default function HomeScreen() {
 
     return chips;
   };
+
+  // Show loading until profile data is ready
+  if (!profileLoaded) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
+        <Loader size="lg" />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

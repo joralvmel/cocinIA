@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { BottomSheet } from './BottomSheet';
@@ -76,11 +76,10 @@ export function SelectBottomSheet({
         {filteredOptions.map((option) => {
           const isSelected = value === option.value;
           return (
-            <TouchableOpacity
+            <Pressable
               key={option.value}
               onPress={() => handleSelect(option.value)}
-              activeOpacity={0.7}
-              className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${
+              className={`flex-row items-center py-3 px-4 rounded-xl mb-1 active:opacity-70 ${
                 isSelected
                   ? 'bg-primary-50 dark:bg-primary-900/30'
                   : ''
@@ -109,7 +108,7 @@ export function SelectBottomSheet({
               {isSelected && (
                 <FontAwesome name="check" size={16} color={colors.primary} />
               )}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
         {filteredOptions.length === 0 && (

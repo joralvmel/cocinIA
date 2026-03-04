@@ -62,7 +62,7 @@ export function ListItem({
 
 // ListItemSeparator
 export function ListItemSeparator() {
-  return <View className="ml-16 h-px bg-gray-200 dark:bg-gray-700" />;
+  return <View className="h-px bg-gray-200 dark:bg-gray-700" />;
 }
 
 // ListGroup for grouping list items

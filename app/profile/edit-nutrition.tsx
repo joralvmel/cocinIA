@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, BackHandler } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ export default function EditNutritionScreen() {
   const [saving, setSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertType, setAlertType] = useState<'error' | 'calculated'>('error');
+  const isNavigating = useRef(false);
 
   // Form state
   const [fitnessGoal, setFitnessGoal] = useState<FitnessGoal>('maintain');
@@ -126,6 +127,8 @@ export default function EditNutritionScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        if (saving || isNavigating.current) return true;
+        isNavigating.current = true;
         handleSave().then(() => {
           router.back();
         });
@@ -134,11 +137,13 @@ export default function EditNutritionScreen() {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [fitnessGoal, dailyCalorieGoal, proteinGoal, carbsGoal, fatGoal, defaultServings])
+    }, [fitnessGoal, dailyCalorieGoal, proteinGoal, carbsGoal, fatGoal, defaultServings, saving])
   );
 
   // Handle back from ScreenHeader
   const handleBack = async () => {
+    if (saving || isNavigating.current) return;
+    isNavigating.current = true;
     await handleSave();
     router.back();
   };

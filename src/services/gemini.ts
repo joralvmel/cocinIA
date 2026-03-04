@@ -177,6 +177,10 @@ If it's a sauce or side, use "lunch" or "dinner" depending on when it's served.`
     t('systemIntro'),
     t('systemTask'),
     '',
+    lang === 'es'
+      ? 'IDIOMA: Genera TODO el contenido de la receta en ESPAÑOL (título, descripción, ingredientes, pasos, consejos, etc.)'
+      : 'LANGUAGE: Generate ALL recipe content in ENGLISH (title, description, ingredients, steps, tips, etc.)',
+    '',
     '='.repeat(50),
     t('restrictionsImportant'),
     t('restrictionsRule'),
@@ -459,12 +463,18 @@ export const geminiRecipeGenerationService = {
 
       const systemPrompt = buildRecipeSystemPrompt(profile, restrictions, normalizedLang);
 
+      const langInstruction = normalizedLang === 'es'
+          ? 'IDIOMA: Genera TODO el contenido de la receta en ESPAÑOL.'
+          : 'LANGUAGE: Generate ALL recipe content in ENGLISH.';
+
       const userPrompt = `${t('currentRecipe')}:
 ${JSON.stringify(currentRecipe, null, 2)}
 
 ${'='.repeat(50)}
 
 ${t('modifyRequest')}: ${modification}
+
+${langInstruction}
 
 ${t('returnModified')}`;
 

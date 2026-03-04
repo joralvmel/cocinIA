@@ -177,15 +177,6 @@
     noRestrictions: 'No restrictions',
     noCuisines: 'No favorite cuisines',
     noEquipment: 'No equipment',
-    // Profile completion
-    profileCompletion: 'Profile Completion',
-    completion: {
-      perfect: '🎉 Perfect! Your profile is complete',
-      almostThere: '👏 Almost there! Just a few more details',
-      halfWay: '💪 Good progress! Keep going',
-      goodStart: '🌟 Great start! Add more information',
-      getStarted: '👋 Let\'s complete your profile',
-    },
   },
   home: {
     title: 'CocinIA',
