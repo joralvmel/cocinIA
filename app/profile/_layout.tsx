@@ -12,11 +12,10 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="edit-basic" />
       <Stack.Screen name="edit-personal" />
       <Stack.Screen name="edit-nutrition" />
       <Stack.Screen name="edit-preferences" />
-      <Stack.Screen name="edit-equipment" />
+      <Stack.Screen name="edit-ingredients" />
     </Stack>
   );
 }

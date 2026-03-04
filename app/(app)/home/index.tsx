@@ -49,7 +49,6 @@ export default function HomeScreen() {
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [hasUnsavedRecipe, setHasUnsavedRecipe] = useState(false);
   const [showRetryErrorModal, setShowRetryErrorModal] = useState(false);
-  const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Track keyboard visibility for FAB positioning
@@ -70,8 +69,29 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Function to load profile data (restrictions, equipment, etc.)
-  const loadProfileData = useCallback(async (applyDefaults: boolean = false) => {
+  // Helper to build form defaults from profile data
+  const buildFormDefaults = useCallback((
+    profileData: Profile | null,
+    equipmentData: ProfileEquipment[],
+    cuisinesData: { id: string; cuisine_type: string; custom_name: string | null }[]
+  ) => {
+    // Build cuisines list: predefined + custom
+    const predefinedCuisines = profileData?.preferred_cuisines || [];
+    const customCuisineIds = (cuisinesData || [])
+      .filter(c => c.custom_name)
+      .map(c => `custom:${c.custom_name}`);
+    const allCuisines = [...predefinedCuisines, ...customCuisineIds];
+
+    // Build equipment list: standard + custom
+    const allEquipment = (equipmentData || []).map(e =>
+      e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+    );
+
+    return { cuisines: allCuisines, equipment: allEquipment };
+  }, []);
+
+  // Function to load profile data and sync to form
+  const loadProfileData = useCallback(async () => {
     try {
       const [profileData, restrictionsData, equipmentData, favoriteIngredientsData, cuisinesData] = await Promise.all([
         profileService.getProfile(),
@@ -80,6 +100,13 @@ export default function HomeScreen() {
         profileService.getFavoriteIngredients(),
         profileService.getCuisines(),
       ]);
+
+      const mappedCuisines = cuisinesData.map(c => ({
+        id: c.id,
+        cuisine_type: c.cuisine_type,
+        custom_name: c.custom_name,
+      }));
+
       setProfile(profileData);
       setRestrictions(restrictionsData);
       setEquipment(equipmentData);
@@ -87,47 +114,38 @@ export default function HomeScreen() {
         ingredient_name: i.ingredient_name,
         is_always_available: i.always_available,
       })));
-      setCustomCuisines(cuisinesData.map(c => ({
-        id: c.id,
-        cuisine_type: c.cuisine_type,
-        custom_name: c.custom_name,
-      })));
+      setCustomCuisines(mappedCuisines);
 
-      // Only apply profile defaults on initial load, not on subsequent focus
-      if (applyDefaults && !hasAppliedDefaults) {
-        if (profileData?.preferred_cuisines && profileData.preferred_cuisines.length > 0) {
-          // Combine predefined cuisines with custom cuisines using 'custom:' prefix
-          const predefinedCuisines = profileData.preferred_cuisines;
-          const customCuisineIds = (cuisinesData || [])
-            .filter(c => c.custom_name)
-            .map(c => `custom:${c.custom_name}`);
-          setFormField('cuisines', [...predefinedCuisines, ...customCuisineIds]);
-        }
-        if (equipmentData && equipmentData.length > 0) {
-          // Standard equipment uses equipment_type, custom uses 'custom:name'
-          setFormField('equipment', equipmentData.map(e =>
-            e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
-          ));
-        }
-        setHasAppliedDefaults(true);
+      // Always sync profile defaults to form
+      const defaults = buildFormDefaults(profileData, equipmentData, mappedCuisines);
+      if (defaults.cuisines.length > 0) {
+        setFormField('cuisines', defaults.cuisines);
+      }
+      if (defaults.equipment.length > 0) {
+        setFormField('equipment', defaults.equipment);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
     }
-  }, [hasAppliedDefaults]);
+  }, [buildFormDefaults, setFormField]);
 
-  // Load profile data on mount with defaults
-  useEffect(() => {
-    loadProfileData(true);
-  }, []);
-
-  // Reload restrictions when screen comes into focus (after editing profile)
-  // But don't reapply defaults
+  // Load profile data on every focus (initial + returning from preferences)
   useFocusEffect(
     useCallback(() => {
-      loadProfileData(false);
+      loadProfileData();
     }, [loadProfileData])
   );
+
+  // Helper to re-apply profile defaults to the form (after resetForm)
+  const applyProfileDefaults = useCallback(() => {
+    const defaults = buildFormDefaults(profile, equipment, customCuisines);
+    if (defaults.cuisines.length > 0) {
+      setFormField('cuisines', defaults.cuisines);
+    }
+    if (defaults.equipment.length > 0) {
+      setFormField('equipment', defaults.equipment);
+    }
+  }, [profile, equipment, customCuisines, setFormField, buildFormDefaults]);
 
   // Get user's first name for greeting
   const userName = profile?.display_name?.split(' ')[0] || '';
@@ -275,6 +293,8 @@ export default function HomeScreen() {
     setHasUnsavedRecipe(false);
     setGeneratedRecipe(null);
     resetForm();
+    // Re-apply profile defaults so filters aren't lost
+    setTimeout(() => applyProfileDefaults(), 0);
   };
 
   // Close result modal
@@ -289,6 +309,8 @@ export default function HomeScreen() {
     setHasUnsavedRecipe(false);
     setGeneratedRecipe(null);
     resetForm();
+    // Re-apply profile defaults so filters aren't lost
+    setTimeout(() => applyProfileDefaults(), 0);
   };
 
   // Reopen unsaved recipe

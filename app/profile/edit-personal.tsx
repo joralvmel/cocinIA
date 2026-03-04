@@ -254,7 +254,7 @@ export default function EditPersonalScreen() {
     { value: 'imperial', label: t('profile.imperial') },
   ];
 
-  if (loading) {
+  if (loading || saving) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <Loader size="lg" />

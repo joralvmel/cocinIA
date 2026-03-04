@@ -168,7 +168,7 @@ export default function EditNutritionScreen() {
 
   const selectedGoal = goalOptions.find((g) => g.value === fitnessGoal);
 
-  if (loading) {
+  if (loading || saving) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <Loader size="lg" />

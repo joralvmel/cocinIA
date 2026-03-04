@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Divider, Input, Loader, AlertModal, Logo } from '@/components/ui';
 import { authService } from '@/services';
 import { GoogleIcon } from '@/assets/icons';
@@ -139,14 +140,15 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1"
-    >
-      <ScrollView
-        contentContainerClassName="flex-1 justify-center px-6 bg-white dark:bg-gray-900"
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <KeyboardAvoidingView
+        behavior="padding"
+        className="flex-1"
       >
+        <ScrollView
+          contentContainerClassName="flex-grow justify-center px-6 py-8"
+          keyboardShouldPersistTaps="handled"
+        >
         <View className="w-full max-w-md mx-auto">
           <View className="items-center mb-6">
             <Logo size="xl" />
@@ -239,6 +241,7 @@ export default function LoginScreen() {
         cancelLabel={showResetOption ? 'Cancel' : undefined}
         onConfirm={showResetOption ? handleResetPassword : () => setAlertVisible(false)}
       />
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

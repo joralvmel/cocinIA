@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -40,126 +40,165 @@ export function BottomSheet({
   onOk,
   headerActions,
 }: BottomSheetProps) {
+  // Internal state controls the Modal — only set to false AFTER animation completes
+  const [modalVisible, setModalVisible] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(300)).current;
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const isClosing = useRef(false);
+  const onCloseRef = useRef(onClose);
+  const onOkRef = useRef(onOk);
 
-  const panResponder = useRef(
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gestureState) => {
-          // Only respond to downward swipes
-          return gestureState.dy > 10;
-        },
-        onPanResponderMove: (_, gestureState) => {
-          // Only allow dragging down
-          if (gestureState.dy > 0) {
-            slideAnim.setValue(gestureState.dy);
-          }
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dy > SWIPE_THRESHOLD || gestureState.vy > 0.5) {
-            // Close if swiped down enough or with enough velocity
-            handleClose();
-          } else {
-            // Snap back to open position
-            Animated.spring(slideAnim, {
-              toValue: 0,
-              tension: 65,
-              friction: 11,
-              useNativeDriver: true,
-            }).start();
-          }
-        },
-      })
-  ).current;
+  // Keep refs up to date
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => { onOkRef.current = onOk; }, [onOk]);
 
+  // When parent sets visible=true, show the Modal and animate in
   useEffect(() => {
     if (visible) {
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 65,
-        friction: 11,
-        useNativeDriver: true,
-      }).start();
-    } else {
+      isClosing.current = false;
+      setModalVisible(true);
+      // Reset animated values before animating in
       backdropOpacity.setValue(0);
-      slideAnim.setValue(300);
+      slideAnim.setValue(SCREEN_HEIGHT);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 65,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [visible]);
 
-  const handleClose = () => {
+  // Animate out, then hide Modal, then notify parent
+  const animateClose = useCallback((callback: () => void) => {
+    if (isClosing.current) return;
+    isClosing.current = true;
+
     Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 0,
-        duration: 150,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 150,
+        duration: 200,
         useNativeDriver: true,
       }),
-    ]).start(() => onClose());
-  };
+    ]).start(() => {
+      setModalVisible(false);
+      isClosing.current = false;
+      callback();
+    });
+  }, [backdropOpacity, slideAnim]);
+
+  const handleClose = useCallback(() => {
+    animateClose(() => onCloseRef.current());
+  }, [animateClose]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > SWIPE_THRESHOLD || gestureState.vy > 0.5) {
+          if (isClosing.current) return;
+          isClosing.current = true;
+          Animated.parallel([
+            Animated.timing(backdropOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setModalVisible(false);
+            isClosing.current = false;
+            onCloseRef.current();
+          });
+        } else {
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 65,
+            friction: 11,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   return (
-      <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
-        <KeyboardAvoidingView
-            behavior="padding"
-            className="flex-1 justify-end"
+    <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleClose}>
+      <KeyboardAvoidingView
+        behavior="padding"
+        className="flex-1 justify-end"
+      >
+        {/* Backdrop */}
+        <Animated.View
+          className="absolute top-0 left-0 right-0 bottom-0 bg-black/40"
+          style={{ opacity: backdropOpacity }}
         >
-          {/* Backdrop */}
-          <Animated.View
-              className="absolute top-0 left-0 right-0 bottom-0 bg-black/40"
-              style={{ opacity: backdropOpacity }}
-          >
-            <Pressable className="flex-1" onPress={handleClose} />
-          </Animated.View>
+          <Pressable className="flex-1" onPress={handleClose} />
+        </Animated.View>
 
-          {/* Sheet content */}
-          <Animated.View
-              className="rounded-t-3xl max-h-[80%] bg-white dark:bg-gray-800"
-              style={{ transform: [{ translateY: slideAnim }] }}
+        {/* Sheet content */}
+        <Animated.View
+          className="rounded-t-3xl max-h-[80%] bg-white dark:bg-gray-800 overflow-hidden"
+          style={{ transform: [{ translateY: slideAnim }] }}
+        >
+          {/* Drag handle area */}
+          <View {...panResponder.panHandlers}>
+            {showHandle && (
+              <View className="items-center pt-3 pb-2">
+                <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+              </View>
+            )}
+            {(title || showCloseButton || showOkButton) && (
+              <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title || ''}</Text>
+                <View className="flex-row items-center gap-2">
+                  {headerActions}
+                  {showOkButton ? (
+                    <Pressable
+                      onPress={onOk || handleClose}
+                      className="px-4 py-1.5 bg-primary-500 rounded-full active:bg-primary-600"
+                    >
+                      <Text className="text-white font-medium text-sm">{okLabel}</Text>
+                    </Pressable>
+                  ) : showCloseButton ? (
+                    <IconButton icon="chevron-down" variant="ghost" size="sm" onPress={handleClose} />
+                  ) : null}
+                </View>
+              </View>
+            )}
+          </View>
+          <ScrollView
+            className="px-4 py-4"
+            keyboardShouldPersistTaps="handled"
           >
-            {/* Drag handle area */}
-            <View {...panResponder.panHandlers}>
-              {showHandle && (
-                  <View className="items-center pt-3 pb-2">
-                    <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                  </View>
-              )}
-              {(title || showCloseButton || showOkButton) && (
-                  <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <Text className="text-lg font-semibold text-gray-900 dark:text-gray-50">{title || ''}</Text>
-                    <View className="flex-row items-center gap-2">
-                      {headerActions}
-                      {showOkButton ? (
-                          <Pressable
-                              onPress={onOk || handleClose}
-                              className="px-4 py-1.5 bg-primary-500 rounded-full active:bg-primary-600"
-                          >
-                            <Text className="text-white font-medium text-sm">{okLabel}</Text>
-                          </Pressable>
-                      ) : showCloseButton ? (
-                          <IconButton icon="chevron-down" variant="ghost" size="sm" onPress={handleClose} />
-                      ) : null}
-                    </View>
-                  </View>
-              )}
-            </View>
-            <ScrollView
-                className="px-4 py-4"
-                keyboardShouldPersistTaps="handled"
-            >
-              {children}
-            </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
+            {children}
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }

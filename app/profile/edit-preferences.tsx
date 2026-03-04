@@ -372,7 +372,7 @@ export default function EditPreferencesScreen() {
     { id: 'equipment', label: t('profile.addEquipment' as any), icon: 'wrench', color: 'blue', onPress: () => openCustomInput('equipment') },
   ];
 
-  if (loading) {
+  if (loading || saving) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <Loader size="lg" />
@@ -578,9 +578,6 @@ export default function EditPreferencesScreen() {
                 </Text>
               )}
             </Section>
-
-            {/* Spacer for floating button */}
-            <View className="h-24" />
           </ScrollView>
         </View>
 
