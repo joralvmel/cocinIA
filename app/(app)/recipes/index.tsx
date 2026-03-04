@@ -18,6 +18,7 @@ import { type Recipe, type MealType, type DifficultyLevel } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { recipeEvents } from '@/utils';
+import { useRecipesStore } from '@/stores';
 
 interface RecipeFilters {
   searchQuery?: string;
@@ -43,10 +44,18 @@ export default function RecipesScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
 
-  // State
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [filterOptions, setFilterOptions] = useState<RecipeFilterOptions | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Recipes store — cached across tab switches
+  const {
+    recipes,
+    filterOptions,
+    isLoaded: storeIsLoaded,
+    setRecipes,
+    setFilterOptions,
+    setLoaded,
+  } = useRecipesStore();
+
+  // Show loader only on very first load (no cached data yet)
+  const [isLoading, setIsLoading] = useState(!storeIsLoaded);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -62,30 +71,40 @@ export default function RecipesScreen() {
   // Applied filters (only update when Apply is pressed)
   const [appliedFilters, setAppliedFilters] = useState<RecipeFilters>({});
 
-  // Fetch recipes and filter options
   const loadData = useCallback(async (showRefresh = false) => {
     try {
       if (showRefresh) setIsRefreshing(true);
-      else setIsLoading(true);
+      else if (!storeIsLoaded) setIsLoading(true);
 
       const [recipesData, optionsData] = await Promise.all([
         recipeService.getFilteredRecipes(appliedFilters),
-        recipeService.getFilterOptions(),
+        filterOptions ? Promise.resolve(filterOptions) : recipeService.getFilterOptions(),
       ]);
 
       setRecipes(recipesData);
-      setFilterOptions(optionsData);
+      if (optionsData) setFilterOptions(optionsData);
+      setLoaded(true);
     } catch (error) {
       console.error('Error loading recipes:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [appliedFilters]);
+  }, [appliedFilters, storeIsLoaded, filterOptions, setRecipes, setFilterOptions, setLoaded]);
 
+  // Initial load — only fetch if not already cached
   useEffect(() => {
+    if (!storeIsLoaded) {
+      loadData();
+    }
+  }, []); // run once on mount
+
+  // Reload when applied filters change (after first mount)
+  const [isFirstMount, setIsFirstMount] = useState(true);
+  useEffect(() => {
+    if (isFirstMount) { setIsFirstMount(false); return; }
     loadData();
-  }, [loadData]);
+  }, [appliedFilters]);
 
   // Subscribe to recipe change events (save, edit, delete from other screens)
   useEffect(() => {
@@ -94,7 +113,6 @@ export default function RecipesScreen() {
     });
     return unsubscribe;
   }, [loadData]);
-
 
   // Filter by search query (instant)
   const filteredRecipes = useMemo(() => {

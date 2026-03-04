@@ -16,6 +16,7 @@ import {
   type ActionOption,
 } from '@/components/ui';
 import { profileService, recipeService } from '@/services';
+import { useProfileStore } from '@/stores/profileStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -29,13 +30,24 @@ export default function EditIngredientsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
   const isNavigating = useRef(false);
 
-  // Form state
-  const [ingredients, setIngredients] = useState<IngredientState[]>([]);
+  // Seed from store for instant display
+  const { favoriteIngredients: cachedIngredients, isLoaded: storeLoaded } = useProfileStore();
+  const seedIngredients = storeLoaded
+    ? cachedIngredients.map((i, idx) => ({
+        id: `cached_${idx}`,
+        ingredientName: i.ingredient_name,
+        alwaysAvailable: i.is_always_available,
+      }))
+    : [];
+
+  const [loading, setLoading] = useState(!storeLoaded);
+  const [saving, setSaving] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+
+  // Form state — pre-filled from store
+  const [ingredients, setIngredients] = useState<IngredientState[]>(seedIngredients);
 
   // New ingredient input
   const [showAddInput, setShowAddInput] = useState(false);

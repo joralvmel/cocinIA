@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useThemeStore } from '@/stores/themeStore';
 import { useLanguageStore } from '@/stores/languageStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useRecipesStore } from '@/stores/recipesStore';
 import { supportedLanguages, type LanguageCode } from '@/i18n';
 import { useAuth } from '@/hooks';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
 
   // Read from shared profile store — already populated by home screen
   const { profile, isLoaded, setProfile, clear: clearProfileStore } = useProfileStore();
+  const { clear: clearRecipesStore } = useRecipesStore();
 
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const [signOutAlertVisible, setSignOutAlertVisible] = useState(false);
@@ -60,6 +62,7 @@ export default function ProfileScreen() {
     try {
       await authService.signOut();
       clearProfileStore();
+      clearRecipesStore();
       setSignOutAlertVisible(false);
       router.replace('/(auth)/login');
     } catch (error: any) {

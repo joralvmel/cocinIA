@@ -16,6 +16,7 @@ import {
   type ActionOption,
 } from '@/components/ui';
 import { profileService } from '@/services';
+import { useProfileStore } from '@/stores/profileStore';
 import {
   allergies,
   preferences,
@@ -52,15 +53,55 @@ export default function EditPreferencesScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
   const isNavigating = useRef(false);
 
+  // Seed from shared store (populated by home screen) for instant display
+  const { profile: cachedProfile, restrictions: cachedRestrictions, equipment: cachedEquipment, customCuisines: cachedCustomCuisines, isLoaded: storeLoaded } = useProfileStore();
+
+  const [loading, setLoading] = useState(!storeLoaded);
+  const [saving, setSaving] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+
+  // Helper to build state from raw data
+  const buildStateFromData = (
+    profile: typeof cachedProfile,
+    restrictions: typeof cachedRestrictions,
+    equipment: typeof cachedEquipment,
+    customCuisinesData: typeof cachedCustomCuisines,
+  ) => {
+    const predefinedCuisineIds = cuisines.map(c => c.id);
+    const legacyCuisines = ((profile?.preferred_cuisines) || [])
+      .filter(c => predefinedCuisineIds.includes(c))
+      .map(c => ({ id: c, type: c, isSelected: true }));
+    const dbCuisines = (customCuisinesData || []).map(c => ({
+      id: c.id,
+      type: c.cuisine_type,
+      customName: c.custom_name || undefined,
+      isSelected: true,
+    }));
+    const newRestrictions = (restrictions || []).map(r => ({
+      id: r.id,
+      type: r.restriction_type,
+      customValue: (r as any).custom_value || undefined,
+      isAllergy: (r as any).is_allergy,
+      isSelected: true,
+    }));
+    const newEquipment = (equipment || []).map(e => ({
+      id: e.id,
+      type: e.equipment_type,
+      customName: e.custom_name || undefined,
+      isSelected: true,
+    }));
+    return { restrictions: newRestrictions, cuisines: [...legacyCuisines, ...dbCuisines], equipment: newEquipment };
+  };
+
+  // Seed initial state from store if available
+  const initialState = storeLoaded ? buildStateFromData(cachedProfile, cachedRestrictions, cachedEquipment, cachedCustomCuisines) : { restrictions: [], cuisines: [], equipment: [] };
+
   // Form state
-  const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>([]);
-  const [selectedCuisines, setSelectedCuisines] = useState<CuisineState[]>([]);
-  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentState[]>([]);
+  const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>(initialState.restrictions);
+  const [selectedCuisines, setSelectedCuisines] = useState<CuisineState[]>(initialState.cuisines);
+  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentState[]>(initialState.equipment);
 
   // Custom input
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -85,46 +126,16 @@ export default function EditPreferencesScreen() {
         profileService.getCuisines(),
       ]);
 
-      if (profile) {
-        // Legacy: preferred_cuisines from profile (predefined ones only)
-        const predefinedCuisineIds = cuisines.map(c => c.id);
-        const legacyCuisines = (profile.preferred_cuisines || [])
-          .filter(c => predefinedCuisineIds.includes(c))
-          .map(c => ({ id: c, type: c, isSelected: true }));
+      const mappedCuisines = (cuisineData || []).map(c => ({
+        id: c.id,
+        cuisine_type: c.cuisine_type,
+        custom_name: c.custom_name,
+      }));
 
-        // Combine with cuisines from profile_cuisines table
-        const dbCuisines = (cuisineData || []).map(c => ({
-          id: c.id,
-          type: c.cuisine_type,
-          customName: c.custom_name || undefined,
-          isSelected: true,  // Already in DB = already selected
-        }));
-
-        setSelectedCuisines([...legacyCuisines, ...dbCuisines]);
-      }
-
-      if (restrictions) {
-        setSelectedRestrictions(
-          restrictions.map((r) => ({
-            id: r.id,
-            type: r.restriction_type,
-            customValue: r.custom_value || undefined,
-            isAllergy: r.is_allergy,
-            isSelected: true,  // Already in DB = already selected
-          }))
-        );
-      }
-
-      if (equipment) {
-        setSelectedEquipment(
-          equipment.map((e) => ({
-            id: e.id,
-            type: e.equipment_type,
-            customName: e.custom_name || undefined,
-            isSelected: true,  // Already in DB = already selected
-          }))
-        );
-      }
+      const state = buildStateFromData(profile, restrictions as any, equipment as any, mappedCuisines);
+      setSelectedRestrictions(state.restrictions);
+      setSelectedCuisines(state.cuisines);
+      setSelectedEquipment(state.equipment);
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
