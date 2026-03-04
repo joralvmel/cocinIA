@@ -44,8 +44,13 @@ export function RecipeFiltersModal({
   const [clearPressed, setClearPressed] = useState(false);
 
   // Default values from profile (used for reset)
-  const defaultCuisines = profileCuisines;
-  const defaultEquipment = profileEquipment.map(e => e.equipment_type);
+  const defaultCuisines = [
+    ...profileCuisines,
+    ...profileCustomCuisines.filter(c => c.custom_name).map(c => `custom:${c.custom_name}`),
+  ];
+  const defaultEquipment = profileEquipment.map(e =>
+    e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+  );
 
   // Sync local state with form when modal opens
   useEffect(() => {
@@ -56,12 +61,17 @@ export function RecipeFiltersModal({
       // Initialize with profile defaults on first open (only if no selections made)
       if (!hasInitializedDefaults) {
         // Pre-select profile cuisines if no cuisines selected
-        if (form.cuisines.length === 0 && profileCuisines.length > 0) {
-          setFormField('cuisines', profileCuisines);
+        if (form.cuisines.length === 0 && (profileCuisines.length > 0 || profileCustomCuisines.length > 0)) {
+          const customCuisineIds = profileCustomCuisines
+            .filter(c => c.custom_name)
+            .map(c => `custom:${c.custom_name}`);
+          setFormField('cuisines', [...profileCuisines, ...customCuisineIds]);
         }
         // Pre-select profile equipment if no equipment selected
         if ((!form.equipment || form.equipment.length === 0) && profileEquipment.length > 0) {
-          setFormField('equipment', profileEquipment.map(e => e.equipment_type));
+          setFormField('equipment', profileEquipment.map(e =>
+            e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+          ));
         }
         setHasInitializedDefaults(true);
       }
@@ -109,11 +119,12 @@ export function RecipeFiltersModal({
     label: `${c.icon} ${String(t(c.labelKey as any, { defaultValue: c.defaultLabel }))}`,
   }));
 
-  // Add custom cuisines from profile - use unique ID based on cuisine_type + index to avoid duplicates
+  // Add custom cuisines from profile - use "custom:" prefix + custom_name as ID
+  // This ensures the actual name is carried through to the prompt and display
   const customCuisineOptions = profileCustomCuisines
     .filter(c => c.custom_name)
-    .map((c, index) => ({
-      id: c.cuisine_type === 'custom' ? `custom_cuisine_${index}` : c.cuisine_type,
+    .map(c => ({
+      id: `custom:${c.custom_name}`,
       label: `🍽️ ${c.custom_name}`,
     }));
 
@@ -126,11 +137,11 @@ export function RecipeFiltersModal({
   }));
 
   // Add custom equipment from profile that aren't in the standard list
-  // Use unique ID based on equipment_type + index to avoid duplicate keys
+  // Use "custom:" prefix + custom_name as ID for meaningful prompt and display
   const customEquipmentFromProfile = profileEquipment
     .filter(e => e.custom_name && !equipmentConstants.find(std => std.id === e.equipment_type))
-    .map((e, index) => ({
-      id: e.equipment_type === 'custom' ? `custom_equipment_${index}` : e.equipment_type,
+    .map(e => ({
+      id: `custom:${e.custom_name}`,
       label: `🔧 ${e.custom_name}`,
     }));
 

@@ -235,6 +235,18 @@ If it's a sauce or side, use "lunch" or "dinner" depending on when it's served.`
 }
 
 /**
+ * Resolve a chip ID to a human-readable name.
+ * Standard IDs (e.g. "mexican") are returned as-is.
+ * Custom IDs with "custom:" prefix have the name extracted.
+ */
+function resolveChipName(id: string): string {
+  if (id.startsWith('custom:')) {
+    return id.substring('custom:'.length);
+  }
+  return id;
+}
+
+/**
  * Build user prompt with clear formatting
  */
 function buildUserPrompt(
@@ -294,7 +306,8 @@ function buildUserPrompt(
 
   // Cuisine types
   if (form.cuisines.length > 0) {
-    requirements.push(`- ${t('cuisineType')}: ${form.cuisines.join(', ')}`);
+    const cuisineNames = form.cuisines.map(resolveChipName);
+    requirements.push(`- ${t('cuisineType')}: ${cuisineNames.join(', ')}`);
   }
 
   // Difficulty
@@ -304,7 +317,8 @@ function buildUserPrompt(
 
   // Available equipment
   if (form.equipment && form.equipment.length > 0) {
-    requirements.push(`- ${t('availableEquipment')}: ${form.equipment.join(', ')}`);
+    const equipmentNames = form.equipment.map(resolveChipName);
+    requirements.push(`- ${t('availableEquipment')}: ${equipmentNames.join(', ')}`);
   }
 
   parts.push(requirements.join('\n'));

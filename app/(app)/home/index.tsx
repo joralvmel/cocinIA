@@ -8,6 +8,7 @@ import { useRecipeGenerationStore } from '@/stores';
 import { profileService, recipeGenerationService, recipeService} from '@/services';
 import { type Profile, type ProfileRestriction, type ProfileEquipment } from '@/services';
 import { AI_CONFIG } from '@/config';
+import { getRestrictionById } from '@/constants';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,10 +96,18 @@ export default function HomeScreen() {
       // Only apply profile defaults on initial load, not on subsequent focus
       if (applyDefaults && !hasAppliedDefaults) {
         if (profileData?.preferred_cuisines && profileData.preferred_cuisines.length > 0) {
-          setFormField('cuisines', profileData.preferred_cuisines);
+          // Combine predefined cuisines with custom cuisines using 'custom:' prefix
+          const predefinedCuisines = profileData.preferred_cuisines;
+          const customCuisineIds = (cuisinesData || [])
+            .filter(c => c.custom_name)
+            .map(c => `custom:${c.custom_name}`);
+          setFormField('cuisines', [...predefinedCuisines, ...customCuisineIds]);
         }
         if (equipmentData && equipmentData.length > 0) {
-          setFormField('equipment', equipmentData.map(e => e.equipment_type));
+          // Standard equipment uses equipment_type, custom uses 'custom:name'
+          setFormField('equipment', equipmentData.map(e =>
+            e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+          ));
         }
         setHasAppliedDefaults(true);
       }
@@ -152,25 +161,13 @@ export default function HomeScreen() {
     // Get favorite ingredient names to pass to the service
     const favIngredientNames = favoriteIngredients.map(i => i.ingredient_name);
 
-    // Transform cuisines: replace custom cuisine types with their custom names
-    const transformedCuisines = formToUse.cuisines.map(cuisineId => {
-      const customCuisine = customCuisines.find(c => c.cuisine_type === cuisineId);
-      if (customCuisine && customCuisine.custom_name) {
-        return customCuisine.custom_name;
-      }
-      return cuisineId;
-    });
-
-    // Create form with transformed cuisines for API
-    const formToSend = { ...formToUse, cuisines: transformedCuisines };
-
     // Retry up to 3 times
     const maxRetries = 3;
     let lastError: string | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       const result = await recipeGenerationService.generateRecipe(
-          formToSend,
+          formToUse,
           profile,
           restrictions,
           favIngredientNames,
@@ -206,20 +203,8 @@ export default function HomeScreen() {
     // Get favorite ingredient names to pass to the service
     const favIngredientNames = favoriteIngredients.map(i => i.ingredient_name);
 
-    // Transform cuisines: replace custom cuisine types with their custom names
-    const transformedCuisines = form.cuisines.map(cuisineId => {
-      const customCuisine = customCuisines.find(c => c.cuisine_type === cuisineId);
-      if (customCuisine && customCuisine.custom_name) {
-        return customCuisine.custom_name;
-      }
-      return cuisineId;
-    });
-
-    // Create form with transformed cuisines for API
-    const formToSend = { ...form, cuisines: transformedCuisines };
-
     const result = await recipeGenerationService.generateRecipe(
-        formToSend,
+        form,
         profile,
         restrictions,
         favIngredientNames,
@@ -337,10 +322,9 @@ export default function HomeScreen() {
       chips.push(<Chip key="servings" size="sm" label={`👥 ${form.servings}`} />);
     }
     form.cuisines.slice(0, 2).forEach((cuisine) => {
-      // Check if this is a custom cuisine and get its real name
-      const customCuisine = customCuisines.find(c => c.cuisine_type === cuisine);
-      const displayName = customCuisine && customCuisine.custom_name
-        ? customCuisine.custom_name
+      // Custom cuisines have "custom:" prefix with the actual name
+      const displayName = cuisine.startsWith('custom:')
+        ? cuisine.substring('custom:'.length)
         : t(`cuisines.${cuisine}`, { defaultValue: cuisine });
       chips.push(<Chip key={cuisine} size="sm" label={displayName} />);
     });
@@ -418,9 +402,16 @@ export default function HomeScreen() {
             <View className="flex-row flex-wrap" style={{ gap: 6 }}>
               {restrictions.map((r) => {
                 // For custom restrictions, show the custom_value directly
-                const displayText = r.custom_value
-                  ? r.custom_value
-                  : t(`restrictions.${r.restriction_type}`, { defaultValue: r.restriction_type });
+                // For predefined restrictions, look up the constant to get the proper i18n key
+                let displayText: string;
+                if (r.custom_value) {
+                  displayText = r.custom_value;
+                } else {
+                  const restrictionDef = getRestrictionById(r.restriction_type);
+                  displayText = restrictionDef
+                    ? String(t(restrictionDef.labelKey as any, { defaultValue: restrictionDef.defaultLabel }))
+                    : r.restriction_type;
+                }
                 return (
                   <View
                     key={r.id}
