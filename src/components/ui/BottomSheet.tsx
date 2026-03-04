@@ -52,12 +52,12 @@ export function BottomSheet({
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => { onOkRef.current = onOk; }, [onOk]);
 
-  // When parent sets visible=true, show the Modal and animate in
+  // When parent sets visible=true, show and animate in.
+  // When parent sets visible=false (e.g. after Apply), animate out then hide.
   useEffect(() => {
     if (visible) {
       isClosing.current = false;
       setModalVisible(true);
-      // Reset animated values before animating in
       backdropOpacity.setValue(0);
       slideAnim.setValue(SCREEN_HEIGHT);
       Animated.parallel([
@@ -73,6 +73,24 @@ export function BottomSheet({
           useNativeDriver: true,
         }),
       ]).start();
+    } else if (modalVisible && !isClosing.current) {
+      // Parent closed externally (e.g. Apply button called onClose())
+      isClosing.current = true;
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false);
+        isClosing.current = false;
+      });
     }
   }, [visible]);
 

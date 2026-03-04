@@ -45,13 +45,6 @@ export default function HomeLayout() {
           ),
         }}
       />
-      <Stack.Screen
-        name="recipe/[id]"
-        options={{
-          title: 'Recipe',
-          headerBackVisible: true,
-        }}
-      />
     </Stack>
   );
 }
