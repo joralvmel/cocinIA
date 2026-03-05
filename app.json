@@ -53,7 +53,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CocinIA needs access to your photo gallery to select recipe photos.",
+          "cameraPermission": "CocinIA needs access to your camera to take recipe photos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
