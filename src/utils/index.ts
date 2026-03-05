@@ -35,3 +35,14 @@ export {
   type FilterChip,
 } from './recipeFilters';
 
+// Recipe helpers
+export {
+  getDifficultyColor,
+  getDifficultyLabel,
+  adjustIngredientsForServings,
+  adjustCostForServings,
+  getDifficultyChips,
+  getMealTypeChips,
+  TIME_CHIPS,
+} from './recipeHelpers';
+

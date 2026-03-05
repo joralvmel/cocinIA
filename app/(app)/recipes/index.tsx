@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React from 'react';
 import { View, FlatList, RefreshControl, Pressable, Text, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -12,213 +12,30 @@ import {
   Section,
   Loader,
 } from '@/components/ui';
-import { recipeService } from '@/services';
-import { type Recipe, type MealType, type DifficultyLevel } from '@/types';
+import { type Recipe } from '@/types';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { recipeEvents } from '@/utils';
-import { useRecipesStore } from '@/stores';
-
-interface RecipeFilters {
-  searchQuery?: string;
-  difficulty?: DifficultyLevel[];
-  mealTypes?: MealType[];
-  maxTime?: number;
-  maxCalories?: number;
-  cuisines?: string[];
-  ingredients?: string[];
-}
-
-interface RecipeFilterOptions {
-  difficulties: DifficultyLevel[];
-  mealTypes: MealType[];
-  cuisines: string[];
-  ingredients: string[];
-  maxTime: number;
-  maxCalories: number;
-}
+import { useRecipeList } from '@/hooks';
 
 export default function RecipesScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const router = useRouter();
 
-  // Recipes store — cached across tab switches
   const {
     recipes,
-    filterOptions,
-    isLoaded: storeIsLoaded,
-    setRecipes,
-    setFilterOptions,
-    setLoaded,
-  } = useRecipesStore();
-
-  // Show loader only on very first load (no cached data yet)
-  const [isLoading, setIsLoading] = useState(!storeIsLoaded);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showIngredientPicker, setShowIngredientPicker] = useState(false);
-  const [showCuisinePicker, setShowCuisinePicker] = useState(false);
-  const [ingredientSearch, setIngredientSearch] = useState('');
-  const [cuisineSearch, setCuisineSearch] = useState('');
-
-  // Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
-  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
-  const [selectedMaxTime, setSelectedMaxTime] = useState<string[]>([]);
-  const [maxCalories, setMaxCalories] = useState<number | undefined>(undefined);
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
-
-  // Applied filters (only update when Apply is pressed)
-  const [appliedFilters, setAppliedFilters] = useState<RecipeFilters>({});
-
-  const loadData = useCallback(async (showRefresh = false) => {
-    try {
-      if (showRefresh) setIsRefreshing(true);
-      else if (!storeIsLoaded) setIsLoading(true);
-
-      const [recipesData, optionsData] = await Promise.all([
-        recipeService.getFilteredRecipes(appliedFilters),
-        filterOptions ? Promise.resolve(filterOptions) : recipeService.getFilterOptions(),
-      ]);
-
-      setRecipes(recipesData);
-      if (optionsData) setFilterOptions(optionsData);
-      setLoaded(true);
-    } catch (error) {
-      console.error('Error loading recipes:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [appliedFilters, storeIsLoaded, filterOptions, setRecipes, setFilterOptions, setLoaded]);
-
-  // Initial load — only fetch if not already cached
-  useEffect(() => {
-    if (!storeIsLoaded) {
-      loadData();
-    }
-  }, []); // run once on mount
-
-  // Reload when applied filters change (after first mount)
-  const [isFirstMount, setIsFirstMount] = useState(true);
-  useEffect(() => {
-    if (isFirstMount) { setIsFirstMount(false); return; }
-    loadData();
-  }, [appliedFilters]);
-
-  // Subscribe to recipe change events (save, edit, delete from other screens)
-  useEffect(() => {
-    const unsubscribe = recipeEvents.subscribe(() => {
-      loadData();
-    });
-    return unsubscribe;
-  }, [loadData]);
-
-  // Filter by search query (instant)
-  const filteredRecipes = useMemo(() => {
-    if (!searchQuery.trim()) return recipes;
-    const query = searchQuery.toLowerCase();
-    return recipes.filter(recipe =>
-      recipe.title?.toLowerCase().includes(query) ||
-      recipe.description?.toLowerCase().includes(query)
-    );
-  }, [recipes, searchQuery]);
-
-  // Difficulty options
-  const difficultyChips = [
-    { id: 'easy', label: String(t('recipeGeneration.difficultyEasy')) },
-    { id: 'medium', label: String(t('recipeGeneration.difficultyMedium')) },
-    { id: 'hard', label: String(t('recipeGeneration.difficultyHard')) },
-  ];
-
-  // Meal type options
-  const mealTypeChips = [
-    { id: 'breakfast', label: String(t('recipeGeneration.mealTypes.breakfast')) },
-    { id: 'lunch', label: String(t('recipeGeneration.mealTypes.lunch')) },
-    { id: 'dinner', label: String(t('recipeGeneration.mealTypes.dinner')) },
-    { id: 'snack', label: String(t('recipeGeneration.mealTypes.snack')) },
-    { id: 'dessert', label: String(t('recipeGeneration.mealTypes.dessert')) },
-  ];
-
-  // Time options
-  const timeChips = [
-    { id: '15', label: '≤ 15 min' },
-    { id: '30', label: '≤ 30 min' },
-    { id: '45', label: '≤ 45 min' },
-    { id: '60', label: '≤ 1h' },
-    { id: '90', label: '≤ 1.5h' },
-    { id: '120', label: '≤ 2h' },
-  ];
-
-  // Cuisine options from filter data
-  const cuisineOptions = useMemo(() => {
-    if (!filterOptions?.cuisines) return [];
-    return filterOptions.cuisines.map((c: string) => ({
-      value: c,
-      label: c,
-    }));
-  }, [filterOptions?.cuisines]);
-
-  // Ingredient options from filter data
-  const ingredientOptions = useMemo(() => {
-    if (!filterOptions?.ingredients) return [];
-    return filterOptions.ingredients.map((ing: string) => ({
-      value: ing,
-      label: ing.charAt(0).toUpperCase() + ing.slice(1),
-    }));
-  }, [filterOptions?.ingredients]);
-
-  // Check if any filters are active
-  const hasActiveFilters = useMemo(() => {
-    return selectedDifficulties.length > 0 ||
-      selectedMealTypes.length > 0 ||
-      selectedMaxTime.length > 0 ||
-      maxCalories !== undefined ||
-      selectedCuisines.length > 0 ||
-      selectedIngredients.length > 0;
-  }, [selectedDifficulties, selectedMealTypes, selectedMaxTime, maxCalories, selectedCuisines, selectedIngredients]);
-
-  // Clear all filters
-  const handleClearFilters = () => {
-    setSelectedDifficulties([]);
-    setSelectedMealTypes([]);
-    setSelectedMaxTime([]);
-    setMaxCalories(undefined);
-    setSelectedCuisines([]);
-    setSelectedIngredients([]);
-  };
-
-  // Apply filters
-  const handleApplyFilters = () => {
-    const filters: RecipeFilters = {};
-
-    if (selectedDifficulties.length > 0) {
-      filters.difficulty = selectedDifficulties as DifficultyLevel[];
-    }
-    if (selectedMealTypes.length > 0) {
-      filters.mealTypes = selectedMealTypes as MealType[];
-    }
-    if (selectedMaxTime.length > 0) {
-      // Use the maximum of selected times
-      const maxTime = Math.max(...selectedMaxTime.map(t => parseInt(t)));
-      filters.maxTime = maxTime;
-    }
-    if (maxCalories !== undefined) {
-      filters.maxCalories = maxCalories;
-    }
-    if (selectedCuisines.length > 0) {
-      filters.cuisines = selectedCuisines;
-    }
-    if (selectedIngredients.length > 0) {
-      filters.ingredients = selectedIngredients;
-    }
-
-    setAppliedFilters(filters);
-    setShowFilters(false);
-  };
+    filteredRecipes,
+    isLoading,
+    isRefreshing,
+    refresh,
+    searchQuery,
+    setSearchQuery,
+    filterState,
+    filterActions,
+    cuisineOptions,
+    ingredientOptions,
+    chipDefs,
+  } = useRecipeList();
 
   // Navigate to recipe detail
   const handleRecipePress = (recipe: Recipe) => {
@@ -244,9 +61,9 @@ export default function RecipesScreen() {
   // Header actions for the BottomSheet
   const filterHeaderActions = (
     <View className="flex-row items-center gap-3">
-      {hasActiveFilters && (
+      {filterState.hasActiveFilters && (
         <Pressable
-          onPress={handleClearFilters}
+          onPress={filterActions.handleClearFilters}
           className="w-8 h-8 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-700"
         >
           <FontAwesome name="refresh" size={14} color={colors.error} />
@@ -272,7 +89,7 @@ export default function RecipesScreen() {
           onChangeText={setSearchQuery}
           placeholder={String(t('recipes.searchPlaceholder' as any))}
           showFilter
-          onFilterPress={() => setShowFilters(true)}
+          onFilterPress={() => filterActions.setShowFilters(true)}
         />
       </View>
 
@@ -294,11 +111,7 @@ export default function RecipesScreen() {
               description={String(t('recipes.noResultsDescription' as any))}
               variant="search"
               actionLabel={String(t('recipes.filters.clear' as any))}
-              onAction={() => {
-                setSearchQuery('');
-                handleClearFilters();
-                setAppliedFilters({});
-              }}
+              onAction={filterActions.handleClearAll}
             />
           )}
         </View>
@@ -312,7 +125,7 @@ export default function RecipesScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
-              onRefresh={() => loadData(true)}
+              onRefresh={refresh}
               tintColor={colors.primary}
             />
           }
@@ -321,12 +134,12 @@ export default function RecipesScreen() {
 
       {/* Filters BottomSheet */}
       <BottomSheet
-        visible={showFilters}
-        onClose={() => setShowFilters(false)}
+        visible={filterState.showFilters}
+        onClose={() => filterActions.setShowFilters(false)}
         title={String(t('recipes.filters.title' as any))}
         showOkButton
         okLabel={String(t('common.apply'))}
-        onOk={handleApplyFilters}
+        onOk={filterActions.handleApplyFilters}
         headerActions={filterHeaderActions}
       >
         <View className="pb-6">
@@ -334,22 +147,22 @@ export default function RecipesScreen() {
           {ingredientOptions.length > 0 && (
             <Section title={String(t('recipes.filters.ingredients' as any))} className="mb-4">
               <Pressable
-                onPress={() => setShowIngredientPicker(true)}
+                onPress={() => filterActions.setShowIngredientPicker(true)}
                 className="flex-row items-center justify-between px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
               >
-                <Text className={selectedIngredients.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
-                  {selectedIngredients.length > 0
-                    ? String(t('profile.selectedCount', { count: selectedIngredients.length } as any))
+                <Text className={filterState.selectedIngredients.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
+                  {filterState.selectedIngredients.length > 0
+                    ? String(t('profile.selectedCount', { count: filterState.selectedIngredients.length } as any))
                     : String(t('recipes.filters.selectIngredients' as any))}
                 </Text>
                 <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
               </Pressable>
-              {selectedIngredients.length > 0 && (
+              {filterState.selectedIngredients.length > 0 && (
                 <View className="flex-row flex-wrap mt-2" style={{ gap: 6 }}>
-                  {selectedIngredients.map(ing => (
+                  {filterState.selectedIngredients.map((ing) => (
                     <Pressable
                       key={ing}
-                      onPress={() => setSelectedIngredients(prev => prev.filter(i => i !== ing))}
+                      onPress={() => filterActions.setSelectedIngredients(filterState.selectedIngredients.filter((i) => i !== ing))}
                       className="flex-row items-center bg-primary-100 dark:bg-primary-900/30 px-2.5 py-1 rounded-full"
                     >
                       <Text className="text-xs text-primary-700 dark:text-primary-300 mr-1">{ing.charAt(0).toUpperCase() + ing.slice(1)}</Text>
@@ -365,22 +178,22 @@ export default function RecipesScreen() {
           {cuisineOptions.length > 0 && (
             <Section title={String(t('recipes.filters.cuisine' as any))} className="mb-4">
               <Pressable
-                onPress={() => setShowCuisinePicker(true)}
+                onPress={() => filterActions.setShowCuisinePicker(true)}
                 className="flex-row items-center justify-between px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
               >
-                <Text className={selectedCuisines.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
-                  {selectedCuisines.length > 0
-                    ? String(t('profile.selectedCount', { count: selectedCuisines.length } as any))
+                <Text className={filterState.selectedCuisines.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
+                  {filterState.selectedCuisines.length > 0
+                    ? String(t('profile.selectedCount', { count: filterState.selectedCuisines.length } as any))
                     : String(t('recipes.filters.selectCuisine' as any))}
                 </Text>
                 <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
               </Pressable>
-              {selectedCuisines.length > 0 && (
+              {filterState.selectedCuisines.length > 0 && (
                 <View className="flex-row flex-wrap mt-2" style={{ gap: 6 }}>
-                  {selectedCuisines.map(cuisine => (
+                  {filterState.selectedCuisines.map((cuisine) => (
                     <Pressable
                       key={cuisine}
-                      onPress={() => setSelectedCuisines(prev => prev.filter(c => c !== cuisine))}
+                      onPress={() => filterActions.setSelectedCuisines(filterState.selectedCuisines.filter((c) => c !== cuisine))}
                       className="flex-row items-center bg-primary-100 dark:bg-primary-900/30 px-2.5 py-1 rounded-full"
                     >
                       <Text className="text-xs text-primary-700 dark:text-primary-300 mr-1">{cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}</Text>
@@ -397,9 +210,9 @@ export default function RecipesScreen() {
             <RangeSlider
               min={100}
               max={2000}
-              value={maxCalories ?? 2000}
+              value={filterState.maxCalories ?? 2000}
               step={50}
-              onValueChange={(v) => setMaxCalories(v >= 2000 ? undefined : v)}
+              onValueChange={(v) => filterActions.setMaxCalories(v >= 2000 ? undefined : v)}
               formatLabel={(v) => v >= 2000 ? String(t('recipeGeneration.noLimit' as any)) : `${v} kcal`}
             />
           </Section>
@@ -407,9 +220,9 @@ export default function RecipesScreen() {
           {/* Difficulty */}
           <Section title={String(t('recipes.filters.difficulty' as any))} className="mb-4">
             <ChipGroup
-              chips={difficultyChips}
-              selectedIds={selectedDifficulties}
-              onSelectionChange={setSelectedDifficulties}
+              chips={chipDefs.difficultyChips}
+              selectedIds={filterState.selectedDifficulties}
+              onSelectionChange={filterActions.setSelectedDifficulties}
               multiple
             />
           </Section>
@@ -417,9 +230,9 @@ export default function RecipesScreen() {
           {/* Meal Types */}
           <Section title={String(t('recipes.filters.mealType' as any))} className="mb-4">
             <ChipGroup
-              chips={mealTypeChips}
-              selectedIds={selectedMealTypes}
-              onSelectionChange={setSelectedMealTypes}
+              chips={chipDefs.mealTypeChips}
+              selectedIds={filterState.selectedMealTypes}
+              onSelectionChange={filterActions.setSelectedMealTypes}
               multiple
             />
           </Section>
@@ -427,9 +240,9 @@ export default function RecipesScreen() {
           {/* Max Time */}
           <Section title={String(t('recipes.filters.maxTime' as any))} className="mb-4">
             <ChipGroup
-              chips={timeChips}
-              selectedIds={selectedMaxTime}
-              onSelectionChange={(ids) => setSelectedMaxTime(ids.slice(-1))}
+              chips={chipDefs.timeChips}
+              selectedIds={filterState.selectedMaxTime}
+              onSelectionChange={(ids) => filterActions.setSelectedMaxTime(ids.slice(-1))}
               multiple={false}
             />
           </Section>
@@ -438,28 +251,32 @@ export default function RecipesScreen() {
 
       {/* Ingredient Picker BottomSheet */}
       <BottomSheet
-        visible={showIngredientPicker}
-        onClose={() => { setShowIngredientPicker(false); setIngredientSearch(''); }}
+        visible={filterState.showIngredientPicker}
+        onClose={() => { filterActions.setShowIngredientPicker(false); filterActions.setIngredientSearch(''); }}
         title={String(t('recipes.filters.ingredients' as any))}
       >
         <View className="pb-4">
           <SearchInput
-            value={ingredientSearch}
-            onChangeText={setIngredientSearch}
+            value={filterState.ingredientSearch}
+            onChangeText={filterActions.setIngredientSearch}
             placeholder={String(t('common.search'))}
             className="mb-3"
           />
           <ScrollView className="max-h-80" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {ingredientOptions
-              .filter(opt => !ingredientSearch.trim() || opt.label.toLowerCase().includes(ingredientSearch.toLowerCase()))
-              .map(opt => {
-                const isSelected = selectedIngredients.includes(opt.value);
+              .filter((opt) => !filterState.ingredientSearch.trim() || opt.label.toLowerCase().includes(filterState.ingredientSearch.toLowerCase()))
+              .map((opt) => {
+                const isSelected = filterState.selectedIngredients.includes(opt.value);
                 return (
                   <Pressable
                     key={opt.value}
-                    onPress={() => setSelectedIngredients(prev =>
-                      isSelected ? prev.filter(i => i !== opt.value) : [...prev, opt.value]
-                    )}
+                    onPress={() =>
+                      filterActions.setSelectedIngredients(
+                        isSelected
+                          ? filterState.selectedIngredients.filter((i) => i !== opt.value)
+                          : [...filterState.selectedIngredients, opt.value],
+                      )
+                    }
                     className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : ''}`}
                   >
                     <Text className={`flex-1 text-base ${isSelected ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-gray-50'}`}>
@@ -475,28 +292,32 @@ export default function RecipesScreen() {
 
       {/* Cuisine Picker BottomSheet */}
       <BottomSheet
-        visible={showCuisinePicker}
-        onClose={() => { setShowCuisinePicker(false); setCuisineSearch(''); }}
+        visible={filterState.showCuisinePicker}
+        onClose={() => { filterActions.setShowCuisinePicker(false); filterActions.setCuisineSearch(''); }}
         title={String(t('recipes.filters.cuisine' as any))}
       >
         <View className="pb-4">
           <SearchInput
-            value={cuisineSearch}
-            onChangeText={setCuisineSearch}
+            value={filterState.cuisineSearch}
+            onChangeText={filterActions.setCuisineSearch}
             placeholder={String(t('common.search'))}
             className="mb-3"
           />
           <ScrollView className="max-h-80" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {cuisineOptions
-              .filter(opt => !cuisineSearch.trim() || opt.label.toLowerCase().includes(cuisineSearch.toLowerCase()))
-              .map(opt => {
-                const isSelected = selectedCuisines.includes(opt.value);
+              .filter((opt) => !filterState.cuisineSearch.trim() || opt.label.toLowerCase().includes(filterState.cuisineSearch.toLowerCase()))
+              .map((opt) => {
+                const isSelected = filterState.selectedCuisines.includes(opt.value);
                 return (
                   <Pressable
                     key={opt.value}
-                    onPress={() => setSelectedCuisines(prev =>
-                      isSelected ? prev.filter(c => c !== opt.value) : [...prev, opt.value]
-                    )}
+                    onPress={() =>
+                      filterActions.setSelectedCuisines(
+                        isSelected
+                          ? filterState.selectedCuisines.filter((c) => c !== opt.value)
+                          : [...filterState.selectedCuisines, opt.value],
+                      )
+                    }
                     className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : ''}`}
                   >
                     <Text className={`flex-1 text-base ${isSelected ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-gray-50'}`}>
