@@ -38,7 +38,7 @@ export default function HomeScreen() {
     resetForm,
   } = useRecipeGenerationStore();
 
-  // Profile store — shared cache across screens
+  // Profile store — shared cache persisted to AsyncStorage
   const {
     profile,
     restrictions,
@@ -54,8 +54,23 @@ export default function HomeScreen() {
     setLoaded,
   } = useProfileStore();
 
-  // profileLoaded is true from the first render if the store already has data
-  const [profileLoaded, setProfileLoaded] = useState(storeIsLoaded);
+  const [hasHydrated, setHasHydrated] = useState(
+    () => useProfileStore.persist.hasHydrated()
+  );
+
+  useEffect(() => {
+    if (useProfileStore.persist.hasHydrated()) {
+      setHasHydrated(true);
+      return;
+    }
+    return useProfileStore.persist.onFinishHydration(() => {
+      setHasHydrated(true);
+    });
+  }, []);
+
+  const [profileLoaded, setProfileLoaded] = useState(
+    () => useProfileStore.persist.hasHydrated() && useProfileStore.getState().isLoaded
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
@@ -87,22 +102,35 @@ export default function HomeScreen() {
     equipmentData: ProfileEquipment[],
     cuisinesData: { id: string; cuisine_type: string; custom_name: string | null }[]
   ) => {
-    // Build cuisines list: predefined + custom
     const predefinedCuisines = profileData?.preferred_cuisines || [];
     const customCuisineIds = (cuisinesData || [])
       .filter(c => c.custom_name)
       .map(c => `custom:${c.custom_name}`);
     const allCuisines = [...predefinedCuisines, ...customCuisineIds];
-
-    // Build equipment list: standard + custom
     const allEquipment = (equipmentData || []).map(e =>
       e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
     );
-
     return { cuisines: allCuisines, equipment: allEquipment };
   }, []);
 
-  // Function to load profile data and sync to form + store
+  // When hydration finishes and the store has cached data, unlock the UI immediately
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (storeIsLoaded) {
+      setProfileLoaded(true);
+      const { profile: p, equipment: eq, customCuisines: cc } = useProfileStore.getState();
+      const defaults = buildFormDefaults(p, eq, cc);
+      if (defaults.cuisines.length > 0 && form.cuisines.length === 0) {
+        setFormField('cuisines', defaults.cuisines);
+      }
+      if (defaults.equipment.length > 0 && (!form.equipment || form.equipment.length === 0)) {
+        setFormField('equipment', defaults.equipment);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated]);
+
+  // Function to load (or refresh) profile data from the API and sync to store
   const loadProfileData = useCallback(async () => {
     try {
       const [profileData, restrictionsData, equipmentData, favoriteIngredientsData, cuisinesData] = await Promise.all([
@@ -124,7 +152,6 @@ export default function HomeScreen() {
         is_always_available: i.always_available,
       }));
 
-      // Write to shared store (makes data available to profile screen instantly)
       setProfile(profileData);
       setRestrictions(restrictionsData);
       setEquipment(equipmentData);
@@ -132,7 +159,7 @@ export default function HomeScreen() {
       setCustomCuisines(mappedCuisines);
       setLoaded(true);
 
-      // Always sync profile defaults to form
+      // Sync form defaults with fresh data
       const defaults = buildFormDefaults(profileData, equipmentData, mappedCuisines);
       if (defaults.cuisines.length > 0) {
         setFormField('cuisines', defaults.cuisines);
@@ -147,7 +174,7 @@ export default function HomeScreen() {
     }
   }, [buildFormDefaults, setFormField, setProfile, setRestrictions, setEquipment, setStoreFavoriteIngredients, setCustomCuisines, setLoaded]);
 
-  // Load profile data on every focus (initial + returning from preferences)
+  // Load/refresh profile on every focus (initial + returning from preferences)
   useFocusEffect(
     useCallback(() => {
       loadProfileData();

@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Profile, ProfileRestriction, ProfileEquipment } from '@/services/profile';
 
 interface ProfileState {
@@ -18,27 +20,43 @@ interface ProfileState {
   clear: () => void;
 }
 
-export const useProfileStore = create<ProfileState>((set) => ({
-  profile: null,
-  restrictions: [],
-  equipment: [],
-  favoriteIngredients: [],
-  customCuisines: [],
-  isLoaded: false,
+export const useProfileStore = create<ProfileState>()(
+  persist(
+    (set) => ({
+      profile: null,
+      restrictions: [],
+      equipment: [],
+      favoriteIngredients: [],
+      customCuisines: [],
+      isLoaded: false,
 
-  setProfile: (profile) => set({ profile }),
-  setRestrictions: (restrictions) => set({ restrictions }),
-  setEquipment: (equipment) => set({ equipment }),
-  setFavoriteIngredients: (favoriteIngredients) => set({ favoriteIngredients }),
-  setCustomCuisines: (customCuisines) => set({ customCuisines }),
-  setLoaded: (isLoaded) => set({ isLoaded }),
-  clear: () => set({
-    profile: null,
-    restrictions: [],
-    equipment: [],
-    favoriteIngredients: [],
-    customCuisines: [],
-    isLoaded: false,
-  }),
-}));
-
+      setProfile: (profile) => set({ profile }),
+      setRestrictions: (restrictions) => set({ restrictions }),
+      setEquipment: (equipment) => set({ equipment }),
+      setFavoriteIngredients: (favoriteIngredients) => set({ favoriteIngredients }),
+      setCustomCuisines: (customCuisines) => set({ customCuisines }),
+      setLoaded: (isLoaded) => set({ isLoaded }),
+      clear: () => set({
+        profile: null,
+        restrictions: [],
+        equipment: [],
+        favoriteIngredients: [],
+        customCuisines: [],
+        isLoaded: false,
+      }),
+    }),
+    {
+      name: 'cocinia-profile-store',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Only persist the data fields, not the setter functions
+      partialize: (state) => ({
+        profile: state.profile,
+        restrictions: state.restrictions,
+        equipment: state.equipment,
+        favoriteIngredients: state.favoriteIngredients,
+        customCuisines: state.customCuisines,
+        isLoaded: state.isLoaded,
+      }),
+    }
+  )
+);

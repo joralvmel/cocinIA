@@ -312,15 +312,15 @@ export const recipeService = {
         }
       }
 
-      // Ingredients filter - recipe must contain ALL selected ingredients
+      // Ingredients filter - recipe must contain AT LEAST ONE of the selected ingredients
       if (filters.ingredients && filters.ingredients.length > 0) {
         const recipeIngredientNames = (recipe.ingredients || []).map((ing: { name: string }) =>
           ing.name?.toLowerCase()
         );
-        const hasAllIngredients = filters.ingredients.every(ing =>
+        const hasAnyIngredient = filters.ingredients.some(ing =>
           recipeIngredientNames.some((name: string) => name?.includes(ing.toLowerCase()))
         );
-        if (!hasAllIngredients) return false;
+        if (!hasAnyIngredient) return false;
       }
 
       return true;

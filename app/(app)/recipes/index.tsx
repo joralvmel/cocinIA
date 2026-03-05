@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, FlatList, RefreshControl, Pressable, Text } from 'react-native';
+import { View, FlatList, RefreshControl, Pressable, Text, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,7 +9,6 @@ import {
   BottomSheet,
   ChipGroup,
   RangeSlider,
-  Select,
   Section,
   Loader,
 } from '@/components/ui';
@@ -58,6 +57,10 @@ export default function RecipesScreen() {
   const [isLoading, setIsLoading] = useState(!storeIsLoaded);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showIngredientPicker, setShowIngredientPicker] = useState(false);
+  const [showCuisinePicker, setShowCuisinePicker] = useState(false);
+  const [ingredientSearch, setIngredientSearch] = useState('');
+  const [cuisineSearch, setCuisineSearch] = useState('');
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,51 +330,79 @@ export default function RecipesScreen() {
         headerActions={filterHeaderActions}
       >
         <View className="pb-6">
-          {/* Ingredients Select */}
+          {/* Ingredients Multi-Select */}
           {ingredientOptions.length > 0 && (
             <Section title={String(t('recipes.filters.ingredients' as any))} className="mb-4">
-              <Select
-                options={ingredientOptions}
-                value={selectedIngredients}
-                onChange={(v) => setSelectedIngredients(v as string[])}
-                placeholder={String(t('recipes.filters.selectIngredients' as any))}
-                multiple
-                searchable
-                searchPlaceholder={String(t('common.search'))}
-                showClearButton
-              />
+              <Pressable
+                onPress={() => setShowIngredientPicker(true)}
+                className="flex-row items-center justify-between px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              >
+                <Text className={selectedIngredients.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
+                  {selectedIngredients.length > 0
+                    ? String(t('profile.selectedCount', { count: selectedIngredients.length } as any))
+                    : String(t('recipes.filters.selectIngredients' as any))}
+                </Text>
+                <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
+              </Pressable>
+              {selectedIngredients.length > 0 && (
+                <View className="flex-row flex-wrap mt-2" style={{ gap: 6 }}>
+                  {selectedIngredients.map(ing => (
+                    <Pressable
+                      key={ing}
+                      onPress={() => setSelectedIngredients(prev => prev.filter(i => i !== ing))}
+                      className="flex-row items-center bg-primary-100 dark:bg-primary-900/30 px-2.5 py-1 rounded-full"
+                    >
+                      <Text className="text-xs text-primary-700 dark:text-primary-300 mr-1">{ing.charAt(0).toUpperCase() + ing.slice(1)}</Text>
+                      <FontAwesome name="times" size={10} color={colors.primary} />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </Section>
           )}
 
-          {/* Cuisine Select */}
+          {/* Cuisine Multi-Select */}
           {cuisineOptions.length > 0 && (
             <Section title={String(t('recipes.filters.cuisine' as any))} className="mb-4">
-              <Select
-                options={cuisineOptions}
-                value={selectedCuisines}
-                onChange={(v) => setSelectedCuisines(v as string[])}
-                placeholder={String(t('recipes.filters.selectCuisine' as any))}
-                multiple
-                searchable
-                searchPlaceholder={String(t('common.search'))}
-                showClearButton
-              />
+              <Pressable
+                onPress={() => setShowCuisinePicker(true)}
+                className="flex-row items-center justify-between px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              >
+                <Text className={selectedCuisines.length > 0 ? 'text-gray-900 dark:text-gray-50' : 'text-gray-400 dark:text-gray-500'}>
+                  {selectedCuisines.length > 0
+                    ? String(t('profile.selectedCount', { count: selectedCuisines.length } as any))
+                    : String(t('recipes.filters.selectCuisine' as any))}
+                </Text>
+                <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
+              </Pressable>
+              {selectedCuisines.length > 0 && (
+                <View className="flex-row flex-wrap mt-2" style={{ gap: 6 }}>
+                  {selectedCuisines.map(cuisine => (
+                    <Pressable
+                      key={cuisine}
+                      onPress={() => setSelectedCuisines(prev => prev.filter(c => c !== cuisine))}
+                      className="flex-row items-center bg-primary-100 dark:bg-primary-900/30 px-2.5 py-1 rounded-full"
+                    >
+                      <Text className="text-xs text-primary-700 dark:text-primary-300 mr-1">{cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}</Text>
+                      <FontAwesome name="times" size={10} color={colors.primary} />
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </Section>
           )}
 
           {/* Max Calories Slider */}
-          {filterOptions && filterOptions.maxCalories > 0 && (
-            <Section title={String(t('recipes.filters.maxCalories' as any))} className="mb-4">
-              <RangeSlider
-                min={100}
-                max={filterOptions.maxCalories + 100}
-                value={maxCalories}
-                step={50}
-                onValueChange={setMaxCalories}
-                formatLabel={(v) => `${v} kcal`}
-              />
-            </Section>
-          )}
+          <Section title={String(t('recipes.filters.maxCalories' as any))} className="mb-4">
+            <RangeSlider
+              min={100}
+              max={2000}
+              value={maxCalories ?? 2000}
+              step={50}
+              onValueChange={(v) => setMaxCalories(v >= 2000 ? undefined : v)}
+              formatLabel={(v) => v >= 2000 ? String(t('recipeGeneration.noLimit' as any)) : `${v} kcal`}
+            />
+          </Section>
 
           {/* Difficulty */}
           <Section title={String(t('recipes.filters.difficulty' as any))} className="mb-4">
@@ -402,6 +433,80 @@ export default function RecipesScreen() {
               multiple={false}
             />
           </Section>
+        </View>
+      </BottomSheet>
+
+      {/* Ingredient Picker BottomSheet */}
+      <BottomSheet
+        visible={showIngredientPicker}
+        onClose={() => { setShowIngredientPicker(false); setIngredientSearch(''); }}
+        title={String(t('recipes.filters.ingredients' as any))}
+      >
+        <View className="pb-4">
+          <SearchInput
+            value={ingredientSearch}
+            onChangeText={setIngredientSearch}
+            placeholder={String(t('common.search'))}
+            className="mb-3"
+          />
+          <ScrollView className="max-h-80" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {ingredientOptions
+              .filter(opt => !ingredientSearch.trim() || opt.label.toLowerCase().includes(ingredientSearch.toLowerCase()))
+              .map(opt => {
+                const isSelected = selectedIngredients.includes(opt.value);
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSelectedIngredients(prev =>
+                      isSelected ? prev.filter(i => i !== opt.value) : [...prev, opt.value]
+                    )}
+                    className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : ''}`}
+                  >
+                    <Text className={`flex-1 text-base ${isSelected ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-gray-50'}`}>
+                      {opt.label}
+                    </Text>
+                    {isSelected && <FontAwesome name="check" size={16} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+          </ScrollView>
+        </View>
+      </BottomSheet>
+
+      {/* Cuisine Picker BottomSheet */}
+      <BottomSheet
+        visible={showCuisinePicker}
+        onClose={() => { setShowCuisinePicker(false); setCuisineSearch(''); }}
+        title={String(t('recipes.filters.cuisine' as any))}
+      >
+        <View className="pb-4">
+          <SearchInput
+            value={cuisineSearch}
+            onChangeText={setCuisineSearch}
+            placeholder={String(t('common.search'))}
+            className="mb-3"
+          />
+          <ScrollView className="max-h-80" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {cuisineOptions
+              .filter(opt => !cuisineSearch.trim() || opt.label.toLowerCase().includes(cuisineSearch.toLowerCase()))
+              .map(opt => {
+                const isSelected = selectedCuisines.includes(opt.value);
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSelectedCuisines(prev =>
+                      isSelected ? prev.filter(c => c !== opt.value) : [...prev, opt.value]
+                    )}
+                    className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${isSelected ? 'bg-primary-50 dark:bg-primary-900/30' : ''}`}
+                  >
+                    <Text className={`flex-1 text-base ${isSelected ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-gray-50'}`}>
+                      {opt.label}
+                    </Text>
+                    {isSelected && <FontAwesome name="check" size={16} color={colors.primary} />}
+                  </Pressable>
+                );
+              })}
+          </ScrollView>
         </View>
       </BottomSheet>
     </View>

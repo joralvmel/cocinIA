@@ -158,8 +158,9 @@ export default function EditIngredientsScreen() {
   };
 
   const addIngredientFromRecipe = (name: string) => {
-    // Check if already in favorites
-    if (ingredients.some(i => i.ingredientName.toLowerCase() === name.toLowerCase())) {
+    // Toggle: if already in favorites, remove it; otherwise add it
+    if (isIngredientInFavorites(name)) {
+      setIngredients((prev) => prev.filter(i => i.ingredientName.toLowerCase() !== name.toLowerCase()));
       return;
     }
     const id = `recipe_${Date.now()}`;
