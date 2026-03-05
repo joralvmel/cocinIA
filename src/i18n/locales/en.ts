@@ -17,6 +17,7 @@
     noResults: 'No results found',
     or: 'or',
     apply: 'Apply',
+    allow: 'Allow',
     ok: 'OK',
   },
   tabs: {
@@ -225,6 +226,10 @@
       fromGallery: 'Choose from gallery',
       permissionDenied: 'Permission to access photos is required',
       cameraPermissionDenied: 'Permission to use camera is required',
+      cameraPermissionTitle: 'Camera access',
+      cameraPermissionMessage: 'CocinIA needs access to your camera to take a photo of your recipe. Would you like to allow it?',
+      galleryPermissionTitle: 'Gallery access',
+      galleryPermissionMessage: 'CocinIA needs access to your photo gallery to select a recipe photo. Would you like to allow it?',
       uploadError: 'Error uploading image',
       uploadingImage: 'Uploading image...',
       addPhoto: 'Add photo',

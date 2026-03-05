@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Animated } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -78,7 +78,7 @@ export function MultiActionButton({
         useNativeDriver: true,
       }).start();
 
-      // Animate options in with stagger
+      // Animate options in with stagger (original spring animation)
       const staggerAnimations = animations.map((anim, index) => {
         return Animated.parallel([
           Animated.spring(anim.scale, {
@@ -143,11 +143,12 @@ export function MultiActionButton({
     }
   };
 
-  const handleOptionPress = (option: ActionOption) => {
+  const handleOptionPress = useCallback((option: ActionOption) => {
     if (option.disabled || option.loading) return;
     setExpanded(false);
-    setTimeout(() => option.onPress(), 200);
-  };
+    // Execute immediately, no delay needed
+    option.onPress();
+  }, []);
 
   const getColorClasses = (color?: string) => {
     const colorMap: Record<string, { bg: string; shadow: string }> = {
@@ -225,21 +226,24 @@ export function MultiActionButton({
                 if (!animation) return null;
 
                 return (
-                    <Animated.View
+                    <Pressable
                         key={option.id}
-                        style={{
-                          transform: [{ scale: animation.scale }],
-                          opacity: animation.opacity,
-                        }}
+                        onPress={() => handleOptionPress(option)}
+                        disabled={option.disabled || option.loading}
+                        className={`flex-row items-center justify-end ${
+                            option.disabled ? 'opacity-50' : ''
+                        }`}
                     >
-                      <Pressable
-                          onPress={() => handleOptionPress(option)}
-                          disabled={option.disabled || option.loading}
-                          className={`flex-row items-center justify-end ${
-                              option.disabled ? 'opacity-50' : ''
-                          }`}
+                      {/* Animated wrapper is inside Pressable — scale is visual only, touch target stays full-size */}
+                      <Animated.View
+                          style={{
+                            transform: [{ scale: animation.scale }],
+                            opacity: animation.opacity,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                          }}
                       >
-                        {/* Label - más padding */}
+                        {/* Label */}
                         <View className="mr-3 px-4 py-2.5 rounded-lg bg-white dark:bg-gray-800 shadow-lg">
                           <Text
                               className="text-base font-medium text-gray-900 dark:text-gray-50"
@@ -249,7 +253,7 @@ export function MultiActionButton({
                           </Text>
                         </View>
 
-                        {/* Icon button - más grande */}
+                        {/* Icon button */}
                         <View
                             className={`w-14 h-14 rounded-full items-center justify-center shadow-lg ${colorClasses.bg} ${colorClasses.shadow}`}
                         >
@@ -259,8 +263,8 @@ export function MultiActionButton({
                               <FontAwesome name={option.icon as any} size={20} color="white" />
                           )}
                         </View>
-                      </Pressable>
-                    </Animated.View>
+                      </Animated.View>
+                    </Pressable>
                 );
               })}
             </View>

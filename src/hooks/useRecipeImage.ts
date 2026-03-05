@@ -43,8 +43,7 @@ export function useRecipeImage({ recipeId, reloadRecipe, setAlertModal }: UseRec
   );
 
   // ---- Camera ----
-  const handleCameraPress = useCallback(async () => {
-    setShowPhotoOptions(false);
+  const launchCamera = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       setAlertModal({
@@ -66,9 +65,27 @@ export function useRecipeImage({ recipeId, reloadRecipe, setAlertModal }: UseRec
     }
   }, [setAlertModal, t, uploadImage]);
 
-  // ---- Gallery ----
-  const handleGalleryPress = useCallback(async () => {
+  const handleCameraPress = useCallback(async () => {
     setShowPhotoOptions(false);
+    // Check if permission is already granted — skip pre-dialog
+    const { status: existingStatus } = await ImagePicker.getCameraPermissionsAsync();
+    if (existingStatus === 'granted') {
+      launchCamera();
+      return;
+    }
+    // Show pre-permission rationale dialog
+    setAlertModal({
+      visible: true,
+      title: String(t('recipes.detail.cameraPermissionTitle' as any)),
+      message: String(t('recipes.detail.cameraPermissionMessage' as any)),
+      variant: 'info',
+      confirmLabel: String(t('common.allow')),
+      onConfirm: launchCamera,
+    });
+  }, [setAlertModal, t, launchCamera]);
+
+  // ---- Gallery ----
+  const launchGallery = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       setAlertModal({
@@ -89,6 +106,25 @@ export function useRecipeImage({ recipeId, reloadRecipe, setAlertModal }: UseRec
       uploadImage(result.assets[0].uri);
     }
   }, [setAlertModal, t, uploadImage]);
+
+  const handleGalleryPress = useCallback(async () => {
+    setShowPhotoOptions(false);
+    // Check if permission is already granted — skip pre-dialog
+    const { status: existingStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (existingStatus === 'granted') {
+      launchGallery();
+      return;
+    }
+    // Show pre-permission rationale dialog
+    setAlertModal({
+      visible: true,
+      title: String(t('recipes.detail.galleryPermissionTitle' as any)),
+      message: String(t('recipes.detail.galleryPermissionMessage' as any)),
+      variant: 'info',
+      confirmLabel: String(t('common.allow')),
+      onConfirm: launchGallery,
+    });
+  }, [setAlertModal, t, launchGallery]);
 
   // ---- Delete image ----
   const handleDeleteImage = useCallback(() => {

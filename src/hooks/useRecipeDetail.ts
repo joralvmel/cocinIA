@@ -16,6 +16,7 @@ export interface AlertModalState {
   message: string;
   variant: 'info' | 'warning' | 'danger';
   onConfirm?: () => void;
+  confirmLabel?: string;
 }
 
 export interface RecipeEditState {

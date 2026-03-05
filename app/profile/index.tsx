@@ -13,7 +13,7 @@ import {
   ListItem,
   ListGroup,
   Switch,
-  Button,
+  IconButton,
   ScreenHeader,
   SelectBottomSheet,
   AlertModal,
@@ -49,7 +49,19 @@ export default function ProfileScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.title')} />
+        <ScreenHeader
+          title={t('profile.title')}
+          rightElement={
+            isAuthenticated ? (
+              <IconButton
+                icon="sign-out"
+                variant="ghost"
+                size="md"
+                onPress={handleSignOut}
+              />
+            ) : undefined
+          }
+        />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -112,14 +124,6 @@ export default function ProfileScreen() {
               </ListGroup>
             </Section>
 
-            {/* Sign Out */}
-            {isAuthenticated && (
-              <View className="mt-2 mb-4">
-                <Button variant="outline" onPress={handleSignOut}>
-                  🚪 {t('auth.signOut')}
-                </Button>
-              </View>
-            )}
 
             {/* Language Selector */}
             <SelectBottomSheet

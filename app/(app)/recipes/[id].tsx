@@ -205,7 +205,7 @@ export default function RecipeDetailScreen() {
         message={alertModal.message}
         variant={alertModal.variant}
         onConfirm={alertModal.onConfirm}
-        confirmLabel={alertModal.onConfirm ? String(t('common.delete')) : String(t('common.ok'))}
+        confirmLabel={alertModal.confirmLabel || (alertModal.onConfirm ? String(t('common.delete')) : String(t('common.ok')))}
         cancelLabel={String(t('common.cancel'))}
       />
     </>
