@@ -1,6 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -12,112 +10,32 @@ import {
   Input,
   BottomSheet,
 } from '@/components/ui';
-import { useOnboardingStore } from '@/stores';
-import { profileService } from '@/services';
-import { allergies, preferences, type DietaryRestriction } from '@/constants';
+import { useOnboardingStep2 } from '@/hooks/useOnboardingStep2';
+import type { DietaryRestriction } from '@/constants';
 
 export default function OnboardingStep2() {
-  const router = useRouter();
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCustomSheet, setShowCustomSheet] = useState(false);
-  const [customValue, setCustomValue] = useState('');
-  const [customIsAllergy, setCustomIsAllergy] = useState(false);
-
   const {
-    restrictions,
-    addRestriction,
+    saving,
+    searchQuery,
+    setSearchQuery,
+    filteredAllergies,
+    filteredPreferences,
+    customRestrictions,
+    isSelected,
+    toggleRestriction,
     removeRestriction,
-    setCurrentStep,
-    previousStep,
-  } = useOnboardingStore();
-
-  useEffect(() => {
-    setCurrentStep(1);
-  }, []);
-
-  // Filter restrictions by search
-  const filteredAllergies = useMemo(() => {
-    if (!searchQuery.trim()) return allergies;
-    const query = searchQuery.toLowerCase();
-    return allergies.filter((a) => {
-      const translatedLabel = t(a.labelKey, { defaultValue: a.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || a.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [searchQuery, t]);
-
-  const filteredPreferences = useMemo(() => {
-    if (!searchQuery.trim()) return preferences;
-    const query = searchQuery.toLowerCase();
-    return preferences.filter((p) => {
-      const translatedLabel = t(p.labelKey, { defaultValue: p.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || p.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [searchQuery, t]);
-
-  // Get custom restrictions
-  const customRestrictions = restrictions.filter(
-    (r) => r.customValue && !allergies.find((a) => a.id === r.id) && !preferences.find((p) => p.id === r.id)
-  );
-
-  const isSelected = (id: string) => restrictions.some((r) => r.id === id);
-
-  const toggleRestriction = (restriction: DietaryRestriction) => {
-    if (isSelected(restriction.id)) {
-      removeRestriction(restriction.id);
-    } else {
-      addRestriction({
-        id: restriction.id,
-        type: restriction.id,
-        isAllergy: restriction.isAllergy,
-      });
-    }
-  };
-
-  const handleAddCustom = () => {
-    if (!customValue.trim()) return;
-
-    const id = `custom_${Date.now()}`;
-    addRestriction({
-      id,
-      type: 'custom',
-      customValue: customValue.trim(),
-      isAllergy: customIsAllergy,
-    });
-
-    setCustomValue('');
-    setShowCustomSheet(false);
-  };
-
-  const handleNext = async () => {
-    setSaving(true);
-    try {
-      await profileService.saveRestrictions(
-        restrictions.map((r) => ({
-          restriction_type: r.type,
-          custom_value: r.customValue,
-          is_allergy: r.isAllergy,
-        }))
-      );
-      router.push('/(onboarding)/step-3' as any);
-    } catch (error) {
-      console.error('Error saving restrictions:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleBack = () => {
-    previousStep();
-    router.back();
-  };
-
-  const stepLabels = [
-    t('onboarding.steps.basics'),
-    t('onboarding.steps.diet'),
-    t('onboarding.steps.preferences'),
-  ];
+    showCustomSheet,
+    setShowCustomSheet,
+    customValue,
+    setCustomValue,
+    customIsAllergy,
+    setCustomIsAllergy,
+    handleAddCustom,
+    stepLabels,
+    handleNext,
+    handleBack,
+  } = useOnboardingStep2();
 
   const renderChip = (item: DietaryRestriction) => (
     <Chip

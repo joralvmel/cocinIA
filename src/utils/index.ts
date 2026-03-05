@@ -46,6 +46,9 @@ export {
   TIME_CHIPS,
 } from './recipeHelpers';
 
+// Validation
+export { validateEmail } from './validation';
+
 // Profile option builders
 export {
   getGenderOptions,

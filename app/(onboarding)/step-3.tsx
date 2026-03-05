@@ -1,6 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
 import { View, Text, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -9,62 +7,22 @@ import {
   Chip,
   StepperProgress,
 } from '@/components/ui';
-import { useOnboardingStore } from '@/stores';
-import { profileService } from '@/services';
-import { cuisines } from '@/constants';
+import { useOnboardingStep3 } from '@/hooks/useOnboardingStep3';
 
 export default function OnboardingStep3() {
-  const router = useRouter();
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
   const {
+    saving,
+    searchQuery,
+    setSearchQuery,
     preferredCuisines,
+    filteredCuisines,
+    isSelected,
     toggleCuisine,
-    setCurrentStep,
-    previousStep,
-  } = useOnboardingStore();
-
-  useEffect(() => {
-    setCurrentStep(2);
-  }, []);
-
-  // Filter cuisines by search
-  const filteredCuisines = useMemo(() => {
-    if (!searchQuery.trim()) return cuisines;
-    const query = searchQuery.toLowerCase();
-    return cuisines.filter((c) => {
-      const translatedLabel = t(c.labelKey, { defaultValue: c.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || c.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [searchQuery, t]);
-
-  const isSelected = (id: string) => preferredCuisines.includes(id);
-
-  const handleNext = async () => {
-    setSaving(true);
-    try {
-      await profileService.saveCuisinePreferences(preferredCuisines);
-      router.push('/(onboarding)/complete' as any);
-    } catch (error) {
-      console.error('Error saving cuisines:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-
-  const handleBack = () => {
-    previousStep();
-    router.back();
-  };
-
-  const stepLabels = [
-    t('onboarding.steps.basics'),
-    t('onboarding.steps.diet'),
-    t('onboarding.steps.preferences'),
-  ];
+    stepLabels,
+    handleNext,
+    handleBack,
+  } = useOnboardingStep3();
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">

@@ -1,46 +1,20 @@
-import { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Logo, Loader } from '@/components/ui';
-import { useOnboardingStore } from '@/stores';
-import { profileService } from '@/services';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useOnboardingComplete } from '@/hooks/useOnboardingComplete';
 
 export default function OnboardingComplete() {
-  const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const [completing, setCompleting] = useState(false);
-  const [completed, setCompleted] = useState(false);
-
-  const { displayName, reset } = useOnboardingStore();
-
-  // Complete onboarding when screen loads
-  useEffect(() => {
-    const completeOnboarding = async () => {
-      setCompleting(true);
-      try {
-        await profileService.completeOnboarding();
-        setCompleted(true);
-      } catch (error) {
-        console.error('Error completing onboarding:', error);
-      } finally {
-        setCompleting(false);
-      }
-    };
-
-    completeOnboarding();
-  }, []);
-
-  const handleGetStarted = () => {
-    // Clear the onboarding store
-    reset();
-    // Navigate to home
-    router.replace('/(app)/home');
-  };
+  const {
+    completing,
+    completed,
+    displayName,
+    handleGetStarted,
+  } = useOnboardingComplete();
 
   if (completing) {
     return (
@@ -119,6 +93,10 @@ export default function OnboardingComplete() {
     </SafeAreaView>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  FeatureItem – Presentational sub-component (co-located)            */
+/* ------------------------------------------------------------------ */
 
 interface FeatureItemProps {
   icon: keyof typeof FontAwesome.glyphMap;
