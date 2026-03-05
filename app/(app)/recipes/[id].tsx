@@ -22,7 +22,7 @@ import {
   TagsRow,
   EditRecipeSheet,
   PhotoOptionsSheet,
-} from '@/features';
+} from '@/components/recipes';
 import { useRecipeDetail, useRecipeImage } from '@/hooks';
 
 export default function RecipeDetailScreen() {

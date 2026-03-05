@@ -28,3 +28,7 @@ export { useOnboardingStep2 } from './useOnboardingStep2';
 export { useOnboardingStep3 } from './useOnboardingStep3';
 export { useOnboardingComplete } from './useOnboardingComplete';
 
+// Recipe generation hooks
+export { useRecipeFilters, type UseRecipeFiltersOptions, type ChipOption } from './useRecipeFilters';
+export { useRecipeResult, type UseRecipeResultOptions } from './useRecipeResult';
+

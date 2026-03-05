@@ -5,3 +5,10 @@
 
 // Re-export all UI components
 export * from './ui';
+
+// Re-export home screen components
+export * from './home';
+
+// Re-export recipe domain components
+export * from './recipes';
+

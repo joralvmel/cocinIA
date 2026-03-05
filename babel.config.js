@@ -13,7 +13,6 @@ module.exports = function (api) {
                     alias: {
                         "@/components": "./src/components",
                         "@/config": "./src/config",
-                        "@/features": "./src/features",
                         "@/hooks": "./src/hooks",
                         "@/services": "./src/services",
                         "@/stores": "./src/stores",
@@ -21,6 +20,8 @@ module.exports = function (api) {
                         "@/utils": "./src/utils",
                         "@/constants": "./src/constants",
                         "@/i18n": "./src/i18n",
+                        "@/assets": "./src/assets",
+                        "@/contexts": "./src/contexts",
                     },
                 },
             ],

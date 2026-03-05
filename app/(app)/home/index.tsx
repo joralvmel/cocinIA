@@ -2,13 +2,12 @@ import { View, KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-na
 import { useTranslation } from 'react-i18next';
 import { Input, AlertModal, Loader } from '@/components/ui';
 import {
-  RecipeFiltersModal,
-  RecipeResultModal,
   HomeHeader,
   RestrictionsBanner,
   ActiveFiltersBar,
   GenerateFAB,
-} from '@/features';
+} from '@/components/home';
+import { RecipeFiltersModal, RecipeResultModal } from '@/components/recipes';
 import { useRecipeGenerationStore } from '@/stores';
 import { useKeyboardHeight, useUserProfile, useGenerateRecipe } from '@/hooks';
 import { hasActiveFilters, buildActiveFilterChips } from '@/utils';
