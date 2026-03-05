@@ -28,3 +28,10 @@ export {
 // Recipe events
 export { recipeEvents } from './recipeEvents';
 
+// Recipe filter helpers
+export {
+  hasActiveFilters,
+  buildActiveFilterChips,
+  type FilterChip,
+} from './recipeFilters';
+

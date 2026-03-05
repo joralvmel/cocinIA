@@ -3,4 +3,4 @@
  * Organize code by domain/functionality
  */
 
-export { RecipeFiltersModal, RecipeResultModal } from './recipes';
+export { RecipeFiltersModal, RecipeResultModal, HomeHeader, RestrictionsBanner, ActiveFiltersBar, GenerateFAB } from './recipes';
