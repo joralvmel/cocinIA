@@ -1,6 +1,5 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, BackHandler } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,380 +14,32 @@ import {
   BottomSheet,
   type ActionOption,
 } from '@/components/ui';
-import { profileService } from '@/services';
-import { useProfileStore } from '@/stores/profileStore';
-import {
-  allergies,
-  preferences,
-  cuisines,
-  equipment as equipmentList,
-  type DietaryRestriction,
-} from '@/constants';
 import { useAppTheme } from '@/hooks/useAppTheme';
-
-interface RestrictionState {
-  id: string;
-  type: string;
-  customValue?: string;
-  isAllergy: boolean;
-  isSelected: boolean;
-}
-
-interface CuisineState {
-  id: string;
-  type: string;
-  customName?: string;
-  isSelected: boolean;
-}
-
-interface EquipmentState {
-  id: string;
-  type: string;
-  customName?: string;
-  isSelected: boolean;
-}
-
+import { useEditPreferencesForm } from '@/hooks';
 
 export default function EditPreferencesScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const isNavigating = useRef(false);
 
-  // Seed from shared store (populated by home screen) for instant display
-  const { profile: cachedProfile, restrictions: cachedRestrictions, equipment: cachedEquipment, customCuisines: cachedCustomCuisines, isLoaded: storeLoaded } = useProfileStore();
+  const form = useEditPreferencesForm();
 
-  const [loading, setLoading] = useState(!storeLoaded);
-  const [saving, setSaving] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
-
-  // Helper to build state from raw data
-  const buildStateFromData = (
-    profile: typeof cachedProfile,
-    restrictions: typeof cachedRestrictions,
-    equipment: typeof cachedEquipment,
-    customCuisinesData: typeof cachedCustomCuisines,
-  ) => {
-    const predefinedCuisineIds = cuisines.map(c => c.id);
-    const legacyCuisines = ((profile?.preferred_cuisines) || [])
-      .filter(c => predefinedCuisineIds.includes(c))
-      .map(c => ({ id: c, type: c, isSelected: true }));
-    const dbCuisines = (customCuisinesData || []).map(c => ({
-      id: c.id,
-      type: c.cuisine_type,
-      customName: c.custom_name || undefined,
-      isSelected: true,
-    }));
-    const newRestrictions = (restrictions || []).map(r => ({
-      id: r.id,
-      type: r.restriction_type,
-      customValue: (r as any).custom_value || undefined,
-      isAllergy: (r as any).is_allergy,
-      isSelected: true,
-    }));
-    const newEquipment = (equipment || []).map(e => ({
-      id: e.id,
-      type: e.equipment_type,
-      customName: e.custom_name || undefined,
-      isSelected: true,
-    }));
-    return { restrictions: newRestrictions, cuisines: [...legacyCuisines, ...dbCuisines], equipment: newEquipment };
-  };
-
-  // Seed initial state from store if available
-  const initialState = storeLoaded ? buildStateFromData(cachedProfile, cachedRestrictions, cachedEquipment, cachedCustomCuisines) : { restrictions: [], cuisines: [], equipment: [] };
-
-  // Form state
-  const [selectedRestrictions, setSelectedRestrictions] = useState<RestrictionState[]>(initialState.restrictions);
-  const [selectedCuisines, setSelectedCuisines] = useState<CuisineState[]>(initialState.cuisines);
-  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentState[]>(initialState.equipment);
-
-  // Custom input
+  // UI-only state
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customValue, setCustomValue] = useState('');
-  const [customType, setCustomType] = useState<'allergy' | 'preference' | 'cuisine' | 'equipment'>('allergy');
 
-  // Global search
-  const [globalSearch, setGlobalSearch] = useState('');
+  // FAB options
+  const customActionOptions: ActionOption[] = [
+    { id: 'allergy', label: t('profile.addAllergy' as any), icon: 'exclamation-triangle', color: 'red', onPress: () => { form.openCustomInput('allergy'); setShowCustomInput(true); } },
+    { id: 'preference', label: t('profile.addPreference' as any), icon: 'leaf', color: 'green', onPress: () => { form.openCustomInput('preference'); setShowCustomInput(true); } },
+    { id: 'cuisine', label: t('profile.addCuisine' as any), icon: 'cutlery', color: 'amber', onPress: () => { form.openCustomInput('cuisine'); setShowCustomInput(true); } },
+    { id: 'equipment', label: t('profile.addEquipment' as any), icon: 'wrench', color: 'blue', onPress: () => { form.openCustomInput('equipment'); setShowCustomInput(true); } },
+  ];
 
-  // Load profile data
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const [profile, restrictions, equipment, cuisineData] = await Promise.all([
-        profileService.getProfile(),
-        profileService.getRestrictions(),
-        profileService.getEquipment(),
-        profileService.getCuisines(),
-      ]);
-
-      const mappedCuisines = (cuisineData || []).map(c => ({
-        id: c.id,
-        cuisine_type: c.cuisine_type,
-        custom_name: c.custom_name,
-      }));
-
-      const state = buildStateFromData(profile, restrictions as any, equipment as any, mappedCuisines);
-      setSelectedRestrictions(state.restrictions);
-      setSelectedCuisines(state.cuisines);
-      setSelectedEquipment(state.equipment);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      // Save only selected restrictions
-      await profileService.saveRestrictions(
-        selectedRestrictions
-          .filter(r => r.isSelected)
-          .map((r) => ({
-            restriction_type: r.type,
-            custom_value: r.customValue,
-            is_allergy: r.isAllergy,
-          }))
-      );
-
-      // Save only selected equipment
-      await profileService.saveEquipment(
-        selectedEquipment
-          .filter(e => e.isSelected)
-          .map((e) => ({
-            equipment_type: e.type,
-            custom_name: e.customName,
-          }))
-      );
-
-      // Save only selected cuisines to profile_cuisines table
-      const customCuisines = selectedCuisines.filter(c => c.customName && c.isSelected);
-      await profileService.saveCuisines(
-        customCuisines.map((c) => ({
-          cuisine_type: c.type,
-          custom_name: c.customName,
-        }))
-      );
-
-      // Save only selected predefined cuisines to profile
-      const predefinedCuisineIds = cuisines.map(c => c.id);
-      const predefinedCuisines = selectedCuisines
-        .filter(c => predefinedCuisineIds.includes(c.type) && !c.customName && c.isSelected)
-        .map(c => c.type);
-
-      await profileService.updateProfile({
-        preferred_cuisines: predefinedCuisines,
-      });
-
-
-      return true;
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      setAlertVisible(true);
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Auto-save when navigating back
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        if (saving || isNavigating.current) return true; // Block back during save
-        isNavigating.current = true;
-        handleSave().then(() => {
-          router.back();
-        });
-        return true;
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [selectedRestrictions, selectedCuisines, selectedEquipment, saving])
-  );
-
-  const handleBack = async () => {
-    if (saving || isNavigating.current) return;
-    isNavigating.current = true;
-    await handleSave();
-    router.back();
-  };
-
-  const handleAlertClose = () => {
-    setAlertVisible(false);
-  };
-
-  // Filter lists
-  const filteredAllergies = useMemo(() => {
-    if (!globalSearch.trim()) return allergies;
-    const query = globalSearch.toLowerCase();
-    return allergies.filter((a) => {
-      const translatedLabel = t(a.labelKey, { defaultValue: a.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || a.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [globalSearch, t]);
-
-  const filteredPreferences = useMemo(() => {
-    if (!globalSearch.trim()) return preferences;
-    const query = globalSearch.toLowerCase();
-    return preferences.filter((p) => {
-      const translatedLabel = t(p.labelKey, { defaultValue: p.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || p.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [globalSearch, t]);
-
-  const filteredCuisines = useMemo(() => {
-    if (!globalSearch.trim()) return cuisines;
-    const query = globalSearch.toLowerCase();
-    return cuisines.filter((c) => {
-      const translatedLabel = t(c.labelKey, { defaultValue: c.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || c.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [globalSearch, t]);
-
-  const filteredEquipment = useMemo(() => {
-    if (!globalSearch.trim()) return equipmentList;
-    const query = globalSearch.toLowerCase();
-    return equipmentList.filter((e) => {
-      const translatedLabel = t(e.labelKey, { defaultValue: e.defaultLabel });
-      return translatedLabel.toLowerCase().includes(query) || e.defaultLabel.toLowerCase().includes(query);
-    });
-  }, [globalSearch, t]);
-
-  // Get custom items
-  const customAllergies = selectedRestrictions.filter(r => r.customValue && r.isAllergy);
-  const customPreferences = selectedRestrictions.filter(r => r.customValue && !r.isAllergy);
-  const customCuisines = selectedCuisines.filter(c => c.customName);
-  const customEquipment = selectedEquipment.filter(e => e.customName);
-
-  // Check functions
-  const isRestrictionSelected = (id: string) => selectedRestrictions.some((r) => r.type === id && r.isSelected);
-
-  const toggleRestriction = (restriction: DietaryRestriction) => {
-    const existing = selectedRestrictions.find(r => r.type === restriction.id);
-    if (existing) {
-      // Toggle the isSelected state
-      setSelectedRestrictions((prev) =>
-        prev.map((r) =>
-          r.id === existing.id ? { ...r, isSelected: !r.isSelected } : r
-        )
-      );
-    } else {
-      // Add new restriction in selected state
-      setSelectedRestrictions((prev) => [
-        ...prev,
-        {
-          id: `new_${Date.now()}`,
-          type: restriction.id,
-          isAllergy: restriction.isAllergy,
-          isSelected: true,
-        },
-      ]);
-    }
-  };
-
-  const isCuisineSelected = (id: string) => selectedCuisines.some((c) => c.type === id && c.isSelected);
-
-  const toggleCuisine = (id: string) => {
-    const existing = selectedCuisines.find(c => c.type === id);
-    if (existing) {
-      // Toggle the isSelected state
-      setSelectedCuisines((prev) =>
-        prev.map((c) =>
-          c.id === existing.id ? { ...c, isSelected: !c.isSelected } : c
-        )
-      );
-    } else {
-      // Add new cuisine in selected state
-      setSelectedCuisines((prev) => [...prev, { id: `new_${Date.now()}`, type: id, isSelected: true }]);
-    }
-  };
-
-  const isEquipmentSelected = (id: string) => selectedEquipment.some((e) => e.type === id && e.isSelected);
-
-  const toggleEquipment = (id: string) => {
-    const existing = selectedEquipment.find(e => e.type === id);
-    if (existing) {
-      // Toggle the isSelected state
-      setSelectedEquipment((prev) =>
-        prev.map((e) =>
-          e.id === existing.id ? { ...e, isSelected: !e.isSelected } : e
-        )
-      );
-    } else {
-      // Add new equipment in selected state
-      setSelectedEquipment((prev) => [...prev, { id: `new_${Date.now()}`, type: id, isSelected: true }]);
-    }
-  };
-
-  // Remove custom items
-  const removeCustomRestriction = (id: string) => {
-    setSelectedRestrictions((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const removeCustomCuisine = (id: string) => {
-    setSelectedCuisines((prev) => prev.filter((c) => c.id !== id));
-  };
-
-  const removeCustomEquipment = (id: string) => {
-    setSelectedEquipment((prev) => prev.filter((e) => e.id !== id));
-  };
-
-
-  // Add custom item
-  const handleAddCustom = () => {
-    if (!customValue.trim()) return;
-
-    const id = `custom_${Date.now()}`;
-    const value = customValue.trim();
-
-    if (customType === 'allergy') {
-      setSelectedRestrictions((prev) => [
-        ...prev,
-        { id, type: 'custom', customValue: value, isAllergy: true, isSelected: true },
-      ]);
-    } else if (customType === 'preference') {
-      setSelectedRestrictions((prev) => [
-        ...prev,
-        { id, type: 'custom', customValue: value, isAllergy: false, isSelected: true },
-      ]);
-    } else if (customType === 'cuisine') {
-      setSelectedCuisines((prev) => [
-        ...prev,
-        { id, type: 'custom', customName: value, isSelected: true },
-      ]);
-    } else if (customType === 'equipment') {
-      setSelectedEquipment((prev) => [
-        ...prev,
-        { id, type: 'custom', customName: value, isSelected: true },
-      ]);
-    }
-
-    setCustomValue('');
+  const handleAddCustomAndClose = () => {
+    form.handleAddCustom();
     setShowCustomInput(false);
   };
 
-  const openCustomInput = (type: typeof customType) => {
-    setCustomType(type);
-    setShowCustomInput(true);
-  };
-
-  const customActionOptions: ActionOption[] = [
-    { id: 'allergy', label: t('profile.addAllergy' as any), icon: 'exclamation-triangle', color: 'red', onPress: () => openCustomInput('allergy') },
-    { id: 'preference', label: t('profile.addPreference' as any), icon: 'leaf', color: 'green', onPress: () => openCustomInput('preference') },
-    { id: 'cuisine', label: t('profile.addCuisine' as any), icon: 'cutlery', color: 'amber', onPress: () => openCustomInput('cuisine') },
-    { id: 'equipment', label: t('profile.addEquipment' as any), icon: 'wrench', color: 'blue', onPress: () => openCustomInput('equipment') },
-  ];
-
-  if (loading || saving) {
+  if (form.loading || form.saving) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <Loader size="lg" />
@@ -399,7 +50,7 @@ export default function EditPreferencesScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.cookingPreferences')} onBack={handleBack} />
+        <ScreenHeader title={t('profile.cookingPreferences')} onBack={form.handleBack} />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -408,189 +59,124 @@ export default function EditPreferencesScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Global Search */}
-            <SearchInput
-              value={globalSearch}
-              onChangeText={setGlobalSearch}
-              placeholder={t('common.searchAll' as any)}
-              className="mb-4"
-            />
+            <SearchInput value={form.globalSearch} onChangeText={form.setGlobalSearch} placeholder={t('common.searchAll' as any)} className="mb-4" />
 
-            {/* Dietary Restrictions - Allergies */}
+            {/* Allergies */}
             <Section title={`⚠️ ${t('profile.allergies')}`} className="mb-4">
               <View className="flex-row flex-wrap gap-2 mt-2">
-                {/* Predefined allergies */}
-                {filteredAllergies.map((item) => (
-                  <Chip
-                    key={item.id}
-                    label={`${item.icon || ''} ${t(item.labelKey, { defaultValue: item.defaultLabel })}`}
-                    selected={isRestrictionSelected(item.id)}
-                    onPress={() => toggleRestriction(item)}
-                    size="sm"
-                  />
+                {form.filteredAllergies.map((item) => (
+                  <Chip key={item.id} label={`${item.icon || ''} ${t(item.labelKey, { defaultValue: item.defaultLabel })}`} selected={form.isRestrictionSelected(item.id)} onPress={() => form.toggleRestriction(item)} size="sm" />
                 ))}
               </View>
-              {/* Custom allergies mixed with predefined */}
-              {selectedRestrictions.filter(r => r.isAllergy && r.customValue).length > 0 && (
+              {form.selectedRestrictions.filter((r) => r.isAllergy && r.customValue).length > 0 && (
                 <View className="flex-row flex-wrap gap-2 mt-3">
-                  {selectedRestrictions
-                    .filter(r => r.isAllergy && r.customValue)
+                  {form.selectedRestrictions
+                    .filter((r) => r.isAllergy && r.customValue)
                     .map((item) => (
                       <Chip
                         key={item.id}
                         label={`⚠️ ${item.customValue}`}
                         selected={item.isSelected}
-                        onPress={() => {
-                          setSelectedRestrictions((prev) =>
-                            prev.map((r) =>
-                              r.id === item.id ? { ...r, isSelected: !r.isSelected } : r
-                            )
-                          );
-                        }}
-                        onRemove={() => removeCustomRestriction(item.id)}
+                        onPress={() => form.setSelectedRestrictions((prev) => prev.map((r) => (r.id === item.id ? { ...r, isSelected: !r.isSelected } : r)))}
+                        onRemove={() => form.removeCustomRestriction(item.id)}
                         size="sm"
                       />
                     ))}
                 </View>
               )}
-              {/* Counter */}
-              {(selectedRestrictions.filter(r => r.isAllergy && r.isSelected).length > 0) && (
+              {form.selectedRestrictions.filter((r) => r.isAllergy && r.isSelected).length > 0 && (
                 <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                  {t('profile.selectedCount', { count: selectedRestrictions.filter(r => r.isAllergy && r.isSelected).length })}
+                  {t('profile.selectedCount', { count: form.selectedRestrictions.filter((r) => r.isAllergy && r.isSelected).length })}
                 </Text>
               )}
             </Section>
 
-            {/* Dietary Restrictions - Preferences */}
+            {/* Preferences */}
             <Section title={`🥗 ${t('profile.preferences')}`} className="mb-4">
               <View className="flex-row flex-wrap gap-2 mt-2">
-                {/* Predefined preferences */}
-                {filteredPreferences.map((item) => (
-                  <Chip
-                    key={item.id}
-                    label={`${item.icon || ''} ${t(item.labelKey, { defaultValue: item.defaultLabel })}`}
-                    selected={isRestrictionSelected(item.id)}
-                    onPress={() => toggleRestriction(item)}
-                    size="sm"
-                  />
+                {form.filteredPreferences.map((item) => (
+                  <Chip key={item.id} label={`${item.icon || ''} ${t(item.labelKey, { defaultValue: item.defaultLabel })}`} selected={form.isRestrictionSelected(item.id)} onPress={() => form.toggleRestriction(item)} size="sm" />
                 ))}
               </View>
-              {/* Custom preferences mixed with predefined */}
-              {selectedRestrictions.filter(r => !r.isAllergy && r.customValue).length > 0 && (
+              {form.selectedRestrictions.filter((r) => !r.isAllergy && r.customValue).length > 0 && (
                 <View className="flex-row flex-wrap gap-2 mt-3">
-                  {selectedRestrictions
-                    .filter(r => !r.isAllergy && r.customValue)
+                  {form.selectedRestrictions
+                    .filter((r) => !r.isAllergy && r.customValue)
                     .map((item) => (
                       <Chip
                         key={item.id}
                         label={`🥗 ${item.customValue}`}
                         selected={item.isSelected}
-                        onPress={() => {
-                          setSelectedRestrictions((prev) =>
-                            prev.map((r) =>
-                              r.id === item.id ? { ...r, isSelected: !r.isSelected } : r
-                            )
-                          );
-                        }}
-                        onRemove={() => removeCustomRestriction(item.id)}
+                        onPress={() => form.setSelectedRestrictions((prev) => prev.map((r) => (r.id === item.id ? { ...r, isSelected: !r.isSelected } : r)))}
+                        onRemove={() => form.removeCustomRestriction(item.id)}
                         size="sm"
                       />
                     ))}
                 </View>
               )}
-              {/* Counter */}
-              {(selectedRestrictions.filter(r => !r.isAllergy && r.isSelected).length > 0) && (
+              {form.selectedRestrictions.filter((r) => !r.isAllergy && r.isSelected).length > 0 && (
                 <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                  {t('profile.selectedCount', { count: selectedRestrictions.filter(r => !r.isAllergy && r.isSelected).length })}
+                  {t('profile.selectedCount', { count: form.selectedRestrictions.filter((r) => !r.isAllergy && r.isSelected).length })}
                 </Text>
               )}
             </Section>
 
-            {/* Favorite Cuisines */}
+            {/* Cuisines */}
             <Section title={`🍳 ${t('profile.favoriteCuisines')}`} className="mb-4">
               <View className="flex-row flex-wrap gap-2 mt-2">
-                {/* Predefined cuisines */}
-                {filteredCuisines.map((cuisine) => (
-                  <Chip
-                    key={cuisine.id}
-                    label={`${cuisine.icon} ${t(cuisine.labelKey, { defaultValue: cuisine.defaultLabel })}`}
-                    selected={isCuisineSelected(cuisine.id)}
-                    onPress={() => toggleCuisine(cuisine.id)}
-                    size="sm"
-                  />
+                {form.filteredCuisines.map((cuisine) => (
+                  <Chip key={cuisine.id} label={`${cuisine.icon} ${t(cuisine.labelKey, { defaultValue: cuisine.defaultLabel })}`} selected={form.isCuisineSelected(cuisine.id)} onPress={() => form.toggleCuisine(cuisine.id)} size="sm" />
                 ))}
               </View>
-              {/* Custom cuisines - can be toggled AND removed */}
-              {selectedCuisines.filter(c => c.customName).length > 0 && (
+              {form.selectedCuisines.filter((c) => c.customName).length > 0 && (
                 <View className="flex-row flex-wrap gap-2 mt-3">
-                  {selectedCuisines
-                    .filter(c => c.customName)
+                  {form.selectedCuisines
+                    .filter((c) => c.customName)
                     .map((item) => (
                       <Chip
                         key={item.id}
                         label={`🍽️ ${item.customName}`}
                         selected={item.isSelected}
-                        onPress={() => {
-                          setSelectedCuisines((prev) =>
-                            prev.map((c) =>
-                              c.id === item.id ? { ...c, isSelected: !c.isSelected } : c
-                            )
-                          );
-                        }}
-                        onRemove={() => removeCustomCuisine(item.id)}
+                        onPress={() => form.setSelectedCuisines((prev) => prev.map((c) => (c.id === item.id ? { ...c, isSelected: !c.isSelected } : c)))}
+                        onRemove={() => form.removeCustomCuisine(item.id)}
                         size="sm"
                       />
                     ))}
                 </View>
               )}
-              {/* Counter */}
-              {selectedCuisines.filter(c => c.isSelected).length > 0 && (
+              {form.selectedCuisines.filter((c) => c.isSelected).length > 0 && (
                 <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                  {t('profile.selectedCount', { count: selectedCuisines.filter(c => c.isSelected).length })}
+                  {t('profile.selectedCount', { count: form.selectedCuisines.filter((c) => c.isSelected).length })}
                 </Text>
               )}
             </Section>
 
-            {/* Kitchen Equipment */}
+            {/* Equipment */}
             <Section title={`🔧 ${t('profile.equipment')}`} className="mb-4">
               <View className="flex-row flex-wrap gap-2 mt-2">
-                {/* Predefined equipment */}
-                {filteredEquipment.map((eq) => (
-                  <Chip
-                    key={eq.id}
-                    label={`${eq.icon} ${t(eq.labelKey, { defaultValue: eq.defaultLabel })}`}
-                    selected={isEquipmentSelected(eq.id)}
-                    onPress={() => toggleEquipment(eq.id)}
-                    size="sm"
-                  />
+                {form.filteredEquipment.map((eq) => (
+                  <Chip key={eq.id} label={`${eq.icon} ${t(eq.labelKey, { defaultValue: eq.defaultLabel })}`} selected={form.isEquipmentSelected(eq.id)} onPress={() => form.toggleEquipment(eq.id)} size="sm" />
                 ))}
               </View>
-              {/* Custom equipment - can be toggled AND removed */}
-              {selectedEquipment.filter(e => e.customName).length > 0 && (
+              {form.selectedEquipment.filter((e) => e.customName).length > 0 && (
                 <View className="flex-row flex-wrap gap-2 mt-3">
-                  {selectedEquipment
-                    .filter(e => e.customName)
+                  {form.selectedEquipment
+                    .filter((e) => e.customName)
                     .map((item) => (
                       <Chip
                         key={item.id}
                         label={`🔧 ${item.customName}`}
                         selected={item.isSelected}
-                        onPress={() => {
-                          setSelectedEquipment((prev) =>
-                            prev.map((e) =>
-                              e.id === item.id ? { ...e, isSelected: !e.isSelected } : e
-                            )
-                          );
-                        }}
-                        onRemove={() => removeCustomEquipment(item.id)}
+                        onPress={() => form.setSelectedEquipment((prev) => prev.map((e) => (e.id === item.id ? { ...e, isSelected: !e.isSelected } : e)))}
+                        onRemove={() => form.removeCustomEquipment(item.id)}
                         size="sm"
                       />
                     ))}
                 </View>
               )}
-              {/* Counter */}
-              {selectedEquipment.filter(e => e.isSelected).length > 0 && (
+              {form.selectedEquipment.filter((e) => e.isSelected).length > 0 && (
                 <Text className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                  {t('profile.selectedCount', { count: selectedEquipment.filter(e => e.isSelected).length })}
+                  {t('profile.selectedCount', { count: form.selectedEquipment.filter((e) => e.isSelected).length })}
                 </Text>
               )}
             </Section>
@@ -599,49 +185,24 @@ export default function EditPreferencesScreen() {
 
         {/* Floating Add Button */}
         <View className="absolute bottom-6 right-6">
-          <MultiActionButton
-            icon="plus"
-            options={customActionOptions}
-            variant="floating"
-            floatingColor="primary-500"
-            loading={saving}
-          />
+          <MultiActionButton icon="plus" options={customActionOptions} variant="floating" floatingColor="primary-500" loading={form.saving} />
         </View>
 
         {/* Custom Input BottomSheet */}
-        <BottomSheet
-          visible={showCustomInput}
-          onClose={() => setShowCustomInput(false)}
-          title={t('profile.addCustom')}
-          showOkButton
-          okLabel={t('common.add')}
-          onOk={handleAddCustom}
-        >
+        <BottomSheet visible={showCustomInput} onClose={() => setShowCustomInput(false)} title={t('profile.addCustom')} showOkButton okLabel={t('common.add')} onOk={handleAddCustomAndClose}>
           <View className="gap-4 pb-4">
             <Text className="text-gray-600 dark:text-gray-400">
-              {customType === 'allergy' && t('profile.addAllergyDesc' as any)}
-              {customType === 'preference' && t('profile.addPreferenceDesc' as any)}
-              {customType === 'cuisine' && t('profile.addCuisineDesc' as any)}
-              {customType === 'equipment' && t('profile.addEquipmentDesc' as any)}
+              {form.customType === 'allergy' && t('profile.addAllergyDesc' as any)}
+              {form.customType === 'preference' && t('profile.addPreferenceDesc' as any)}
+              {form.customType === 'cuisine' && t('profile.addCuisineDesc' as any)}
+              {form.customType === 'equipment' && t('profile.addEquipmentDesc' as any)}
             </Text>
-            <Input
-              placeholder={t('profile.customValuePlaceholder' as any)}
-              value={customValue}
-              onChangeText={setCustomValue}
-              showClearButton
-            />
+            <Input placeholder={t('profile.customValuePlaceholder' as any)} value={form.customValue} onChangeText={form.setCustomValue} showClearButton />
           </View>
         </BottomSheet>
 
-        {/* Alert Modal */}
-        <AlertModal
-          visible={alertVisible}
-          onClose={handleAlertClose}
-          title={t('common.error')}
-          message={t('profile.updateError')}
-          variant="danger"
-          confirmLabel={t('common.ok')}
-        />
+        {/* Alert */}
+        <AlertModal visible={form.alertVisible} onClose={() => form.setAlertVisible(false)} title={t('common.error')} message={t('profile.updateError')} variant="danger" confirmLabel={t('common.ok')} />
       </SafeAreaView>
     </View>
   );

@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, BackHandler } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useState } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,200 +14,33 @@ import {
   SearchInput,
   type ActionOption,
 } from '@/components/ui';
-import { profileService, recipeService } from '@/services';
-import { useProfileStore } from '@/stores/profileStore';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useEditIngredientsForm } from '@/hooks';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-interface IngredientState {
-  id: string;
-  ingredientName: string;
-  alwaysAvailable: boolean;
-}
-
 export default function EditIngredientsScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const isNavigating = useRef(false);
 
-  // Seed from store for instant display
-  const { favoriteIngredients: cachedIngredients, isLoaded: storeLoaded } = useProfileStore();
-  const seedIngredients = storeLoaded
-    ? cachedIngredients.map((i, idx) => ({
-        id: `cached_${idx}`,
-        ingredientName: i.ingredient_name,
-        alwaysAvailable: i.is_always_available,
-      }))
-    : [];
+  const form = useEditIngredientsForm();
 
-  const [loading, setLoading] = useState(!storeLoaded);
-  const [saving, setSaving] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
-
-  // Form state — pre-filled from store
-  const [ingredients, setIngredients] = useState<IngredientState[]>(seedIngredients);
-
-  // New ingredient input
+  // UI-only state
   const [showAddInput, setShowAddInput] = useState(false);
-  const [newIngredientName, setNewIngredientName] = useState('');
-  const [newAlwaysAvailable, setNewAlwaysAvailable] = useState(false);
-
-  // Ingredients from saved recipes
-  const [recipeIngredients, setRecipeIngredients] = useState<string[]>([]);
   const [showRecipeIngredients, setShowRecipeIngredients] = useState(false);
-
-  // Recipe ingredients search
   const [recipeSearch, setRecipeSearch] = useState('');
 
-  // Load ingredients on mount
-  useEffect(() => {
-    loadIngredients();
-  }, []);
+  // FAB actions
+  const addActionOptions: ActionOption[] = [
+    { id: 'manual', label: t('profile.addManual' as any), icon: 'pencil', color: 'primary', onPress: () => setShowAddInput(true) },
+    { id: 'from-recipes', label: t('profile.fromRecipes' as any), icon: 'book', color: 'amber', onPress: () => setShowRecipeIngredients(true) },
+  ];
 
-  const loadIngredients = async () => {
-    try {
-      setLoading(true);
-      const [data, recipeIngs] = await Promise.all([
-        profileService.getFavoriteIngredients(),
-        recipeService.getIngredientsFromRecipes(),
-      ]);
-      if (data) {
-        setIngredients(
-          data.map((i) => ({
-            id: i.id,
-            ingredientName: i.ingredient_name,
-            alwaysAvailable: i.always_available,
-          }))
-        );
-      }
-      setRecipeIngredients(recipeIngs);
-    } catch (error) {
-      console.error('Error loading ingredients:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (saving) return;
-    setSaving(true);
-    try {
-      await profileService.saveFavoriteIngredients(
-        ingredients.map((i) => ({
-          ingredient_name: i.ingredientName,
-          always_available: i.alwaysAvailable,
-        }))
-      );
-      return true;
-    } catch (error) {
-      console.error('Error saving ingredients:', error);
-      setAlertVisible(true);
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Auto-save when navigating back
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        if (saving || isNavigating.current) return true;
-        isNavigating.current = true;
-        handleSave().then(() => {
-          router.back();
-        });
-        return true;
-      };
-
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [ingredients, saving])
-  );
-
-  // Handle back from ScreenHeader
-  const handleBack = async () => {
-    if (saving || isNavigating.current) return;
-    isNavigating.current = true;
-    await handleSave();
-    router.back();
-  };
-
-  const handleAlertClose = () => {
-    setAlertVisible(false);
-  };
-
-  const handleAddIngredient = () => {
-    if (!newIngredientName.trim()) return;
-
-    const id = `new_${Date.now()}`;
-    setIngredients((prev) => [
-      ...prev,
-      {
-        id,
-        ingredientName: newIngredientName.trim(),
-        alwaysAvailable: newAlwaysAvailable,
-      },
-    ]);
-
-    setNewIngredientName('');
-    setNewAlwaysAvailable(false);
+  const handleAddAndClose = () => {
+    form.handleAddIngredient();
     setShowAddInput(false);
   };
 
-  const addIngredientFromRecipe = (name: string) => {
-    // Toggle: if already in favorites, remove it; otherwise add it
-    if (isIngredientInFavorites(name)) {
-      setIngredients((prev) => prev.filter(i => i.ingredientName.toLowerCase() !== name.toLowerCase()));
-      return;
-    }
-    const id = `recipe_${Date.now()}`;
-    setIngredients((prev) => [
-      ...prev,
-      {
-        id,
-        ingredientName: name,
-        alwaysAvailable: false,
-      },
-    ]);
-  };
-
-  const isIngredientInFavorites = (name: string) => {
-    return ingredients.some(i => i.ingredientName.toLowerCase() === name.toLowerCase());
-  };
-
-  // Action options for MultiActionButton
-  const addActionOptions: ActionOption[] = [
-    {
-      id: 'manual',
-      label: t('profile.addManual' as any),
-      icon: 'pencil',
-      color: 'primary',
-      onPress: () => setShowAddInput(true)
-    },
-    {
-      id: 'from-recipes',
-      label: t('profile.fromRecipes' as any),
-      icon: 'book',
-      color: 'amber',
-      onPress: () => setShowRecipeIngredients(true)
-    },
-  ];
-
-  const removeIngredient = (id: string) => {
-    setIngredients((prev) => prev.filter((i) => i.id !== id));
-  };
-
-  const toggleAlwaysAvailable = (id: string) => {
-    setIngredients((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, alwaysAvailable: !i.alwaysAvailable } : i
-      )
-    );
-  };
-
-  if (loading || saving) {
+  if (form.loading || form.saving) {
     return (
       <View className="flex-1 items-center justify-center bg-white dark:bg-gray-900">
         <Loader size="lg" />
@@ -219,7 +51,7 @@ export default function EditIngredientsScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.card }}>
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.favoriteIngredients')} onBack={handleBack} />
+        <ScreenHeader title={t('profile.favoriteIngredients')} onBack={form.handleBack} />
 
         <View className="flex-1 bg-white dark:bg-gray-900">
           <ScrollView
@@ -234,9 +66,9 @@ export default function EditIngredientsScreen() {
 
             {/* Ingredients list */}
             <Section title={`🥗 ${t('profile.favoriteIngredients')}`} className="mb-4">
-              {ingredients.length > 0 ? (
+              {form.ingredients.length > 0 ? (
                 <View className="gap-2 mt-2">
-                  {ingredients.map((ingredient) => (
+                  {form.ingredients.map((ingredient) => (
                     <View
                       key={ingredient.id}
                       className="flex-row items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800"
@@ -252,20 +84,14 @@ export default function EditIngredientsScreen() {
                         )}
                       </View>
                       <View className="flex-row items-center gap-3">
-                        <Pressable
-                          onPress={() => toggleAlwaysAvailable(ingredient.id)}
-                          className="p-2"
-                        >
+                        <Pressable onPress={() => form.toggleAlwaysAvailable(ingredient.id)} className="p-2">
                           <FontAwesome
                             name={ingredient.alwaysAvailable ? 'check-circle' : 'circle-o'}
                             size={20}
                             color={ingredient.alwaysAvailable ? colors.primary : colors.textSecondary}
                           />
                         </Pressable>
-                        <Pressable
-                          onPress={() => removeIngredient(ingredient.id)}
-                          className="p-2"
-                        >
+                        <Pressable onPress={() => form.removeIngredient(ingredient.id)} className="p-2">
                           <FontAwesome name="trash-o" size={18} color={colors.error} />
                         </Pressable>
                       </View>
@@ -282,10 +108,10 @@ export default function EditIngredientsScreen() {
             </Section>
 
             {/* Selected count */}
-            {ingredients.length > 0 && (
+            {form.ingredients.length > 0 && (
               <View className="mb-4">
                 <Text className="text-sm text-gray-500 dark:text-gray-400 text-center">
-                  {t('profile.selectedCount', { count: ingredients.length })}
+                  {t('profile.selectedCount', { count: form.ingredients.length })}
                 </Text>
               </View>
             )}
@@ -294,48 +120,26 @@ export default function EditIngredientsScreen() {
 
         {/* Floating Add Button */}
         <View className="absolute bottom-6 right-6">
-          <MultiActionButton
-            icon="plus"
-            options={addActionOptions}
-            variant="floating"
-            floatingColor="primary-500"
-            loading={saving}
-          />
+          <MultiActionButton icon="plus" options={addActionOptions} variant="floating" floatingColor="primary-500" loading={form.saving} />
         </View>
 
         {/* Manual Add BottomSheet */}
         <BottomSheet
           visible={showAddInput}
-          onClose={() => {
-            setShowAddInput(false);
-            setNewIngredientName('');
-            setNewAlwaysAvailable(false);
-          }}
+          onClose={() => { setShowAddInput(false); form.setNewIngredientName(''); form.setNewAlwaysAvailable(false); }}
           title={t('profile.addIngredient')}
           showOkButton
           okLabel={t('common.add')}
-          onOk={handleAddIngredient}
+          onOk={handleAddAndClose}
         >
           <View className="gap-4 pb-4">
-            <Input
-              placeholder={t('profile.ingredientPlaceholder')}
-              value={newIngredientName}
-              onChangeText={setNewIngredientName}
-              showClearButton
-            />
+            <Input placeholder={t('profile.ingredientPlaceholder')} value={form.newIngredientName} onChangeText={form.setNewIngredientName} showClearButton />
             <View className="flex-row items-center justify-between px-1">
               <View className="flex-1 mr-3">
-                <Text className="text-sm text-gray-900 dark:text-gray-50">
-                  {t('profile.alwaysAvailable')}
-                </Text>
-                <Text className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('profile.alwaysAvailableDesc')}
-                </Text>
+                <Text className="text-sm text-gray-900 dark:text-gray-50">{t('profile.alwaysAvailable')}</Text>
+                <Text className="text-xs text-gray-500 dark:text-gray-400">{t('profile.alwaysAvailableDesc')}</Text>
               </View>
-              <Switch
-                value={newAlwaysAvailable}
-                onValueChange={setNewAlwaysAvailable}
-              />
+              <Switch value={form.newAlwaysAvailable} onValueChange={form.setNewAlwaysAvailable} />
             </View>
           </View>
         </BottomSheet>
@@ -343,44 +147,28 @@ export default function EditIngredientsScreen() {
         {/* Recipe Ingredients BottomSheet */}
         <BottomSheet
           visible={showRecipeIngredients}
-          onClose={() => {
-            setShowRecipeIngredients(false);
-            setRecipeSearch('');
-          }}
+          onClose={() => { setShowRecipeIngredients(false); setRecipeSearch(''); }}
           title={t('profile.fromRecipes' as any)}
         >
           <View className="pb-4">
-            {recipeIngredients.length > 0 ? (
+            {form.recipeIngredients.length > 0 ? (
               <>
-                <SearchInput
-                  value={recipeSearch}
-                  onChangeText={setRecipeSearch}
-                  placeholder={t('common.searchAll' as any)}
-                  className="mb-3"
-                />
+                <SearchInput value={recipeSearch} onChangeText={setRecipeSearch} placeholder={t('common.searchAll' as any)} className="mb-3" />
                 <ScrollView className="max-h-72" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  {recipeIngredients
-                    .filter(name => !recipeSearch.trim() || name.toLowerCase().includes(recipeSearch.toLowerCase()))
+                  {form.recipeIngredients
+                    .filter((name) => !recipeSearch.trim() || name.toLowerCase().includes(recipeSearch.toLowerCase()))
                     .map((name) => {
-                      const isAdded = isIngredientInFavorites(name);
+                      const isAdded = form.isIngredientInFavorites(name);
                       return (
                         <Pressable
                           key={name}
-                          onPress={() => addIngredientFromRecipe(name)}
-                          className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${
-                            isAdded ? 'bg-primary-50 dark:bg-primary-900/30' : ''
-                          }`}
+                          onPress={() => form.addIngredientFromRecipe(name)}
+                          className={`flex-row items-center py-3 px-4 rounded-xl mb-1 ${isAdded ? 'bg-primary-50 dark:bg-primary-900/30' : ''}`}
                         >
-                          <Text className={`flex-1 text-base ${
-                            isAdded
-                              ? 'text-primary-600 dark:text-primary-400 font-medium'
-                              : 'text-gray-900 dark:text-gray-50'
-                          }`}>
+                          <Text className={`flex-1 text-base ${isAdded ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-gray-900 dark:text-gray-50'}`}>
                             {name}
                           </Text>
-                          {isAdded && (
-                            <FontAwesome name="check" size={16} color={colors.primary} />
-                          )}
+                          {isAdded && <FontAwesome name="check" size={16} color={colors.primary} />}
                         </Pressable>
                       );
                     })}
@@ -394,15 +182,8 @@ export default function EditIngredientsScreen() {
           </View>
         </BottomSheet>
 
-        {/* Alert Modal */}
-        <AlertModal
-          visible={alertVisible}
-          onClose={handleAlertClose}
-          title={t('common.error')}
-          message={t('profile.updateError')}
-          variant="danger"
-          confirmLabel={t('common.ok')}
-        />
+        {/* Alert */}
+        <AlertModal visible={form.alertVisible} onClose={() => form.setAlertVisible(false)} title={t('common.error')} message={t('profile.updateError')} variant="danger" confirmLabel={t('common.ok')} />
       </SafeAreaView>
     </View>
   );
