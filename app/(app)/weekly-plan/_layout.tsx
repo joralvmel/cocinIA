@@ -31,6 +31,19 @@ export default function WeeklyPlanLayout() {
           headerLargeTitle: false,
         }}
       />
+      <Stack.Screen
+        name="history"
+        options={{
+          headerTitle: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <FontAwesome name="history" size={20} color={colors.primary} />
+              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.primary }}>
+                {t('weeklyPlan.history.title')}
+              </Text>
+            </View>
+          ),
+        }}
+      />
     </Stack>
   );
 }

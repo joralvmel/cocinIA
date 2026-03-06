@@ -1,8 +1,18 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import i18n from '@/i18n';
 import { AIRecipeResponseSchema, type AIRecipeResponse, type RecipeSearchForm, type MealType } from '@/types';
+import {
+  type WeeklyPlanForm,
+  type DayOfWeek,
+  type PlanMealType,
+  type AIPlanMeal,
+  AIPlanMealSchema,
+  type AIWeeklyPlanResponse,
+  type BasePreparation,
+  BasePreparationSchema,
+} from '@/types';
 import { type Profile, type ProfileRestriction } from './profile';
-import { AI_CONFIG } from '@/config';
+import { AI_CONFIG, WEEKLY_PLAN_AI_CONFIG, FALLBACK_MODELS } from '@/config';
 
 // Initialize the Gemini client
 const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY || '');
@@ -330,22 +340,121 @@ function buildUserPrompt(
 }
 
 /**
+ * Simple delay helper for retry backoff
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Attempt to repair truncated JSON from the AI.
+ * When the model runs out of tokens mid-response, the JSON is cut off.
+ * This tries to close open brackets/braces to recover partial data.
+ */
+function tryRepairTruncatedJson(text: string): string | null {
+  let json = text.trim();
+
+  // Count unclosed brackets
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (const ch of json) {
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') openBraces++;
+    if (ch === '}') openBraces--;
+    if (ch === '[') openBrackets++;
+    if (ch === ']') openBrackets--;
+  }
+
+  // If already balanced, no repair needed
+  if (openBraces === 0 && openBrackets === 0) return null;
+
+  // Try to find the last complete object in an array
+  // Look for the last "}," or "}" that would end a complete meal object
+  const lastCompleteObj = json.lastIndexOf('},');
+  if (lastCompleteObj > 0 && openBrackets > 0) {
+    // Cut after the last complete object and close the array
+    json = json.substring(0, lastCompleteObj + 1);
+    // Close any remaining open brackets
+    for (let i = 0; i < openBrackets; i++) json += ']';
+    // Recount to verify
+    try {
+      JSON.parse(json);
+      return json;
+    } catch { /* fall through to brute force */ }
+  }
+
+  // Brute-force: close all open braces/brackets
+  // First remove any trailing partial key/value (after last comma or colon)
+  json = json.replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
+  json = json.replace(/,\s*$/, '');
+
+  // Re-count after trimming
+  openBraces = 0;
+  openBrackets = 0;
+  inString = false;
+  escapeNext = false;
+  for (const ch of json) {
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') openBraces++;
+    if (ch === '}') openBraces--;
+    if (ch === '[') openBrackets++;
+    if (ch === ']') openBrackets--;
+  }
+
+  for (let i = 0; i < openBraces; i++) json += '}';
+  for (let i = 0; i < openBrackets; i++) json += ']';
+
+  try {
+    JSON.parse(json);
+    return json;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sanitize common JSON issues from AI responses (trailing commas, etc.)
+ */
+function sanitizeJson(text: string): string {
+  // Remove trailing commas before } or ]
+  let cleaned = text.replace(/,\s*([}\]])/g, '$1');
+  // Remove any BOM or zero-width characters
+  cleaned = cleaned.replace(/[\uFEFF\u200B]/g, '');
+  return cleaned;
+}
+
+/**
  * Extract JSON from a response that might contain markdown code blocks
  */
 function extractJsonFromResponse(text: string): string {
   // Try to extract JSON from markdown code blocks
   const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) {
-    return jsonMatch[1].trim();
+    return sanitizeJson(jsonMatch[1].trim());
   }
 
-  // If no code blocks, try to find JSON object directly
+  // Try to find a JSON array first (weekly plan returns arrays)
+  const jsonArrayMatch = text.match(/\[[\s\S]*\]/);
+  if (jsonArrayMatch) {
+    return sanitizeJson(jsonArrayMatch[0]);
+  }
+
+  // If no array, try to find JSON object directly
   const jsonObjectMatch = text.match(/\{[\s\S]*\}/);
   if (jsonObjectMatch) {
-    return jsonObjectMatch[0];
+    return sanitizeJson(jsonObjectMatch[0]);
   }
 
-  return text;
+  return sanitizeJson(text);
 }
 
 /**
@@ -401,8 +510,25 @@ export const geminiRecipeGenerationService = {
       }
 
       try {
-        const jsonText = extractJsonFromResponse(rawResponse);
-        const parsed = JSON.parse(jsonText);
+        // Since responseMimeType is 'application/json', try direct parse first
+        let parsed: any;
+        try {
+          parsed = JSON.parse(rawResponse);
+        } catch {
+          // Fallback: extract and sanitize
+          const jsonText = extractJsonFromResponse(rawResponse);
+          try {
+            parsed = JSON.parse(jsonText);
+          } catch {
+            // Last resort: try repair
+            const repaired = tryRepairTruncatedJson(jsonText);
+            if (repaired) {
+              parsed = JSON.parse(repaired);
+            } else {
+              throw new Error('JSON parse failed after all attempts');
+            }
+          }
+        }
 
         // Normalize meal_types before validation to handle AI mistakes
         if (parsed.meal_types && Array.isArray(parsed.meal_types)) {
@@ -500,8 +626,23 @@ ${t('returnModified')}`;
       }
 
       try {
-        const jsonText = extractJsonFromResponse(rawResponse);
-        const parsed = JSON.parse(jsonText);
+        // Since responseMimeType is 'application/json', try direct parse first
+        let parsed: any;
+        try {
+          parsed = JSON.parse(rawResponse);
+        } catch {
+          const jsonText = extractJsonFromResponse(rawResponse);
+          try {
+            parsed = JSON.parse(jsonText);
+          } catch {
+            const repaired = tryRepairTruncatedJson(jsonText);
+            if (repaired) {
+              parsed = JSON.parse(repaired);
+            } else {
+              throw new Error('JSON parse failed after all attempts');
+            }
+          }
+        }
 
         // Normalize meal_types before validation
         if (parsed.meal_types && Array.isArray(parsed.meal_types)) {
@@ -535,3 +676,563 @@ ${t('returnModified')}`;
     }
   },
 };
+
+/* ================================================================== */
+/*  Weekly Plan Generation Service                                     */
+/* ================================================================== */
+
+export interface WeeklyPlanGenerationResponse {
+  plan: AIWeeklyPlanResponse | null;
+  success: boolean;
+  error?: string;
+}
+
+export interface DayGenerationResponse {
+  meals: AIPlanMeal[];
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Build the system prompt for generating one day of a weekly plan
+ */
+function buildDayPlanSystemPrompt(
+  profile: Profile | null,
+  restrictions: ProfileRestriction[],
+  form: WeeklyPlanForm,
+  lang: Language = 'es'
+): string {
+  const t = (key: string) => getPromptTranslation(key, lang);
+
+  const parts: string[] = [
+    t('systemIntro'),
+    lang === 'es'
+      ? 'Tu tarea es generar las recetas para UN DÍA de un plan semanal de comidas.'
+      : 'Your task is to generate recipes for ONE DAY of a weekly meal plan.',
+    '',
+    lang === 'es'
+      ? 'IDIOMA: Genera TODO el contenido en ESPAÑOL.'
+      : 'LANGUAGE: Generate ALL content in ENGLISH.',
+    '',
+  ];
+
+  // Restrictions
+  const allergies = restrictions.filter(r => r.is_allergy).map(r => r.custom_value || r.restriction_type);
+  const preferences = restrictions.filter(r => !r.is_allergy).map(r => r.custom_value || r.restriction_type);
+
+  if (allergies.length > 0) {
+    parts.push(`${t('allergiesWarning')}: ${allergies.join(', ')}`);
+  }
+  if (preferences.length > 0) {
+    parts.push(`${t('dietaryPreferences')}: ${preferences.join(', ')}`);
+  }
+  if (allergies.length === 0 && preferences.length === 0) {
+    parts.push(t('noRestrictionsActive'));
+  }
+
+  // Profile context
+  if (profile) {
+    if (profile.country) parts.push(`${t('country')}: ${profile.country}`);
+    if (profile.currency) parts.push(`${t('currency')}: ${profile.currency}`);
+    if (profile.measurement_system) {
+      parts.push(`${t('measurementSystem')}: ${profile.measurement_system === 'metric' ? t('metric') : t('imperial')}`);
+    }
+  }
+
+  // Calorie target
+  if (form.dailyCalorieTarget) {
+    const calNote = lang === 'es'
+      ? `OBJETIVO CALÓRICO DIARIO: ${form.dailyCalorieTarget} calorías. Distribuye entre las comidas del día.`
+      : `DAILY CALORIE TARGET: ${form.dailyCalorieTarget} calories. Distribute across the day's meals.`;
+    parts.push(calNote);
+  }
+
+  // Servings
+  if (form.servings && form.servings > 1) {
+    const servingsNote = lang === 'es'
+      ? `PORCIONES: Cada receta debe ser para ${form.servings} porciones individuales.`
+      : `SERVINGS: Each recipe should be for ${form.servings} individual servings.`;
+    parts.push(servingsNote);
+  } else {
+    const servingsNote = lang === 'es'
+      ? `PORCIONES: Cada receta debe ser para 1 porción individual.`
+      : `SERVINGS: Each recipe should be for 1 individual serving.`;
+    parts.push(servingsNote);
+  }
+
+  // Cuisines
+  if (form.cuisines.length > 0) {
+    const cuisineNames = form.cuisines.map(resolveChipName);
+    parts.push(`${t('cuisineType')}: ${cuisineNames.join(', ')}`);
+  }
+
+  // Equipment
+  if (form.equipment.length > 0) {
+    const equipNames = form.equipment.map(resolveChipName);
+    parts.push(`${t('availableEquipment')}: ${equipNames.join(', ')}`);
+  }
+
+  // Exclude ingredients
+  if (form.ingredientsToExclude.length > 0) {
+    parts.push(`${t('excludeIngredients')}: ${form.ingredientsToExclude.join(', ')}`);
+  }
+
+  // Batch cooking context
+  if (form.batchCookingEnabled && form.batchConfig) {
+    const batchNote = lang === 'es'
+      ? `MODO BATCH COOKING: El usuario prepara comidas de antemano. Genera recetas que se puedan preparar en lote, reutilicen ingredientes base y se almacenen bien. Estrategia de reutilización: ${form.batchConfig.reuse_strategy}.`
+      : `BATCH COOKING MODE: The user preps meals in advance. Generate recipes that can be batch-prepared, reuse base ingredients, and store well. Reuse strategy: ${form.batchConfig.reuse_strategy}.`;
+    parts.push(batchNote);
+  }
+
+  // Special notes
+  if (form.specialNotes) {
+    const notesLabel = lang === 'es' ? 'NOTAS ESPECIALES DEL USUARIO' : 'USER SPECIAL NOTES';
+    parts.push(`${notesLabel}: ${form.specialNotes}`);
+  }
+
+  // Response format
+  const formatInstructions = lang === 'es'
+    ? `FORMATO DE RESPUESTA: Devuelve un JSON array con objetos de recetas. Cada objeto debe seguir EXACTAMENTE esta estructura:`
+    : `RESPONSE FORMAT: Return a JSON array of recipe objects. Each object must follow EXACTLY this structure:`;
+  parts.push('', formatInstructions, '', `[
+  {
+    "meal_type": "breakfast|lunch|dinner|snack",
+    "recipe": ${getJsonStructureExample(lang)},
+    "estimated_calories": 350
+  }
+]`);
+
+  return parts.join('\n');
+}
+
+/**
+ * Build the user prompt for generating one day of a weekly plan
+ */
+function buildDayUserPrompt(
+  day: DayOfWeek,
+  mealTypes: PlanMealType[],
+  cookingTimeMinutes: number,
+  favoriteIngredients: string[],
+  form: WeeklyPlanForm,
+  previousDaysSummary: string,
+  lang: Language = 'es'
+): string {
+  const dayName = i18n.t(`weeklyPlan.days.${day}`, { lng: lang }) as string;
+
+  const parts: string[] = [];
+
+  if (lang === 'es') {
+    parts.push(`Genera las recetas para el ${dayName.toUpperCase()}.`);
+    parts.push(`Comidas a generar: ${mealTypes.join(', ')}`);
+    // Per-meal-type cooking times
+    if (form.cookingTimeByMealType && Object.keys(form.cookingTimeByMealType).length > 0) {
+      const timeDetails = mealTypes
+        .map((mt) => `${mt}: ${form.cookingTimeByMealType[mt] ?? cookingTimeMinutes} min`)
+        .join(', ');
+      parts.push(`Tiempo máximo de cocina: ${timeDetails}`);
+    } else {
+      parts.push(`Tiempo máximo de cocina por receta: ${cookingTimeMinutes} minutos.`);
+    }
+  } else {
+    parts.push(`Generate recipes for ${dayName.toUpperCase()}.`);
+    parts.push(`Meals to generate: ${mealTypes.join(', ')}`);
+    if (form.cookingTimeByMealType && Object.keys(form.cookingTimeByMealType).length > 0) {
+      const timeDetails = mealTypes
+        .map((mt) => `${mt}: ${form.cookingTimeByMealType[mt] ?? cookingTimeMinutes} min`)
+        .join(', ');
+      parts.push(`Maximum cooking time: ${timeDetails}`);
+    } else {
+      parts.push(`Maximum cooking time per recipe: ${cookingTimeMinutes} minutes.`);
+    }
+  }
+
+  // Include ingredients
+  if (form.ingredientsToInclude.length > 0) {
+    const label = lang === 'es' ? 'Intentar usar estos ingredientes' : 'Try to use these ingredients';
+    parts.push(`${label}: ${form.ingredientsToInclude.join(', ')}`);
+  }
+
+  // Favorite ingredients
+  if (form.useFavoriteIngredients && favoriteIngredients.length > 0) {
+    const label = lang === 'es'
+      ? 'Preferir estos ingredientes favoritos'
+      : 'Prefer these favorite ingredients';
+    parts.push(`${label}: ${favoriteIngredients.join(', ')}`);
+  }
+
+  // Previous days summary to avoid repetition
+  if (previousDaysSummary) {
+    const avoidLabel = lang === 'es'
+      ? 'EVITA repetir estos platos que ya se generaron para otros días'
+      : 'AVOID repeating these dishes already generated for other days';
+    parts.push(`${avoidLabel}: ${previousDaysSummary}`);
+  }
+
+  parts.push('');
+  const returnLabel = lang === 'es'
+    ? 'Devuelve SOLO el JSON array. No añadas explicaciones.'
+    : 'Return ONLY the JSON array. Do not add explanations.';
+  parts.push(returnLabel);
+
+  return parts.join('\n');
+}
+
+/**
+ * Weekly Plan Generation Service
+ * Generates a full weekly plan day-by-day for reliability
+ */
+export const weeklyPlanGenerationService = {
+  /**
+   * Generate a full weekly plan by iterating day-by-day
+   */
+  async generateWeeklyPlan(
+    form: WeeklyPlanForm,
+    profile: Profile | null,
+    restrictions: ProfileRestriction[],
+    favoriteIngredients: string[] = [],
+    lang: Language = 'es',
+    onDayProgress?: (day: DayOfWeek) => void,
+  ): Promise<WeeklyPlanGenerationResponse> {
+    const normalizedLang = getLanguage(lang);
+
+    try {
+      const allMeals: AIPlanMeal[] = [];
+      const generatedTitles: string[] = [];
+
+      // Sort selected days in order
+      const DAYS_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const sortedDays = form.selectedDays.sort(
+        (a, b) => DAYS_ORDER.indexOf(a) - DAYS_ORDER.indexOf(b)
+      );
+
+      // Build system prompt once
+      const systemPrompt = buildDayPlanSystemPrompt(profile, restrictions, form, normalizedLang);
+
+      for (const day of sortedDays) {
+        onDayProgress?.(day);
+
+        const dayConfig = form.dayConfigs[day];
+        if (!dayConfig) continue;
+
+        // Filter out eating-out meals
+        const eatingOut = dayConfig.eatingOut || [];
+        const mealsToGenerate = dayConfig.meals.filter(
+          (m) => !eatingOut.includes(m)
+        );
+
+        if (mealsToGenerate.length === 0) continue;
+
+        // Build user prompt for this day
+        const previousSummary = generatedTitles.join(', ');
+        const userPrompt = buildDayUserPrompt(
+          day,
+          mealsToGenerate,
+          dayConfig.cookingTimeMinutes,
+          favoriteIngredients,
+          form,
+          previousSummary,
+          normalizedLang,
+        );
+
+        const fullPrompt = `${systemPrompt}\n\n${'='.repeat(50)}\n\n${userPrompt}`;
+
+        if (__DEV__) {
+          console.log(`=== WEEKLY PLAN: ${day.toUpperCase()} PROMPT ===`);
+          console.log(fullPrompt.substring(0, 500) + '...');
+        }
+
+        // Generate with retries, exponential backoff, and model fallback
+        const maxRetries = 5;
+        let dayMeals: AIPlanMeal[] | null = null;
+        let currentModelIndex = 0; // Index into FALLBACK_MODELS
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            // Exponential backoff: 0s, 2s, 4s, 8s, 16s
+            if (attempt > 1) {
+              const backoffMs = Math.min(2000 * Math.pow(2, attempt - 2), 16000);
+              console.log(`Day ${day} retry ${attempt}, waiting ${backoffMs}ms...`);
+              await delay(backoffMs);
+            }
+
+            const modelName = FALLBACK_MODELS[currentModelIndex] || FALLBACK_MODELS[0];
+            const model = genAI.getGenerativeModel({
+              model: modelName,
+              safetySettings,
+              generationConfig: {
+                temperature: WEEKLY_PLAN_AI_CONFIG.temperature,
+                maxOutputTokens: WEEKLY_PLAN_AI_CONFIG.perDayTokens,
+                responseMimeType: 'application/json',
+              },
+            });
+
+            const result = await model.generateContent(fullPrompt);
+            const rawResponse = result.response.text();
+
+            if (!rawResponse) {
+              console.warn(`Day ${day} attempt ${attempt}: empty response`);
+              continue;
+            }
+
+            if (__DEV__) {
+              console.log(`Day ${day} attempt ${attempt} (${modelName}) raw length: ${rawResponse.length}, first 200:`, rawResponse.substring(0, 200));
+            }
+
+            // Since responseMimeType is 'application/json', try direct parse first
+            let parsed: any;
+            try {
+              parsed = JSON.parse(rawResponse);
+            } catch {
+              // Fallback: extract and sanitize
+              const jsonText = extractJsonFromResponse(rawResponse);
+              try {
+                parsed = JSON.parse(jsonText);
+              } catch (jsonErr) {
+                // JSON is likely truncated — try to repair
+                console.warn(`Day ${day} attempt ${attempt}: JSON parse failed, trying repair...`);
+                const repaired = tryRepairTruncatedJson(jsonText);
+                if (repaired) {
+                  console.log(`Day ${day} attempt ${attempt}: JSON repair succeeded`);
+                  parsed = JSON.parse(repaired);
+                } else {
+                  throw jsonErr; // Re-throw, will be caught by outer catch
+                }
+              }
+            }
+
+            // Parse as array of meals
+            const mealsArray = Array.isArray(parsed) ? parsed : (parsed.meals || [parsed]);
+
+            // Filter out incomplete meal entries (from truncated JSON repair)
+            const validMeals = mealsArray.filter((m: any) => m?.recipe?.title && m?.recipe?.ingredients);
+
+            if (validMeals.length === 0) {
+              console.warn(`Day ${day} attempt ${attempt}: parsed OK but no valid meals found`);
+              continue;
+            }
+
+            dayMeals = validMeals.map((m: any, index: number) => {
+              // Normalize meal_types in the recipe sub-object
+              if (m.recipe?.meal_types && Array.isArray(m.recipe.meal_types)) {
+                m.recipe.meal_types = normalizeMealTypes(m.recipe.meal_types);
+              }
+
+              const validatedRecipe = AIRecipeResponseSchema.parse(m.recipe);
+
+              return {
+                day_of_week: day,
+                meal_type: m.meal_type || mealsToGenerate[index] || 'lunch',
+                recipe: validatedRecipe,
+                is_prep_day: false,
+                is_external: false,
+                estimated_calories: m.estimated_calories || validatedRecipe.nutrition.calories,
+              } as AIPlanMeal;
+            });
+
+            // If we got fewer meals than requested due to truncation, log it but don't fail
+            if (dayMeals && dayMeals.length < mealsToGenerate.length) {
+              console.warn(`Day ${day}: got ${dayMeals.length}/${mealsToGenerate.length} meals (some may have been truncated)`);
+            }
+
+            break; // Success
+          } catch (parseError: any) {
+            const errorMsg = parseError?.message || String(parseError);
+            const is503 = errorMsg.includes('503') || errorMsg.includes('high demand');
+            const is404 = errorMsg.includes('404') || errorMsg.includes('no longer available');
+            const isRateLimit = errorMsg.includes('429') || errorMsg.includes('rate');
+            const isServerError = is503 || is404 || isRateLimit;
+
+            const errorType = is503 ? '503/overloaded' : is404 ? '404/unavailable' : isRateLimit ? '429/rate-limited' : 'parse/other';
+            console.error(`Day ${day} attempt ${attempt} failed (${errorType}):`, errorMsg.substring(0, 150));
+
+            // On server errors, try the next fallback model
+            if (isServerError && currentModelIndex < FALLBACK_MODELS.length - 1) {
+              currentModelIndex++;
+              console.log(`Day ${day}: switching to fallback model: ${FALLBACK_MODELS[currentModelIndex]}`);
+            }
+
+            if (attempt === maxRetries) {
+              // If we have partial meals from a previous truncated parse, use them
+              if (dayMeals && dayMeals.length > 0) {
+                console.warn(`Day ${day}: using ${dayMeals.length} partial meals after all retries`);
+                break;
+              }
+              return {
+                plan: null,
+                success: false,
+                error: `Failed to generate meals for ${day} after ${maxRetries} attempts`,
+              };
+            }
+          }
+        }
+
+        if (dayMeals) {
+          allMeals.push(...dayMeals);
+          generatedTitles.push(...dayMeals.map((m) => m.recipe.title));
+        }
+
+        // Add eating out entries
+        for (const mealType of eatingOut) {
+          allMeals.push({
+            day_of_week: day,
+            meal_type: mealType,
+            recipe: {} as any, // Will be handled in save logic
+            is_prep_day: false,
+            is_external: true,
+            estimated_calories: 0,
+          } as AIPlanMeal);
+        }
+
+        // Delay between days to avoid rate limiting (1.5s)
+        if (sortedDays.indexOf(day) < sortedDays.length - 1) {
+          await delay(1500);
+        }
+      }
+
+      // Build final response
+      const plan: AIWeeklyPlanResponse = {
+        plan_name: form.planName || `Plan ${new Date(form.startDate || Date.now()).toLocaleDateString()}`,
+        meals: allMeals.filter((m) => m.recipe?.title), // Only meals with actual recipes
+        base_preparations: [],
+        total_estimated_calories: allMeals.reduce(
+          (sum, m) => sum + (m.estimated_calories || 0),
+          0
+        ),
+        shopping_summary: [],
+        tips: [],
+      };
+
+      return { plan, success: true };
+    } catch (error) {
+      console.error('Weekly plan generation error:', error);
+      return {
+        plan: null,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error generating plan',
+      };
+    }
+  },
+
+  /**
+   * Regenerate a single meal in the plan
+   */
+  async regenerateSingleMeal(
+    day: DayOfWeek,
+    mealType: PlanMealType,
+    currentPlanMeals: AIPlanMeal[],
+    cookingTimeMinutes: number,
+    profile: Profile | null,
+    restrictions: ProfileRestriction[],
+    favoriteIngredients: string[] = [],
+    form: WeeklyPlanForm,
+    lang: Language = 'es',
+  ): Promise<RecipeGenerationResponse> {
+    const normalizedLang = getLanguage(lang);
+
+    // Existing titles to avoid
+    const existingTitles = currentPlanMeals
+      .filter((m) => m.recipe?.title)
+      .map((m) => m.recipe.title);
+
+    const systemPrompt = buildRecipeSystemPrompt(profile, restrictions, normalizedLang);
+
+    const dayName = i18n.t(`weeklyPlan.days.${day}`, { lng: normalizedLang }) as string;
+    const mealName = i18n.t(`weeklyPlan.mealTypes.${mealType}`, { lng: normalizedLang }) as string;
+
+    const userPrompt = normalizedLang === 'es'
+      ? `Genera una receta para el ${mealName} del ${dayName}. Tiempo máximo: ${cookingTimeMinutes} min. NO repitas: ${existingTitles.join(', ')}.${form.specialNotes ? ` Notas: ${form.specialNotes}` : ''}`
+      : `Generate a recipe for ${dayName}'s ${mealName}. Max time: ${cookingTimeMinutes} min. DO NOT repeat: ${existingTitles.join(', ')}.${form.specialNotes ? ` Notes: ${form.specialNotes}` : ''}`;
+
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    // Retry with fallback models — 2 attempts per model
+    for (let i = 0; i < FALLBACK_MODELS.length; i++) {
+      const modelName = FALLBACK_MODELS[i];
+
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          if (i > 0 || attempt > 1) {
+            await delay(2000 * attempt);
+          }
+
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            safetySettings,
+            generationConfig: {
+              temperature: WEEKLY_PLAN_AI_CONFIG.temperature + 0.1,
+              maxOutputTokens: 4096, // Single recipe needs more room than AI_CONFIG.maxOutputTokens (2500)
+              responseMimeType: 'application/json',
+            },
+          });
+
+          const result = await model.generateContent(fullPrompt);
+          const rawResponse = result.response.text();
+
+          if (!rawResponse) continue;
+
+          if (__DEV__) {
+            console.log(`Regenerate meal (${modelName}) attempt ${attempt} raw length:`, rawResponse.length);
+            console.log(`Regenerate meal raw first 500:`, rawResponse.substring(0, 500));
+            console.log(`Regenerate meal raw last 200:`, rawResponse.substring(rawResponse.length - 200));
+          }
+
+          // When responseMimeType is 'application/json', the response IS json directly.
+          // Try direct parse first, then fallback to extraction and repair.
+          let parsed: any;
+          try {
+            parsed = JSON.parse(rawResponse);
+          } catch {
+            // Try extracting and sanitizing
+            const jsonText = extractJsonFromResponse(rawResponse);
+            try {
+              parsed = JSON.parse(jsonText);
+            } catch {
+              const repaired = tryRepairTruncatedJson(jsonText);
+              if (repaired) {
+                parsed = JSON.parse(repaired);
+              } else {
+                throw new Error('JSON parse failed and repair unsuccessful');
+              }
+            }
+          }
+
+          // Handle case where AI wraps in an array
+          const recipeObj = Array.isArray(parsed)
+            ? (parsed[0]?.recipe || parsed[0])
+            : (parsed.recipe || parsed);
+
+          if (recipeObj.meal_types && Array.isArray(recipeObj.meal_types)) {
+            recipeObj.meal_types = normalizeMealTypes(recipeObj.meal_types);
+          }
+
+          const validated = AIRecipeResponseSchema.parse(recipeObj);
+          return { recipe: validated, success: true, rawResponse };
+        } catch (error: any) {
+          const msg = error?.message || '';
+          const isServerError = msg.includes('503') || msg.includes('404') || msg.includes('429');
+          console.error(`Regenerate meal (${modelName}) attempt ${attempt}:`, msg.substring(0, 120));
+
+          // If server error, skip remaining attempts for this model and try next
+          if (isServerError) break;
+
+          // If parse error on last attempt of last model, give up
+          if (i === FALLBACK_MODELS.length - 1 && attempt === 2) {
+            return {
+              recipe: null,
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      recipe: null,
+      success: false,
+      error: 'All models failed',
+    };
+  },
+};
+

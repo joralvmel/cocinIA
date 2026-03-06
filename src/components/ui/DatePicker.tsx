@@ -47,14 +47,27 @@ export function DatePicker({
   const [selectedMonth, setSelectedMonth] = useState<number>(1);
   const [selectedYear, setSelectedYear] = useState<number>(2000);
 
+  // Parse ISO string manually to avoid timezone issues
+  const parseISODate = (iso: string) => {
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+      return {
+        year: parseInt(parts[0], 10),
+        month: parseInt(parts[1], 10),
+        day: parseInt(parts[2], 10),
+      };
+    }
+    return null;
+  };
+
   // Parse current value
   React.useEffect(() => {
     if (value) {
-      const date = new Date(value);
-      if (!isNaN(date.getTime())) {
-        setSelectedDay(date.getDate());
-        setSelectedMonth(date.getMonth() + 1);
-        setSelectedYear(date.getFullYear());
+      const parsed = parseISODate(value);
+      if (parsed) {
+        setSelectedDay(parsed.day);
+        setSelectedMonth(parsed.month);
+        setSelectedYear(parsed.year);
       }
     }
   }, [value]);
@@ -90,12 +103,13 @@ export function DatePicker({
 
   const formatDisplayDate = () => {
     if (!value) return '';
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return '';
-    const isSpanish = i18n.language === 'es';
-    const monthData = months[date.getMonth()];
-    const monthLabel = isSpanish ? monthData.labelEs : monthData.label;
-    return `${date.getDate()} ${monthLabel} ${date.getFullYear()}`;
+    const parsed = parseISODate(value);
+    if (!parsed) return '';
+    const isSpanishDisplay = i18n.language === 'es';
+    const monthData = months[parsed.month - 1];
+    if (!monthData) return '';
+    const monthLabel = isSpanishDisplay ? monthData.labelEs : monthData.label;
+    return `${parsed.day} ${monthLabel} ${parsed.year}`;
   };
 
   const isSpanish = i18n.language === 'es';

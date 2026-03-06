@@ -9,3 +9,5 @@ export { useOnboardingStore, type OnboardingRestriction } from './onboardingStor
 export { useRecipeGenerationStore } from './recipeGenerationStore';
 export { useProfileStore } from './profileStore';
 export { useRecipesStore } from './recipesStore';
+export { useWeeklyPlanStore } from './weeklyPlanStore';
+

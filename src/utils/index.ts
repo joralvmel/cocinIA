@@ -28,6 +28,29 @@ export {
 // Recipe events
 export { recipeEvents } from './recipeEvents';
 
+// Weekly plan events
+export { weeklyPlanEvents } from './weeklyPlanEvents';
+
+// Weekly plan helpers
+export {
+  getDayLabel,
+  getDayShortLabel,
+  getMealTypeLabel,
+  getMealTypeIcon,
+  getDayIndex,
+  groupMealsByDay,
+  calculatePlanCalories,
+  calculateDayCalories,
+  getWeekDateRange,
+  formatDateRange,
+  getNextMonday,
+  getCurrentDayOfWeek,
+  getMealTypeSortOrder,
+  countPlanMeals,
+  isDateInPlan,
+  getDefaultDayConfigs,
+} from './weeklyPlanHelpers';
+
 // Recipe filter helpers
 export {
   hasActiveFilters,

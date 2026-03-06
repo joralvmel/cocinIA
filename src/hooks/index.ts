@@ -32,3 +32,8 @@ export { useOnboardingComplete } from './useOnboardingComplete';
 export { useRecipeFilters, type UseRecipeFiltersOptions, type ChipOption } from './useRecipeFilters';
 export { useRecipeResult, type UseRecipeResultOptions } from './useRecipeResult';
 
+// Weekly plan hooks
+export { useGenerateWeeklyPlan } from './useGenerateWeeklyPlan';
+export { useActivePlan } from './useActivePlan';
+export { usePlanHistory } from './usePlanHistory';
+

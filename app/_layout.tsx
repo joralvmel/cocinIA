@@ -2,8 +2,8 @@ import './global.css';
 import '@/i18n'; // Initialize i18n
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
+import { LogBox, View } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { View } from 'react-native';
 import { ThemeProvider } from '@react-navigation/native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,6 +17,11 @@ import {
   darkPaperTheme,
 } from '@/constants/theme';
 import { colorScheme as nativeWindColorScheme } from 'nativewind';
+
+// Suppress non-fatal NativeWind CSS interop debug warning (dev only)
+LogBox.ignoreLogs([
+  "Couldn't find a navigation context",
+]);
 
 export { ErrorBoundary } from 'expo-router';
 

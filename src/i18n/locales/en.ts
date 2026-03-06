@@ -19,6 +19,7 @@
     apply: 'Apply',
     allow: 'Allow',
     ok: 'OK',
+    selected: 'selected',
   },
   tabs: {
     home: 'Home',
@@ -196,6 +197,7 @@
     noResultsDescription: 'No recipes found with the selected filters',
     filters: {
       title: 'Filters',
+      active: 'Active filters',
       clear: 'Clear',
       difficulty: 'Difficulty',
       mealType: 'Meal type',
@@ -244,6 +246,232 @@
   weeklyPlan: {
     title: 'Weekly Plan',
     subtitle: 'Plan your meals for the week',
+
+    // Empty state
+    emptyTitle: 'No active plan',
+    emptyDescription: 'Create a weekly meal plan tailored to your preferences and nutritional goals',
+    createFirst: 'Create Your First Plan',
+    createNew: 'Create New Plan',
+
+    // Days
+    days: {
+      monday: 'Monday',
+      tuesday: 'Tuesday',
+      wednesday: 'Wednesday',
+      thursday: 'Thursday',
+      friday: 'Friday',
+      saturday: 'Saturday',
+      sunday: 'Sunday',
+    },
+    daysShort: {
+      monday: 'Mon',
+      tuesday: 'Tue',
+      wednesday: 'Wed',
+      thursday: 'Thu',
+      friday: 'Fri',
+      saturday: 'Sat',
+      sunday: 'Sun',
+    },
+    daysInitial: {
+      monday: 'M',
+      tuesday: 'T',
+      wednesday: 'W',
+      thursday: 'T',
+      friday: 'F',
+      saturday: 'S',
+      sunday: 'S',
+    },
+
+    // Meal types
+    mealTypes: {
+      breakfast: 'Breakfast',
+      lunch: 'Lunch',
+      dinner: 'Dinner',
+      snack: 'Snack',
+    },
+
+    // Wizard
+    wizard: {
+      title: 'New Weekly Plan',
+      step1Title: 'Days & Meals',
+      step1Subtitle: 'Select which days and meals to plan',
+      step2Title: 'Cooking Style',
+      step2Subtitle: 'Set your cooking preferences',
+      step3Title: 'Food Preferences',
+      step3Subtitle: 'Customize cuisines and ingredients',
+      step4Title: 'Nutrition & Notes',
+      step4Subtitle: 'Set calorie goals and special requests',
+      step5Title: 'Summary',
+      step5Subtitle: 'Review your plan before generating',
+
+      // Step labels for stepper
+      steps: {
+        days: 'Days',
+        cooking: 'Cooking',
+        food: 'Food',
+        nutrition: 'Nutrition',
+        summary: 'Summary',
+      },
+
+      // Step 1
+      selectDays: 'Days to cook',
+      selectDaysHint: 'Tap the days you want to plan meals for',
+      mealsForDay: 'Meals for {{day}}',
+      defaultMeals: 'Default meals for all days',
+      perDayConfig: 'Configure per day',
+      switchToDefault: 'Default',
+      switchToPerDay: 'Per day',
+      eatingOut: 'Eating out',
+      eatingOutHint: 'Mark meals you\'ll eat outside',
+      cookingTime: 'Available cooking time',
+      cookingTimeHint: 'Minutes per meal',
+      noDaysSelected: 'Select at least one day',
+
+      // Step 2
+      batchCooking: 'Batch cooking mode',
+      batchCookingDescription: 'Cook multiple meals in advance on specific prep days',
+      prepDays: 'Prep day(s)',
+      prepDaysHint: 'Which days will you do batch cooking?',
+      maxPrepTime: 'Max prep time',
+      maxPrepTimeHint: 'Total minutes for prep day cooking',
+      basePrepsCount: 'Number of base preparations',
+      basePrepsHint: 'How many base items to prepare (proteins, grains, sauces)',
+      reuseStrategy: 'Ingredient reuse',
+      reuseMaximize: 'Maximum reuse',
+      reuseMaximizeDesc: 'Fewer ingredients, more repeated items',
+      reuseBalanced: 'Balanced',
+      reuseBalancedDesc: 'Mix of reuse and variety',
+      reuseVariety: 'Maximum variety',
+      reuseVarietyDesc: 'More diverse meals, less reuse',
+      batchNotes: 'Batch cooking notes',
+      batchNotesPlaceholder: 'E.g: I only have one oven, prefer slow cooker recipes...',
+
+      // Step 3
+      cuisinePreferences: 'Cuisine preferences',
+      cuisineHint: 'Select your preferred cuisine types',
+      equipmentAvailable: 'Kitchen equipment',
+      equipmentHint: 'Select available equipment',
+      ingredientsToInclude: 'Ingredients to include',
+      ingredientsToIncludePlaceholder: 'E.g: chicken, rice, broccoli...',
+      ingredientsToExclude: 'Ingredients to exclude',
+      ingredientsToExcludePlaceholder: 'E.g: seafood, cilantro...',
+      useFavoriteIngredients: 'Use my favorite ingredients',
+      useFavoriteIngredientsHint: 'Prioritize ingredients from your profile',
+
+      // Step 4
+      servings: 'Servings per recipe',
+      servingsHint: 'Number of individual servings for each recipe',
+      dailyCalorieTarget: 'Daily calorie target',
+      dailyCalorieHint: 'Leave empty to use your profile goal',
+      fromProfile: 'From profile',
+      specialNotes: 'Special notes for AI',
+      specialNotesPlaceholder: 'E.g: I like spicy food, prefer quick breakfasts, want high protein dinners...',
+      planName: 'Plan name',
+      planNamePlaceholder: 'E.g: Healthy Week, Meal Prep March...',
+      planNameAuto: 'Auto-generated if empty',
+      startDate: 'Week start date',
+
+      // Step 5 - Summary
+      summaryTitle: 'Plan Summary',
+      daysSelected: '{{count}} days selected',
+      mealsPerDay: '{{count}} meals per day',
+      totalMeals: '{{count}} total meals',
+      batchCookingOn: 'Batch cooking enabled',
+      batchCookingOff: 'Standard cooking',
+      calorieTarget: '{{calories}} cal/day target',
+      noCalorieTarget: 'No calorie target',
+      cuisinesSelected: '{{count}} cuisines selected',
+      noCuisines: 'All cuisines',
+      generatePlan: 'Generate Plan',
+      generatingPlan: 'Generating your meal plan...',
+      generatingDay: 'Generating meals for {{day}}...',
+    },
+
+    // Result view
+    result: {
+      title: 'Your Meal Plan',
+      totalCalories: 'Total: {{calories}} cal',
+      dailyCalories: '{{calories}} cal',
+      mealCalories: '{{calories}} cal',
+      prepDay: 'Prep Day',
+      eatingOutLabel: 'Eating out',
+      noRecipe: 'No recipe assigned',
+
+      // Base preparations (batch cooking)
+      basePreparations: 'Base Preparations',
+      basePrepsDescription: 'Prepare these in advance on your prep day(s)',
+      usedIn: 'Used in:',
+      prepTime: '{{minutes}} min prep',
+
+      // Actions
+      savePlan: 'Save Plan',
+      savePlanDescription: 'Save all recipes to your collection',
+      regeneratePlan: 'Regenerate Plan',
+      regeneratePlanDescription: 'Generate a completely new plan',
+      discardPlan: 'Discard',
+      discardPlanDescription: 'Discard this plan',
+      regenerateMeal: 'Regenerate this meal',
+      regenerating: 'Regenerating...',
+      swapRecipe: 'Swap from cookbook',
+      swapFromCookbook: 'Swap from cookbook',
+      markEatingOut: 'Mark as eating out',
+      restoreMeal: 'Cook at home instead',
+      eatingOut: 'Eating out',
+      unmarkEatingOut: 'Cooking at home',
+      addToShoppingList: 'Add to shopping list',
+      addToShoppingListPlaceholder: 'Coming soon!',
+      longPressHint: 'Long-press a meal to regenerate, swap or mark as eating out',
+      noCookbookRecipes: 'You have no saved recipes yet',
+      noMatchingRecipes: 'No recipes found',
+
+      // Save
+      saving: 'Saving plan...',
+      preparingPlan: 'Preparing your plan...',
+      savedTitle: 'Plan saved!',
+      savedMessage: 'All recipes have been saved to your collection and the plan is now active',
+
+      // Errors
+      generateError: 'Error generating plan. Please try again.',
+      saveError: 'Error saving plan.',
+      regenerateError: 'Error regenerating meal.',
+      modifyError: 'Error modifying recipe.',
+    },
+
+    // Active plan view
+    active: {
+      today: 'Today',
+      todaysMeals: "Today's Meals",
+      upcomingMeals: 'Upcoming',
+      allDays: 'All days',
+      completePlan: 'Complete Plan',
+      completePlanConfirm: 'Mark this plan as completed?',
+      deletePlan: 'Delete Plan',
+      deletePlanConfirm: 'Are you sure you want to delete this plan? This cannot be undone.',
+      viewHistory: 'View History',
+      planActive: 'Active',
+      planCompleted: 'Completed',
+      replaceActive: 'You have an active plan. Creating a new one will deactivate it. Continue?',
+      noPlanForToday: 'No meals planned for today',
+      progressLabel: 'Day {{current}} of {{total}}',
+    },
+
+    // History
+    history: {
+      title: 'Plan History',
+      emptyTitle: 'No past plans',
+      emptyDescription: 'Your completed and previous plans will appear here',
+      repeatPlan: 'Repeat Plan',
+      repeatPlanConfirm: 'This will clone the plan and set it as your active plan. Continue?',
+      deletePlan: 'Delete',
+      mealsCount: '{{count}} meals',
+      dateRange: '{{start}} - {{end}}',
+    },
+
+    // FAB (Floating Action Button)
+    fab: {
+      reopenPlan: 'View generated plan',
+      createNew: 'Create new plan',
+    },
   },
   shoppingList: {
     title: 'Shopping List',

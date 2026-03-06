@@ -150,7 +150,7 @@ export function MultiActionButton({
     option.onPress();
   }, []);
 
-  const getColorClasses = (color?: string) => {
+  const getColorClasses = (color?: string): { bg: string; shadow: string; hex?: string } => {
     const colorMap: Record<string, { bg: string; shadow: string }> = {
       red: { bg: 'bg-red-500', shadow: 'shadow-red-500/30' },
       green: { bg: 'bg-green-500', shadow: 'shadow-green-500/30' },
@@ -159,6 +159,10 @@ export function MultiActionButton({
       purple: { bg: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
       pink: { bg: 'bg-pink-500', shadow: 'shadow-pink-500/30' },
     };
+    // Support hex colors
+    if (color?.startsWith('#')) {
+      return { bg: '', shadow: '', hex: color };
+    }
     return colorMap[color || 'blue'] || colorMap.blue;
   };
 
@@ -255,7 +259,8 @@ export function MultiActionButton({
 
                         {/* Icon button */}
                         <View
-                            className={`w-14 h-14 rounded-full items-center justify-center shadow-lg ${colorClasses.bg} ${colorClasses.shadow}`}
+                            className={`w-14 h-14 rounded-full items-center justify-center shadow-lg ${colorClasses.hex ? '' : colorClasses.bg} ${colorClasses.hex ? '' : colorClasses.shadow}`}
+                            style={colorClasses.hex ? { backgroundColor: colorClasses.hex, shadowColor: colorClasses.hex } : undefined}
                         >
                           {option.loading ? (
                               <ActivityIndicator size="small" color="white" />

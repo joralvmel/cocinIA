@@ -12,3 +12,6 @@ export * from './home';
 // Re-export recipe domain components
 export * from './recipes';
 
+// Re-export weekly plan components
+export * from './weeklyPlan';
+
