@@ -10,6 +10,7 @@ export { IconButton, type IconButtonProps, type IconButtonVariant, type IconButt
 // Inputs
 export { Input, type InputProps } from './Input';
 export { SearchInput, type SearchInputProps } from './SearchInput';
+export { TagInput, type TagInputProps } from './TagInput';
 export { NumberInput, CompactNumberInput, type NumberInputProps, type CompactNumberInputProps } from './NumberInput';
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { SelectBottomSheet, SelectTrigger, type SelectBottomSheetProps, type SelectBottomSheetOption, type SelectTriggerProps } from './SelectBottomSheet';

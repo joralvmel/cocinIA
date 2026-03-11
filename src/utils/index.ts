@@ -49,6 +49,8 @@ export {
   countPlanMeals,
   isDateInPlan,
   getDefaultDayConfigs,
+  MEAL_TYPE_ORDER,
+  sortMealTypes,
 } from './weeklyPlanHelpers';
 
 // Recipe filter helpers

@@ -17,6 +17,7 @@ import { DayCard } from './DayCard';
 import { BatchPreparationsCard } from './BatchPreparationsCard';
 import { RecipePickerSheet } from './RecipePickerSheet';
 import { ModifyRecipeSheet } from '@/components/recipes/generation/ModifyRecipeSheet';
+import { MEAL_TYPE_ORDER } from '@/utils';
 
 // Import recipe detail components for preview
 import {
@@ -35,7 +36,6 @@ interface PlanResultModalProps {
   onRegenerateMeal: (day: DayOfWeek, mealType: PlanMealType) => void;
   onSavePlan: () => void;
   onDiscard: () => void;
-  onMarkEatingOut: (day: DayOfWeek, mealType: PlanMealType) => void;
   onSwapMeal?: (day: DayOfWeek, mealType: PlanMealType, recipe: Recipe) => void;
   isSaving: boolean;
   regeneratingMeal?: { day: DayOfWeek; mealType: PlanMealType } | null;
@@ -52,7 +52,6 @@ export function PlanResultModal({
   onRegenerateMeal,
   onSavePlan,
   onDiscard,
-  onMarkEatingOut,
   onSwapMeal,
   isSaving,
   regeneratingMeal,
@@ -83,7 +82,6 @@ export function PlanResultModal({
   const [actionMeal, setActionMeal] = useState<{
     day: DayOfWeek;
     mealType: PlanMealType;
-    isExternal?: boolean;
   } | null>(null);
   const [showActions, setShowActions] = useState(false);
 
@@ -151,8 +149,7 @@ export function PlanResultModal({
     mealsByDay[day] = generatedPlan.meals
       .filter((m) => m.day_of_week === day)
       .sort((a, b) => {
-        const order = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 };
-        return (order[a.meal_type] || 99) - (order[b.meal_type] || 99);
+        return (MEAL_TYPE_ORDER[a.meal_type] ?? 99) - (MEAL_TYPE_ORDER[b.meal_type] ?? 99);
       });
   }
 
@@ -209,7 +206,7 @@ export function PlanResultModal({
     const meal = generatedPlan.meals.find(
       (m) => m.day_of_week === day && m.meal_type === mealType
     );
-    setActionMeal({ day, mealType, isExternal: !!meal?.is_external });
+    setActionMeal({ day, mealType });
     setShowActions(true);
   };
 
@@ -255,7 +252,7 @@ export function PlanResultModal({
                 </Text>
                 <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   {activeDays.length} {t('weeklyPlan.wizard.steps.days').toLowerCase()} •{' '}
-                  {generatedPlan.meals.filter(m => !m.is_external).length} {t('weeklyPlan.wizard.totalMeals', { count: generatedPlan.meals.filter(m => !m.is_external).length }).toLowerCase()}
+                  {generatedPlan.meals.length} {t('weeklyPlan.wizard.totalMeals', { count: generatedPlan.meals.length }).toLowerCase()}
                 </Text>
               </View>
               {generatedPlan.total_estimated_calories
@@ -365,7 +362,7 @@ export function PlanResultModal({
         )}
 
         {/* FAB for actions on the previewed meal */}
-        {previewMeal && !previewMeal.is_external && (
+        {previewMeal && (
           <View className="absolute bottom-6 right-6">
             <MultiActionButton
               icon="ellipsis-v"
@@ -413,20 +410,6 @@ export function PlanResultModal({
                     handleSwapFromCookbook(day, mealType);
                   },
                 },
-                {
-                  id: 'eating-out',
-                  label: previewMeal.is_external
-                    ? t('weeklyPlan.result.restoreMeal')
-                    : t('weeklyPlan.result.markEatingOut'),
-                  icon: 'cutlery',
-                  color: '#22C55E',
-                  onPress: () => {
-                    const day = previewMeal.day_of_week;
-                    const mealType = previewMeal.meal_type;
-                    setShowPreview(false);
-                    onMarkEatingOut(day, mealType);
-                  },
-                },
               ]}
             />
           </View>
@@ -444,52 +427,34 @@ export function PlanResultModal({
         }
       >
         <View className="px-4 pb-6 gap-3">
-          {/* Only show regenerate/swap/modify if not eating out */}
-          {!actionMeal?.isExternal && (
-            <>
-              <MealActionButton
-                icon="pencil"
-                label={t('recipeGeneration.modify')}
-                onPress={() => {
-                  if (actionMeal) {
-                    setModifyTarget({ day: actionMeal.day, mealType: actionMeal.mealType });
-                    setShowActions(false);
-                    setShowModifySheet(true);
-                  }
-                }}
-              />
-              <MealActionButton
-                icon="refresh"
-                label={t('weeklyPlan.result.regenerateMeal')}
-                onPress={() => {
-                  if (actionMeal) {
-                    onRegenerateMeal(actionMeal.day, actionMeal.mealType);
-                  }
-                  setShowActions(false);
-                }}
-              />
-              <MealActionButton
-                icon="exchange"
-                label={t('weeklyPlan.result.swapFromCookbook')}
-                onPress={() => {
-                  if (actionMeal) {
-                    handleSwapFromCookbook(actionMeal.day, actionMeal.mealType);
-                  }
-                }}
-              />
-            </>
-          )}
           <MealActionButton
-            icon="cutlery"
-            label={actionMeal?.isExternal
-              ? t('weeklyPlan.result.restoreMeal')
-              : t('weeklyPlan.result.markEatingOut')
-            }
+            icon="pencil"
+            label={t('recipeGeneration.modify')}
             onPress={() => {
               if (actionMeal) {
-                onMarkEatingOut(actionMeal.day, actionMeal.mealType);
+                setModifyTarget({ day: actionMeal.day, mealType: actionMeal.mealType });
+                setShowActions(false);
+                setShowModifySheet(true);
+              }
+            }}
+          />
+          <MealActionButton
+            icon="refresh"
+            label={t('weeklyPlan.result.regenerateMeal')}
+            onPress={() => {
+              if (actionMeal) {
+                onRegenerateMeal(actionMeal.day, actionMeal.mealType);
               }
               setShowActions(false);
+            }}
+          />
+          <MealActionButton
+            icon="exchange"
+            label={t('weeklyPlan.result.swapFromCookbook')}
+            onPress={() => {
+              if (actionMeal) {
+                handleSwapFromCookbook(actionMeal.day, actionMeal.mealType);
+              }
             }}
           />
         </View>

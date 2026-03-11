@@ -60,6 +60,15 @@ export interface ProfileCuisine {
   created_at: string;
 }
 
+export interface RoutineMeal {
+  id: string;
+  profile_id: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Profile update payload
 export interface ProfileUpdatePayload {
   display_name?: string;
@@ -363,6 +372,57 @@ export const profileService = {
           }))
         );
 
+
+      if (error) throw error;
+    }
+  },
+
+  /**
+   * Get user's routine meals
+   */
+  async getRoutineMeals(): Promise<RoutineMeal[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('routine_meals')
+      .select('*')
+      .eq('profile_id', user.id);
+
+    if (error) {
+      console.error('Error fetching routine meals:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  /**
+   * Save routine meals (upserts per meal_type)
+   */
+  async saveRoutineMeals(
+    meals: { meal_type: string; description: string }[]
+  ): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Delete existing routine meals
+    await supabase
+      .from('routine_meals')
+      .delete()
+      .eq('profile_id', user.id);
+
+    // Insert non-empty entries
+    const nonEmpty = meals.filter((m) => m.description.trim());
+    if (nonEmpty.length > 0) {
+      const { error } = await supabase
+        .from('routine_meals')
+        .insert(
+          nonEmpty.map((m) => ({
+            profile_id: user.id,
+            meal_type: m.meal_type,
+            description: m.description.trim(),
+          }))
+        );
 
       if (error) throw error;
     }

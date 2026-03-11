@@ -13,6 +13,7 @@ import {
 } from '@/types';
 import { type Profile, type ProfileRestriction } from './profile';
 import { AI_CONFIG, WEEKLY_PLAN_AI_CONFIG, FALLBACK_MODELS } from '@/config';
+import { MEAL_TYPE_ORDER } from '@/utils';
 
 // Initialize the Gemini client
 const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY || '');
@@ -425,10 +426,12 @@ function tryRepairTruncatedJson(text: string): string | null {
  * Sanitize common JSON issues from AI responses (trailing commas, etc.)
  */
 function sanitizeJson(text: string): string {
-  // Remove trailing commas before } or ]
-  let cleaned = text.replace(/,\s*([}\]])/g, '$1');
   // Remove any BOM or zero-width characters
-  cleaned = cleaned.replace(/[\uFEFF\u200B]/g, '');
+  let cleaned = text.replace(/[\uFEFF\u200B]/g, '');
+  // Remove trailing commas before } or ] (with potential whitespace/newlines)
+  cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+  // Remove double commas
+  cleaned = cleaned.replace(/,\s*,/g, ',');
   return cleaned;
 }
 
@@ -513,7 +516,7 @@ export const geminiRecipeGenerationService = {
         // Since responseMimeType is 'application/json', try direct parse first
         let parsed: any;
         try {
-          parsed = JSON.parse(rawResponse);
+          parsed = JSON.parse(sanitizeJson(rawResponse));
         } catch {
           // Fallback: extract and sanitize
           const jsonText = extractJsonFromResponse(rawResponse);
@@ -629,7 +632,7 @@ ${t('returnModified')}`;
         // Since responseMimeType is 'application/json', try direct parse first
         let parsed: any;
         try {
-          parsed = JSON.parse(rawResponse);
+          parsed = JSON.parse(sanitizeJson(rawResponse));
         } catch {
           const jsonText = extractJsonFromResponse(rawResponse);
           try {
@@ -783,6 +786,12 @@ function buildDayPlanSystemPrompt(
       ? `MODO BATCH COOKING: El usuario prepara comidas de antemano. Genera recetas que se puedan preparar en lote, reutilicen ingredientes base y se almacenen bien. Estrategia de reutilización: ${form.batchConfig.reuse_strategy}.`
       : `BATCH COOKING MODE: The user preps meals in advance. Generate recipes that can be batch-prepared, reuse base ingredients, and store well. Reuse strategy: ${form.batchConfig.reuse_strategy}.`;
     parts.push(batchNote);
+
+    // Include batch cooking notes if provided
+    if (form.batchConfig.notes) {
+      const batchNotesLabel = lang === 'es' ? 'NOTAS DE BATCH COOKING DEL USUARIO' : 'USER BATCH COOKING NOTES';
+      parts.push(`${batchNotesLabel}: ${form.batchConfig.notes}`);
+    }
   }
 
   // Special notes
@@ -861,6 +870,62 @@ function buildDayUserPrompt(
     parts.push(`${label}: ${favoriteIngredients.join(', ')}`);
   }
 
+  // ---- Routine meals: rotate among user-defined options ----
+  if (form.routineMeals) {
+    const mealTypeToRoutine: Record<string, string | undefined> = {
+      breakfast: form.routineMeals.breakfast,
+      lunch: form.routineMeals.lunch,
+      dinner: form.routineMeals.dinner,
+      snack: form.routineMeals.snack,
+    };
+
+    for (const mt of mealTypes) {
+      const routine = mealTypeToRoutine[mt]?.trim();
+      if (routine) {
+        if (lang === 'es') {
+          parts.push(`Para ${mt === 'breakfast' ? 'el desayuno' : mt === 'lunch' ? 'la comida' : mt === 'dinner' ? 'la cena' : 'el snack'}, rota entre estas opciones habituales del usuario (no inventes otras a menos que se pida variedad): ${routine}`);
+        } else {
+          parts.push(`For ${mt}, rotate among these user's usual options (don't invent new ones unless variety is requested): ${routine}`);
+        }
+      }
+    }
+  }
+
+  // ---- Quick meal guidance for breakfasts/dinners ----
+  const hasBreakfastOrDinner = mealTypes.some((mt) => mt === 'breakfast' || mt === 'dinner');
+  if (hasBreakfastOrDinner) {
+    const quickMealNote = lang === 'es'
+      ? 'Para desayunos y cenas, prioriza recetas de ensamblaje rápido (≤15 min, pocos ingredientes) a menos que el usuario haya indicado lo contrario. Las comidas/almuerzos pueden ser más elaboradas.'
+      : 'For breakfasts and dinners, prioritize quick assembly meals (≤15 min, few ingredients) unless the user indicated otherwise. Lunches can be more elaborate.';
+    parts.push(quickMealNote);
+  }
+
+  // ---- Reinforce key preferences in the per-day prompt ----
+  // Cuisines reminder
+  if (form.cuisines.length > 0) {
+    const cuisineNames = form.cuisines.map(resolveChipName);
+    const cuisineReminder = lang === 'es'
+      ? `RECUERDA: Solo genera recetas de estos estilos de cocina: ${cuisineNames.join(', ')}`
+      : `REMEMBER: Only generate recipes from these cuisine styles: ${cuisineNames.join(', ')}`;
+    parts.push(cuisineReminder);
+  }
+
+  // Special notes reminder in per-day prompt
+  if (form.specialNotes) {
+    const notesReminder = lang === 'es'
+      ? `NOTAS DEL USUARIO (respétalas): ${form.specialNotes}`
+      : `USER NOTES (respect these): ${form.specialNotes}`;
+    parts.push(notesReminder);
+  }
+
+  // Excluded ingredients reinforcement per-day
+  if (form.ingredientsToExclude.length > 0) {
+    const excludeReminder = lang === 'es'
+      ? `⚠️ PROHIBIDO usar estos ingredientes en NINGUNA receta: ${form.ingredientsToExclude.join(', ')}`
+      : `⚠️ FORBIDDEN ingredients - DO NOT use in ANY recipe: ${form.ingredientsToExclude.join(', ')}`;
+    parts.push(excludeReminder);
+  }
+
   // Previous days summary to avoid repetition
   if (previousDaysSummary) {
     const avoidLabel = lang === 'es'
@@ -915,11 +980,9 @@ export const weeklyPlanGenerationService = {
         const dayConfig = form.dayConfigs[day];
         if (!dayConfig) continue;
 
-        // Filter out eating-out meals
-        const eatingOut = dayConfig.eatingOut || [];
-        const mealsToGenerate = dayConfig.meals.filter(
-          (m) => !eatingOut.includes(m)
-        );
+        // Get meals to generate, sorted in canonical order
+        const mealsToGenerate = [...dayConfig.meals]
+          .sort((a, b) => (MEAL_TYPE_ORDER[a] ?? 99) - (MEAL_TYPE_ORDER[b] ?? 99));
 
         if (mealsToGenerate.length === 0) continue;
 
@@ -982,7 +1045,7 @@ export const weeklyPlanGenerationService = {
             // Since responseMimeType is 'application/json', try direct parse first
             let parsed: any;
             try {
-              parsed = JSON.parse(rawResponse);
+              parsed = JSON.parse(sanitizeJson(rawResponse));
             } catch {
               // Fallback: extract and sanitize
               const jsonText = extractJsonFromResponse(rawResponse);
@@ -1072,17 +1135,6 @@ export const weeklyPlanGenerationService = {
           generatedTitles.push(...dayMeals.map((m) => m.recipe.title));
         }
 
-        // Add eating out entries
-        for (const mealType of eatingOut) {
-          allMeals.push({
-            day_of_week: day,
-            meal_type: mealType,
-            recipe: {} as any, // Will be handled in save logic
-            is_prep_day: false,
-            is_external: true,
-            estimated_calories: 0,
-          } as AIPlanMeal);
-        }
 
         // Delay between days to avoid rate limiting (1.5s)
         if (sortedDays.indexOf(day) < sortedDays.length - 1) {
@@ -1140,9 +1192,72 @@ export const weeklyPlanGenerationService = {
     const dayName = i18n.t(`weeklyPlan.days.${day}`, { lng: normalizedLang }) as string;
     const mealName = i18n.t(`weeklyPlan.mealTypes.${mealType}`, { lng: normalizedLang }) as string;
 
-    const userPrompt = normalizedLang === 'es'
-      ? `Genera una receta para el ${mealName} del ${dayName}. Tiempo máximo: ${cookingTimeMinutes} min. NO repitas: ${existingTitles.join(', ')}.${form.specialNotes ? ` Notas: ${form.specialNotes}` : ''}`
-      : `Generate a recipe for ${dayName}'s ${mealName}. Max time: ${cookingTimeMinutes} min. DO NOT repeat: ${existingTitles.join(', ')}.${form.specialNotes ? ` Notes: ${form.specialNotes}` : ''}`;
+    const userPrompt = (() => {
+      const mealLabel = normalizedLang === 'es' ? mealName : mealName;
+      const dayLabel = normalizedLang === 'es' ? dayName : dayName;
+      const parts: string[] = [];
+
+      if (normalizedLang === 'es') {
+        parts.push(`Genera una receta para el ${mealLabel} del ${dayLabel}. Tiempo máximo: ${cookingTimeMinutes} min.`);
+      } else {
+        parts.push(`Generate a recipe for ${dayLabel}'s ${mealLabel}. Max time: ${cookingTimeMinutes} min.`);
+      }
+
+      // Avoid repetition
+      if (existingTitles.length > 0) {
+        const avoidLabel = normalizedLang === 'es' ? 'NO repitas' : 'DO NOT repeat';
+        parts.push(`${avoidLabel}: ${existingTitles.join(', ')}`);
+      }
+
+      // Cuisines
+      if (form.cuisines.length > 0) {
+        const cuisineNames = form.cuisines.map(resolveChipName);
+        const label = normalizedLang === 'es' ? 'Estilo de cocina' : 'Cuisine style';
+        parts.push(`${label}: ${cuisineNames.join(', ')}`);
+      }
+
+      // Routine meals
+      if (form.routineMeals) {
+        const routineText = (form.routineMeals as any)[mealType]?.trim();
+        if (routineText) {
+          if (normalizedLang === 'es') {
+            parts.push(`El usuario suele comer esto para ${mealLabel}, rota entre estas opciones: ${routineText}`);
+          } else {
+            parts.push(`User usually eats this for ${mealLabel}, rotate among: ${routineText}`);
+          }
+        }
+      }
+
+      // Quick meal hint for breakfast/dinner
+      if (mealType === 'breakfast' || mealType === 'dinner') {
+        const quickHint = normalizedLang === 'es'
+          ? 'Prioriza receta de ensamblaje rápido (pocos ingredientes, ≤15 min) a menos que se indique lo contrario.'
+          : 'Prioritize quick assembly recipe (few ingredients, ≤15 min) unless indicated otherwise.';
+        parts.push(quickHint);
+      }
+
+      // Special notes
+      if (form.specialNotes) {
+        const label = normalizedLang === 'es' ? 'Notas' : 'Notes';
+        parts.push(`${label}: ${form.specialNotes}`);
+      }
+
+      // Servings
+      if (form.servings && form.servings >= 1) {
+        const label = normalizedLang === 'es' ? 'Porciones' : 'Servings';
+        parts.push(`${label}: ${form.servings}`);
+      }
+
+      // Excluded ingredients
+      if (form.ingredientsToExclude.length > 0) {
+        const label = normalizedLang === 'es'
+          ? '⚠️ PROHIBIDO usar estos ingredientes'
+          : '⚠️ FORBIDDEN ingredients';
+        parts.push(`${label}: ${form.ingredientsToExclude.join(', ')}`);
+      }
+
+      return parts.join('. ');
+    })();
 
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
@@ -1181,7 +1296,7 @@ export const weeklyPlanGenerationService = {
           // Try direct parse first, then fallback to extraction and repair.
           let parsed: any;
           try {
-            parsed = JSON.parse(rawResponse);
+            parsed = JSON.parse(sanitizeJson(rawResponse));
           } catch {
             // Try extracting and sanitizing
             const jsonText = extractJsonFromResponse(rawResponse);

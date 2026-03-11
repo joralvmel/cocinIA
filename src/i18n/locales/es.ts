@@ -76,6 +76,24 @@
     equipmentDesc: 'Electrodomésticos y utensilios',
     favoriteIngredients: 'Ingredientes Favoritos',
     favoriteIngredientsDesc: 'Ingredientes que te gusta usar al cocinar',
+    routineMeals: 'Comidas Habituales',
+    routineMealsDesc: 'Define qué sueles comer normalmente',
+    routineMealsTitle: '¿Qué sueles comer?',
+    routineMealsDescription: 'Define lo que sueles desayunar, comer, cenar y merendar. El planificador semanal rotará entre estas opciones en vez de inventar algo nuevo cada día.',
+    routineMealType: {
+      breakfast: 'Desayuno',
+      lunch: 'Comida',
+      dinner: 'Cena',
+      snack: 'Snack',
+    },
+    routineMealPlaceholder: {
+      breakfast: 'Ej: huevos revueltos',
+      lunch: 'Ej: pasta con verduras',
+      dinner: 'Ej: pizza casera con pan pita',
+      snack: 'Ej: yogur con fruta',
+    },
+    routineMealHint: 'Añade las comidas que sueles preparar.',
+    saveError: 'Error al guardar los cambios',
     // Basic info fields
     displayName: 'Nombre',
     displayNamePlaceholder: 'Tu nombre',
@@ -357,6 +375,7 @@
       ingredientsToExcludePlaceholder: 'Ej: mariscos, cilantro...',
       useFavoriteIngredients: 'Usar mis ingredientes favoritos',
       useFavoriteIngredientsHint: 'Priorizar ingredientes de tu perfil',
+      noFavoriteIngredients: 'No tienes ingredientes favoritos en tu perfil.',
 
       // Step 4
       servings: 'Porciones por receta',
@@ -370,6 +389,19 @@
       planNamePlaceholder: 'Ej: Semana Saludable, Meal Prep Marzo...',
       planNameAuto: 'Se genera automáticamente si está vacío',
       startDate: 'Fecha de inicio de la semana',
+
+      // Routine meals
+      routineMeals: 'Comidas habituales',
+      routineMealsHint: 'Define qué sueles comer normalmente. La IA rotará entre estas opciones en vez de inventar algo nuevo cada día.',
+      routineMealsNote: 'Deja vacío para que la IA genere opciones variadas.',
+      routineBreakfastPlaceholder: 'Ej: huevos revueltos, tostadas con jamón, quesadillas, avena...',
+      routineLunchPlaceholder: 'Ej: pasta, arroz con pollo, ensaladas, tacos...',
+      routineDinnerPlaceholder: 'Ej: pizza casera con pan pita, tacos de atún, tortilla, sándwiches...',
+      routineSnackPlaceholder: 'Ej: fruta, yogur, frutos secos, tostadas...',
+      useProfileRoutineMeals: 'Usar comidas del perfil',
+      useProfileRoutineMealsHint: 'Usa las comidas habituales guardadas en tu perfil',
+      noProfileRoutineMeals: 'No tienes comidas habituales configuradas en tu perfil',
+      editProfileRoutineMeals: 'Editar comidas habituales del perfil',
 
       // Step 5 - Summary
       summaryTitle: 'Resumen del Plan',

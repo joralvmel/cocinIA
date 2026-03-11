@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Section, ToggleButtonGroup, SwitchItem, DaySelector } from '@/components/ui';
+import { Section, ToggleButtonGroup, DaySelector } from '@/components/ui';
 import { useWeeklyPlanStore } from '@/stores';
 import { DAYS_OF_WEEK, PLAN_MEAL_TYPES, type DayOfWeek, type PlanMealType } from '@/types';
 import { getDayLabel, getMealTypeLabel, getMealTypeIcon } from '@/utils';
@@ -25,7 +25,6 @@ export function Step1DaysAndMeals() {
     dayConfigs,
     toggleDay,
     setDayMeals,
-    toggleDayEatingOut,
   } = useWeeklyPlanStore();
 
   // Day options for toggle group (no longer needed since we use DaySelector)
@@ -162,30 +161,7 @@ export function Step1DaysAndMeals() {
                     options={mealTypeOptions}
                     values={dayConfigs[day].meals}
                     onChange={(meals) => setDayMeals(day, meals as PlanMealType[])}
-                    className="mb-3"
                   />
-
-                  {/* Eating out for this day */}
-                  {dayConfigs[day].meals.length > 0 && (
-                    <>
-                      <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                        {t('weeklyPlan.wizard.eatingOut')}
-                      </Text>
-                      <View className="gap-1">
-                        {dayConfigs[day].meals.map((mealType) => (
-                          <SwitchItem
-                            key={`${day}-${mealType}`}
-                            icon={getMealTypeIcon(mealType) as any}
-                            label={getMealTypeLabel(mealType, t)}
-                            description={t('weeklyPlan.wizard.eatingOutHint')}
-                            value={dayConfigs[day].eatingOut.includes(mealType)}
-                            onValueChange={() => toggleDayEatingOut(day, mealType)}
-                            className="rounded-lg"
-                          />
-                        ))}
-                      </View>
-                    </>
-                  )}
                 </View>
               ))}
         </>

@@ -1,14 +1,25 @@
 import React from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Section, Input, NumberInput, DatePicker } from '@/components/ui';
+import { Section, Input, NumberInput, DatePicker, SwitchItem } from '@/components/ui';
 import { useWeeklyPlanStore, useProfileStore } from '@/stores';
+import { getMealTypeLabel, getMealTypeIcon, MEAL_TYPE_ORDER } from '@/utils';
+import type { PlanMealType } from '@/types';
+
+const MEAL_EMOJI: Record<string, string> = {
+  breakfast: '🍳',
+  lunch: '🍲',
+  dinner: '🌙',
+  snack: '🍎',
+};
 
 export function Step4NutritionAndNotes() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
+  const router = useRouter();
 
   const {
     dailyCalorieTarget,
@@ -16,15 +27,42 @@ export function Step4NutritionAndNotes() {
     planName,
     startDate,
     servings,
+    routineMeals,
+    useProfileRoutineMeals,
+    selectedDays,
+    dayConfigs,
     setDailyCalorieTarget,
     setSpecialNotes,
     setPlanName,
     setStartDate,
     setServings,
+    setRoutineMeals,
+    setUseProfileRoutineMeals,
   } = useWeeklyPlanStore();
 
   const profile = useProfileStore((s) => s.profile);
   const profileCalories = profile?.daily_calorie_goal;
+  const profileRoutineMeals = useProfileStore((s) => s.routineMeals);
+
+  // Check if profile has any routine meals configured
+  const hasProfileRoutineMeals = profileRoutineMeals.some((m) => m.description.trim());
+
+  // Get unique meal types across selected days
+  const uniqueMealTypes = React.useMemo(() => {
+    const types = new Set<PlanMealType>();
+    selectedDays.forEach((day) => dayConfigs[day].meals.forEach((m) => types.add(m)));
+    return Array.from(types).sort((a, b) => {
+      return (MEAL_TYPE_ORDER[a] ?? 99) - (MEAL_TYPE_ORDER[b] ?? 99);
+    });
+  }, [selectedDays, dayConfigs]);
+
+  // Get effective routine meal text for a given type (from profile or local)
+  const getEffectiveRoutine = (mealType: string): string => {
+    if (useProfileRoutineMeals) {
+      return profileRoutineMeals.find((m) => m.meal_type === mealType)?.description || '';
+    }
+    return routineMeals[mealType as keyof typeof routineMeals] || '';
+  };
 
   return (
     <ScrollView
@@ -101,6 +139,98 @@ export function Step4NutritionAndNotes() {
             </Pressable>
           )}
         </View>
+      </Section>
+
+      {/* Routine Meals */}
+      <Section
+        title={t('weeklyPlan.wizard.routineMeals')}
+        subtitle={t('weeklyPlan.wizard.routineMealsHint')}
+        className="mb-6"
+      >
+        {/* Toggle to use profile routine meals */}
+        <View className="mt-3">
+          <SwitchItem
+            icon="user"
+            label={t('weeklyPlan.wizard.useProfileRoutineMeals')}
+            description={
+              hasProfileRoutineMeals
+                ? t('weeklyPlan.wizard.useProfileRoutineMealsHint')
+                : t('weeklyPlan.wizard.noProfileRoutineMeals')
+            }
+            value={useProfileRoutineMeals && hasProfileRoutineMeals}
+            onValueChange={setUseProfileRoutineMeals}
+            disabled={!hasProfileRoutineMeals}
+            className="rounded-xl"
+          />
+        </View>
+
+        {/* Link to edit profile routine meals */}
+        <Pressable
+          onPress={() => router.push('/profile/edit-routine-meals' as any)}
+          className="flex-row items-center gap-2 mt-3 px-1"
+        >
+          <FontAwesome name="pencil" size={12} color={colors.primary} />
+          <Text className="text-sm text-primary-600 dark:text-primary-400">
+            {t('weeklyPlan.wizard.editProfileRoutineMeals')}
+          </Text>
+        </Pressable>
+
+        {/* Preview of active routine meals */}
+        {(useProfileRoutineMeals && hasProfileRoutineMeals) && (
+          <View className="mt-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 gap-2">
+            {uniqueMealTypes.map((mealType) => {
+              const text = getEffectiveRoutine(mealType);
+              if (!text) return null;
+              return (
+                <View key={mealType} className="flex-row items-start gap-2">
+                  <Text className="text-sm">{MEAL_EMOJI[mealType] || '🍽️'}</Text>
+                  <View className="flex-1">
+                    <Text className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {getMealTypeLabel(mealType, t)}
+                    </Text>
+                    <Text className="text-sm text-gray-700 dark:text-gray-300" numberOfLines={2}>
+                      {text}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Manual input when not using profile */}
+        {!useProfileRoutineMeals && (
+          <View className="mt-3 gap-4">
+            {uniqueMealTypes.map((mealType) => (
+              <View key={mealType}>
+                <View className="flex-row items-center gap-2 mb-1.5">
+                  <FontAwesome name={getMealTypeIcon(mealType) as any} size={14} color={colors.primary} />
+                  <Text className="font-medium text-gray-700 dark:text-gray-300">
+                    {getMealTypeLabel(mealType, t)}
+                  </Text>
+                </View>
+                <Input
+                  placeholder={
+                    mealType === 'breakfast'
+                      ? t('weeklyPlan.wizard.routineBreakfastPlaceholder')
+                      : mealType === 'dinner'
+                      ? t('weeklyPlan.wizard.routineDinnerPlaceholder')
+                      : mealType === 'lunch'
+                      ? t('weeklyPlan.wizard.routineLunchPlaceholder')
+                      : t('weeklyPlan.wizard.routineSnackPlaceholder')
+                  }
+                  value={routineMeals[mealType] || ''}
+                  onChangeText={(text) => setRoutineMeals(mealType, text)}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+            ))}
+            <Text className="text-xs text-gray-400 dark:text-gray-500">
+              {t('weeklyPlan.wizard.routineMealsNote')}
+            </Text>
+          </View>
+        )}
       </Section>
 
       {/* Special notes */}

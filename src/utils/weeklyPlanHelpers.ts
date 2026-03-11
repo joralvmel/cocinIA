@@ -7,6 +7,23 @@ import {
 } from '@/types';
 
 /**
+ * Canonical meal type ordering: breakfast → lunch → dinner → snack
+ */
+export const MEAL_TYPE_ORDER: Record<string, number> = {
+  breakfast: 0,
+  lunch: 1,
+  dinner: 2,
+  snack: 3,
+};
+
+/**
+ * Sort meal types in canonical order
+ */
+export function sortMealTypes<T extends string>(types: T[]): T[] {
+  return [...types].sort((a, b) => (MEAL_TYPE_ORDER[a] ?? 99) - (MEAL_TYPE_ORDER[b] ?? 99));
+}
+
+/**
  * Get translated day name
  */
 export function getDayLabel(day: DayOfWeek, t: TFunction): string {
@@ -150,13 +167,7 @@ export function getCurrentDayOfWeek(): DayOfWeek {
  * Get sort order for meal types
  */
 export function getMealTypeSortOrder(type: PlanMealType): number {
-  const order: Record<PlanMealType, number> = {
-    breakfast: 0,
-    lunch: 1,
-    snack: 2,
-    dinner: 3,
-  };
-  return order[type] ?? 99;
+  return MEAL_TYPE_ORDER[type] ?? 99;
 }
 
 /**
@@ -188,15 +199,14 @@ export function isDateInPlan(date: Date, startDate: string, endDate: string): bo
 /**
  * Get default day configs: all days enabled with lunch and dinner
  */
-export function getDefaultDayConfigs(): Record<DayOfWeek, { meals: PlanMealType[]; eatingOut: PlanMealType[]; cookingTimeMinutes: number }> {
-  const configs: Record<string, { meals: PlanMealType[]; eatingOut: PlanMealType[]; cookingTimeMinutes: number }> = {};
+export function getDefaultDayConfigs(): Record<DayOfWeek, { meals: PlanMealType[]; cookingTimeMinutes: number }> {
+  const configs: Record<string, { meals: PlanMealType[]; cookingTimeMinutes: number }> = {};
   for (const day of DAYS_OF_WEEK) {
     configs[day] = {
-      meals: ['lunch', 'dinner'],
-      eatingOut: [],
+      meals: ['breakfast', 'lunch', 'dinner'],
       cookingTimeMinutes: 60,
     };
   }
-  return configs as Record<DayOfWeek, { meals: PlanMealType[]; eatingOut: PlanMealType[]; cookingTimeMinutes: number }>;
+  return configs as Record<DayOfWeek, { meals: PlanMealType[]; cookingTimeMinutes: number }>;
 }
 

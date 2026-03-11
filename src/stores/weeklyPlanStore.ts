@@ -16,7 +16,6 @@ import { getDefaultDayConfigs } from '@/utils/weeklyPlanHelpers';
 
 interface DayMealConfig {
   meals: PlanMealType[];
-  eatingOut: PlanMealType[];
   cookingTimeMinutes: number;
 }
 
@@ -47,6 +46,10 @@ interface WizardState {
   planName: string;
   startDate: string;
   servings: number;
+
+  // Routine meals — what the user typically eats
+  routineMeals: { breakfast: string; lunch: string; dinner: string; snack: string };
+  useProfileRoutineMeals: boolean;
 }
 
 interface GenerationState {
@@ -77,7 +80,6 @@ interface WeeklyPlanStoreState extends WizardState, GenerationState, ActivePlanS
   toggleDay: (day: DayOfWeek) => void;
   setSelectedDays: (days: DayOfWeek[]) => void;
   setDayMeals: (day: DayOfWeek, meals: PlanMealType[]) => void;
-  toggleDayEatingOut: (day: DayOfWeek, mealType: PlanMealType) => void;
   setDayCookingTime: (day: DayOfWeek, minutes: number) => void;
 
   // Step 2 actions
@@ -98,6 +100,8 @@ interface WeeklyPlanStoreState extends WizardState, GenerationState, ActivePlanS
   setPlanName: (name: string) => void;
   setStartDate: (date: string) => void;
   setServings: (servings: number) => void;
+  setRoutineMeals: (mealType: string, value: string) => void;
+  setUseProfileRoutineMeals: (value: boolean) => void;
 
   // Generation actions
   setGeneratedPlan: (plan: AIWeeklyPlanResponse | null) => void;
@@ -164,6 +168,8 @@ const initialWizardState: WizardState = {
   planName: '',
   startDate: getNextMonday(),
   servings: 1,
+  routineMeals: { breakfast: '', lunch: '', dinner: '', snack: '' },
+  useProfileRoutineMeals: true,
 };
 
 const initialGenerationState: GenerationState = {
@@ -234,19 +240,6 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
         });
       },
 
-      toggleDayEatingOut: (day, mealType) => {
-        const { dayConfigs } = get();
-        const current = dayConfigs[day].eatingOut;
-        const newEatingOut = current.includes(mealType)
-          ? current.filter((m) => m !== mealType)
-          : [...current, mealType];
-        set({
-          dayConfigs: {
-            ...dayConfigs,
-            [day]: { ...dayConfigs[day], eatingOut: newEatingOut },
-          },
-        });
-      },
 
       setDayCookingTime: (day, minutes) => {
         const { dayConfigs } = get();
@@ -282,6 +275,10 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
       setPlanName: (planName) => set({ planName }),
       setStartDate: (startDate) => set({ startDate }),
       setServings: (servings) => set({ servings }),
+      setRoutineMeals: (mealType, value) => set((state) => ({
+        routineMeals: { ...state.routineMeals, [mealType]: value },
+      })),
+      setUseProfileRoutineMeals: (useProfileRoutineMeals) => set({ useProfileRoutineMeals }),
 
       // Generation
       setGeneratedPlan: (plan) => set({ generatedPlan: plan, showResult: plan !== null }),
@@ -309,6 +306,23 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
       // Get wizard form data for generation
       getWizardForm: (): WeeklyPlanForm => {
         const state = get();
+
+        // Resolve routine meals: if using profile, merge profile data with any local overrides
+        let resolvedRoutineMeals = state.routineMeals;
+        if (state.useProfileRoutineMeals) {
+          // Lazy-import profile store to avoid circular deps
+          const { useProfileStore } = require('@/stores/profileStore');
+          const profileRoutine: { meal_type: string; description: string }[] =
+            useProfileStore.getState().routineMeals || [];
+          const merged = { ...state.routineMeals };
+          for (const rm of profileRoutine) {
+            if (rm.description.trim()) {
+              merged[rm.meal_type as keyof typeof merged] = rm.description;
+            }
+          }
+          resolvedRoutineMeals = merged;
+        }
+
         return {
           selectedDays: state.selectedDays,
           dayConfigs: state.dayConfigs,
@@ -322,6 +336,7 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
           useFavoriteIngredients: state.useFavoriteIngredients,
           dailyCalorieTarget: state.dailyCalorieTarget,
           servings: state.servings,
+          routineMeals: resolvedRoutineMeals,
           specialNotes: state.specialNotes,
           planName: state.planName,
           startDate: state.startDate,

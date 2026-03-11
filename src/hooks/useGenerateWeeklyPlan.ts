@@ -65,6 +65,8 @@ export function useGenerateWeeklyPlan() {
     const totalDays = form.selectedDays.length;
     let completedDays = 0;
 
+    // The callback fires at the START of each day, so completedDays
+    // represents how many days finished before this one started.
     const result = await weeklyPlanGenerationService.generateWeeklyPlan(
       form,
       profile,
@@ -72,12 +74,13 @@ export function useGenerateWeeklyPlan() {
       favNames,
       currentLang,
       (day: DayOfWeek) => {
-        completedDays++;
         const dayLabel = t(`weeklyPlan.days.${day}` as any);
         const pct = Math.round((completedDays / totalDays) * 100);
         setGenerationProgress(
           JSON.stringify({ day: dayLabel, pct, completed: completedDays, total: totalDays })
         );
+        // Increment AFTER setting progress so this day shows the correct "before" count
+        completedDays++;
       },
     );
 
@@ -214,7 +217,6 @@ export function useGenerateWeeklyPlan() {
       const titleToIdMap = new Map<string, string>(); // recipe title → recipe id (dedup)
 
       for (const meal of generatedPlan.meals) {
-        if (meal.is_external) continue; // Skip eating out meals
         if (!meal.recipe?.title) continue;
 
         const key = `${meal.day_of_week}-${meal.meal_type}`;
@@ -269,17 +271,15 @@ export function useGenerateWeeklyPlan() {
       for (const meal of generatedPlan.meals) {
         const key = `${meal.day_of_week}-${meal.meal_type}`;
         const recipeId = recipeIdMap.get(key) || null;
-        const isExternal = !!meal.is_external;
 
         mealPayloads.push({
           weekly_plan_id: plan.id,
-          recipe_id: isExternal ? null : recipeId,
+          recipe_id: recipeId,
           day_of_week: meal.day_of_week,
           meal_type: meal.meal_type,
           servings: meal.recipe?.servings || 1,
           is_prep_day: meal.is_prep_day || false,
-          is_external: isExternal,
-          external_description: isExternal ? 'Eating out' : undefined,
+          is_external: false,
           estimated_calories: meal.estimated_calories || meal.recipe?.nutrition?.calories || 0,
           sort_order: sortOrder++,
         });
@@ -329,28 +329,6 @@ export function useGenerateWeeklyPlan() {
   const handleDismissRetryError = () => {
     setShowRetryError(false);
     setShowWizard(true);
-  };
-
-  // ---- Mark a meal as eating out (toggle) ----
-  const handleMarkEatingOut = (day: DayOfWeek, mealType: PlanMealType) => {
-    if (!generatedPlan) return;
-
-    const updatedMeals = generatedPlan.meals.map((m) => {
-      if (m.day_of_week === day && m.meal_type === mealType) {
-        // Toggle eating out state
-        const isCurrentlyExternal = m.is_external;
-        return {
-          ...m,
-          is_external: !isCurrentlyExternal,
-        };
-      }
-      return m;
-    });
-
-    setGeneratedPlan({
-      ...generatedPlan,
-      meals: updatedMeals,
-    });
   };
 
   // ---- Swap a meal with a recipe from the cookbook ----
@@ -416,7 +394,6 @@ export function useGenerateWeeklyPlan() {
     handleSaveSuccessConfirm,
     handleDiscard,
     handleDismissRetryError,
-    handleMarkEatingOut,
     handleSwapMeal,
   };
 }

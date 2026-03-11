@@ -16,6 +16,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="edit-nutrition" />
       <Stack.Screen name="edit-preferences" />
       <Stack.Screen name="edit-ingredients" />
+      <Stack.Screen name="edit-routine-meals" />
     </Stack>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Input, Checkbox, Section } from '@/components/ui';
+import { Checkbox, Section, TagInput } from '@/components/ui';
 
 interface ProfileFavoriteIngredient {
   ingredient_name: string;
@@ -9,20 +9,32 @@ interface ProfileFavoriteIngredient {
 }
 
 interface FilterIngredientsSectionProps {
+  ingredientsToUseItems: string[];
   ingredientsToUseText: string;
-  onIngredientsToUseChange: (text: string) => void;
+  onIngredientsToUseTextChange: (text: string) => void;
+  onAddIngredientToUse: () => void;
+  onRemoveIngredientToUse: (item: string) => void;
+  ingredientsToExcludeItems: string[];
   ingredientsToExcludeText: string;
-  onIngredientsToExcludeChange: (text: string) => void;
+  onIngredientsToExcludeTextChange: (text: string) => void;
+  onAddIngredientToExclude: () => void;
+  onRemoveIngredientToExclude: (item: string) => void;
   useFavoriteIngredients: boolean;
   onUseFavoriteIngredientsChange: (checked: boolean) => void;
   favoriteIngredients: ProfileFavoriteIngredient[];
 }
 
 export function FilterIngredientsSection({
+  ingredientsToUseItems,
   ingredientsToUseText,
-  onIngredientsToUseChange,
+  onIngredientsToUseTextChange,
+  onAddIngredientToUse,
+  onRemoveIngredientToUse,
+  ingredientsToExcludeItems,
   ingredientsToExcludeText,
-  onIngredientsToExcludeChange,
+  onIngredientsToExcludeTextChange,
+  onAddIngredientToExclude,
+  onRemoveIngredientToExclude,
   useFavoriteIngredients,
   onUseFavoriteIngredientsChange,
   favoriteIngredients,
@@ -33,23 +45,27 @@ export function FilterIngredientsSection({
     <>
       {/* Ingredients to Use */}
       <Section title={String(t('recipeGeneration.ingredientsToUse'))}>
-        <Input
+        <TagInput
+          items={ingredientsToUseItems}
+          inputText={ingredientsToUseText}
+          onChangeText={onIngredientsToUseTextChange}
+          onAdd={onAddIngredientToUse}
+          onRemove={onRemoveIngredientToUse}
           placeholder={String(t('recipeGeneration.ingredientsPlaceholder'))}
-          value={ingredientsToUseText}
-          onChangeText={onIngredientsToUseChange}
-          multiline
-          numberOfLines={2}
+          chipSize="sm"
         />
       </Section>
 
       {/* Ingredients to Exclude */}
       <Section title={String(t('recipeGeneration.ingredientsToExclude'))}>
-        <Input
+        <TagInput
+          items={ingredientsToExcludeItems}
+          inputText={ingredientsToExcludeText}
+          onChangeText={onIngredientsToExcludeTextChange}
+          onAdd={onAddIngredientToExclude}
+          onRemove={onRemoveIngredientToExclude}
           placeholder={String(t('recipeGeneration.excludePlaceholder'))}
-          value={ingredientsToExcludeText}
-          onChangeText={onIngredientsToExcludeChange}
-          multiline
-          numberOfLines={2}
+          chipSize="sm"
         />
       </Section>
 

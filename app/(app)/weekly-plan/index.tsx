@@ -58,7 +58,6 @@ export default function WeeklyPlanScreen() {
     handleSaveSuccessConfirm,
     handleDiscard,
     handleDismissRetryError,
-    handleMarkEatingOut,
     handleSwapMeal,
     regeneratingMeal,
     modifyingMeal,
@@ -69,6 +68,9 @@ export default function WeeklyPlanScreen() {
 
   // Whether we have a minimized (not yet saved) plan that can be reopened
   const hasMinimizedPlan = !!generatedPlan && !showResult && !isSaving && !isGenerating;
+
+  // Whether generation is in progress but modal was closed
+  const isGeneratingMinimized = isGenerating && !showResult;
 
   // Loading state
   if (!activePlanLoaded || isLoading) {
@@ -111,7 +113,23 @@ export default function WeeklyPlanScreen() {
 
       {/* Floating Action Button — context-aware options */}
       <View className="absolute bottom-6 right-6">
-        {hasMinimizedPlan ? (
+        {isGeneratingMinimized ? (
+          /* Generation in progress but modal closed — single tap to reopen */
+          <MultiActionButton
+            icon="hourglass-half"
+            variant="floating"
+            floatingColor="amber-500"
+            options={[
+              {
+                id: 'reopen',
+                label: t('weeklyPlan.fab.reopenPlan'),
+                icon: 'file-text-o',
+                color: '#3B82F6',
+                onPress: () => setShowResult(true),
+              },
+            ]}
+          />
+        ) : hasMinimizedPlan ? (
           /* Minimized plan — show FAB to reopen the result */
           <MultiActionButton
             icon="ellipsis-v"
@@ -225,7 +243,6 @@ export default function WeeklyPlanScreen() {
         onRegenerateMeal={handleRegenerateMeal}
         onSavePlan={handleSavePlan}
         onDiscard={handleDiscard}
-        onMarkEatingOut={handleMarkEatingOut}
         onSwapMeal={handleSwapMeal}
         isSaving={isSaving}
         regeneratingMeal={regeneratingMeal}

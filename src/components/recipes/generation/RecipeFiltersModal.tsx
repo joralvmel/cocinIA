@@ -17,6 +17,12 @@ export function RecipeFiltersModal(props: RecipeFiltersModalProps) {
     setIngredientsToUseText,
     ingredientsToExcludeText,
     setIngredientsToExcludeText,
+    ingredientsToUseItems,
+    ingredientsToExcludeItems,
+    addIngredientToUse,
+    removeIngredientToUse,
+    addIngredientToExclude,
+    removeIngredientToExclude,
     profileFavoriteIngredients,
     resetPressed,
     clearPressed,
@@ -59,10 +65,16 @@ export function RecipeFiltersModal(props: RecipeFiltersModalProps) {
     >
       <View className="pb-10 gap-5">
         <FilterIngredientsSection
+          ingredientsToUseItems={ingredientsToUseItems}
           ingredientsToUseText={ingredientsToUseText}
-          onIngredientsToUseChange={setIngredientsToUseText}
+          onIngredientsToUseTextChange={setIngredientsToUseText}
+          onAddIngredientToUse={addIngredientToUse}
+          onRemoveIngredientToUse={removeIngredientToUse}
+          ingredientsToExcludeItems={ingredientsToExcludeItems}
           ingredientsToExcludeText={ingredientsToExcludeText}
-          onIngredientsToExcludeChange={setIngredientsToExcludeText}
+          onIngredientsToExcludeTextChange={setIngredientsToExcludeText}
+          onAddIngredientToExclude={addIngredientToExclude}
+          onRemoveIngredientToExclude={removeIngredientToExclude}
           useFavoriteIngredients={form.useFavoriteIngredients || false}
           onUseFavoriteIngredientsChange={setUseFavoriteIngredients}
           favoriteIngredients={profileFavoriteIngredients}

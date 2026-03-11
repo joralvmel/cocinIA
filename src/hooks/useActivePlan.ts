@@ -113,13 +113,36 @@ export function useActivePlan() {
     }
   }, [activePlan]);
 
-  // Current day progress
+  // Current day progress — only count if today is within the plan's date range
   const currentDay = getCurrentDayOfWeek();
   const planDays = activePlan?.days_included || [];
-  const currentDayIndex = planDays.indexOf(currentDay);
-  const progress = planDays.length > 0
-    ? Math.max(0, currentDayIndex + 1) / planDays.length
-    : 0;
+
+  const progress = (() => {
+    if (planDays.length === 0 || !activePlan) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const planStart = new Date(activePlan.start_date + 'T00:00:00');
+    const planEnd = new Date(activePlan.end_date + 'T23:59:59');
+
+    // Plan hasn't started yet
+    if (today < planStart) return 0;
+
+    // Plan already ended
+    if (today > planEnd) return 1;
+
+    // Within the plan — find which day index we're on
+    const currentDayIndex = planDays.indexOf(currentDay);
+    if (currentDayIndex < 0) {
+      // Today is not a plan day — find how many plan days are before today
+      const DAYS_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const todayIdx = DAYS_ORDER.indexOf(currentDay);
+      const passedDays = planDays.filter((d) => DAYS_ORDER.indexOf(d) < todayIdx).length;
+      return passedDays / planDays.length;
+    }
+
+    return Math.max(0, currentDayIndex + 1) / planDays.length;
+  })();
 
   return {
     // State

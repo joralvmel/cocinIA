@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { View, ScrollView } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Section, ChipGroup, SwitchItem, Input } from '@/components/ui';
+import { Section, ChipGroup, SwitchItem, TagInput, Chip } from '@/components/ui';
 import { useWeeklyPlanStore, useProfileStore } from '@/stores';
 import { cuisines as cuisineConstants } from '@/constants/cuisines';
 import { equipment as equipmentConstants } from '@/constants/equipment';
@@ -15,6 +15,7 @@ export function Step3FoodPreferences() {
   const { t } = useTranslation();
   const [includeText, setIncludeText] = useState('');
   const [excludeText, setExcludeText] = useState('');
+  const [hasPrePopulated, setHasPrePopulated] = useState(false);
 
   const {
     cuisines,
@@ -29,7 +30,40 @@ export function Step3FoodPreferences() {
     setUseFavoriteIngredients,
   } = useWeeklyPlanStore();
 
-  const { customCuisines: profileCustomCuisines, equipment: profileEquipment } = useProfileStore();
+  const {
+    profile,
+    customCuisines: profileCustomCuisines,
+    equipment: profileEquipment,
+    favoriteIngredients,
+  } = useProfileStore();
+
+  // Pre-populate from profile when entering this step for the first time
+  useEffect(() => {
+    if (hasPrePopulated) return;
+    setHasPrePopulated(true);
+
+    // Cuisines: merge profile preferred_cuisines + custom cuisines
+    if (cuisines.length === 0) {
+      const predefined = profile?.preferred_cuisines || [];
+      const customIds = (profileCustomCuisines || [])
+        .filter((c) => c.custom_name)
+        .map((c) => `custom:${c.custom_name}`);
+      const all = [...predefined, ...customIds];
+      if (all.length > 0) {
+        setCuisines(all);
+      }
+    }
+
+    // Equipment: merge profile equipment
+    if (equipment.length === 0) {
+      const allEquip = (profileEquipment || []).map((e) =>
+        e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+      );
+      if (allEquip.length > 0) {
+        setEquipment(allEquip);
+      }
+    }
+  }, [hasPrePopulated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build cuisine options — with emoji icons like the home recipe filters
   const allCuisineOptions: ChipOption[] = useMemo(() => {
@@ -65,7 +99,7 @@ export function Step3FoodPreferences() {
     return [...standard, ...custom];
   }, [t, profileEquipment]);
 
-  // Ingredient chip handling
+  // Ingredient handlers
   const handleAddInclude = () => {
     const trimmed = includeText.trim();
     if (trimmed && !ingredientsToInclude.includes(trimmed)) {
@@ -74,20 +108,12 @@ export function Step3FoodPreferences() {
     }
   };
 
-  const handleRemoveInclude = (ingredient: string) => {
-    setIngredientsToInclude(ingredientsToInclude.filter((i) => i !== ingredient));
-  };
-
   const handleAddExclude = () => {
     const trimmed = excludeText.trim();
     if (trimmed && !ingredientsToExclude.includes(trimmed)) {
       setIngredientsToExclude([...ingredientsToExclude, trimmed]);
       setExcludeText('');
     }
-  };
-
-  const handleRemoveExclude = (ingredient: string) => {
-    setIngredientsToExclude(ingredientsToExclude.filter((i) => i !== ingredient));
   };
 
   return (
@@ -125,7 +151,7 @@ export function Step3FoodPreferences() {
       </Section>
 
       {/* Use favorite ingredients */}
-      <View className="mb-6">
+      <View className="mb-3">
         <SwitchItem
           icon="heart"
           label={t('weeklyPlan.wizard.useFavoriteIngredients')}
@@ -136,30 +162,45 @@ export function Step3FoodPreferences() {
         />
       </View>
 
+      {/* Show selected favorite ingredients when toggled on */}
+      {useFavoriteIngredients && favoriteIngredients.length > 0 && (
+        <View className="mb-6 px-1">
+          <View className="flex-row flex-wrap gap-1.5">
+            {favoriteIngredients.map((ing) => (
+              <Chip
+                key={ing.ingredient_name}
+                label={ing.ingredient_name}
+                selected
+                size="sm"
+                icon="heart"
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {useFavoriteIngredients && favoriteIngredients.length === 0 && (
+        <View className="mb-6 px-1">
+          <Text className="text-sm text-gray-400 dark:text-gray-500 italic">
+            {t('weeklyPlan.wizard.noFavoriteIngredients')}
+          </Text>
+        </View>
+      )}
+
       {/* Ingredients to include */}
       <Section
         title={t('weeklyPlan.wizard.ingredientsToInclude')}
         className="mb-6"
       >
-        <Input
-          placeholder={t('weeklyPlan.wizard.ingredientsToIncludePlaceholder')}
-          value={includeText}
+        <TagInput
+          items={ingredientsToInclude}
+          inputText={includeText}
           onChangeText={setIncludeText}
-          onSubmitEditing={handleAddInclude}
-          returnKeyType="done"
+          onAdd={handleAddInclude}
+          onRemove={(item) => setIngredientsToInclude(ingredientsToInclude.filter((i) => i !== item))}
+          placeholder={t('weeklyPlan.wizard.ingredientsToIncludePlaceholder')}
+          chipSize="sm"
         />
-        {ingredientsToInclude.length > 0 && (
-          <ChipGroup
-            chips={ingredientsToInclude.map((i) => ({ id: i, label: i }))}
-            selectedIds={ingredientsToInclude}
-            onSelectionChange={(ids) => {
-              // If chip was deselected, remove it
-              const removed = ingredientsToInclude.filter((i) => !ids.includes(i));
-              removed.forEach(handleRemoveInclude);
-            }}
-            multiple
-          />
-        )}
       </Section>
 
       {/* Ingredients to exclude */}
@@ -167,24 +208,15 @@ export function Step3FoodPreferences() {
         title={t('weeklyPlan.wizard.ingredientsToExclude')}
         className="mb-6"
       >
-        <Input
-          placeholder={t('weeklyPlan.wizard.ingredientsToExcludePlaceholder')}
-          value={excludeText}
+        <TagInput
+          items={ingredientsToExclude}
+          inputText={excludeText}
           onChangeText={setExcludeText}
-          onSubmitEditing={handleAddExclude}
-          returnKeyType="done"
+          onAdd={handleAddExclude}
+          onRemove={(item) => setIngredientsToExclude(ingredientsToExclude.filter((i) => i !== item))}
+          placeholder={t('weeklyPlan.wizard.ingredientsToExcludePlaceholder')}
+          chipSize="sm"
         />
-        {ingredientsToExclude.length > 0 && (
-          <ChipGroup
-            chips={ingredientsToExclude.map((i) => ({ id: i, label: i }))}
-            selectedIds={ingredientsToExclude}
-            onSelectionChange={(ids) => {
-              const removed = ingredientsToExclude.filter((i) => !ids.includes(i));
-              removed.forEach(handleRemoveExclude);
-            }}
-            multiple
-          />
-        )}
       </Section>
     </ScrollView>
   );

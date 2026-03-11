@@ -37,12 +37,14 @@ export function useUserProfile() {
     equipment,
     favoriteIngredients,
     customCuisines,
+    routineMeals,
     isLoaded: storeIsLoaded,
     setProfile,
     setRestrictions,
     setEquipment,
     setFavoriteIngredients: setStoreFavoriteIngredients,
     setCustomCuisines,
+    setRoutineMeals: setStoreRoutineMeals,
     setLoaded,
   } = useProfileStore();
 
@@ -99,12 +101,14 @@ export function useUserProfile() {
         equipmentData,
         favoriteIngredientsData,
         cuisinesData,
+        routineMealsData,
       ] = await Promise.all([
         profileService.getProfile(),
         profileService.getRestrictions(),
         profileService.getEquipment(),
         profileService.getFavoriteIngredients(),
         profileService.getCuisines(),
+        profileService.getRoutineMeals(),
       ]);
 
       const mappedCuisines = cuisinesData.map((c) => ({
@@ -123,6 +127,12 @@ export function useUserProfile() {
       setEquipment(equipmentData);
       setStoreFavoriteIngredients(mappedFavorites);
       setCustomCuisines(mappedCuisines);
+      setStoreRoutineMeals(
+        routineMealsData.map((rm) => ({
+          meal_type: rm.meal_type,
+          description: rm.description,
+        }))
+      );
       setLoaded(true);
 
       // Sync form defaults with fresh data
@@ -145,6 +155,7 @@ export function useUserProfile() {
     setEquipment,
     setStoreFavoriteIngredients,
     setCustomCuisines,
+    setStoreRoutineMeals,
     setLoaded,
   ]);
 
@@ -174,6 +185,7 @@ export function useUserProfile() {
     equipment,
     favoriteIngredients,
     customCuisines,
+    routineMeals,
     profileLoaded,
     userName,
     applyProfileDefaults,

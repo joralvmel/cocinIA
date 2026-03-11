@@ -47,6 +47,8 @@ export function useRecipeFilters({
   // Local state
   const [ingredientsToUseText, setIngredientsToUseText] = useState('');
   const [ingredientsToExcludeText, setIngredientsToExcludeText] = useState('');
+  const [ingredientsToUseItems, setIngredientsToUseItems] = useState<string[]>([]);
+  const [ingredientsToExcludeItems, setIngredientsToExcludeItems] = useState<string[]>([]);
   const [hasInitializedDefaults, setHasInitializedDefaults] = useState(false);
   const [resetPressed, setResetPressed] = useState(false);
   const [clearPressed, setClearPressed] = useState(false);
@@ -69,8 +71,10 @@ export function useRecipeFilters({
   // ---- Sync with store when modal opens ----
   useEffect(() => {
     if (visible) {
-      setIngredientsToUseText(form.ingredientsToUse.join(', '));
-      setIngredientsToExcludeText(form.ingredientsToExclude.join(', '));
+      setIngredientsToUseItems([...form.ingredientsToUse]);
+      setIngredientsToExcludeItems([...form.ingredientsToExclude]);
+      setIngredientsToUseText('');
+      setIngredientsToExcludeText('');
 
       if (!hasInitializedDefaults) {
         if (form.cuisines.length === 0 && (profileCuisines.length > 0 || profileCustomCuisines.length > 0)) {
@@ -154,14 +158,6 @@ export function useRecipeFilters({
     return [...standard, ...custom];
   }, [t, profileEquipment]);
 
-  // ---- Helpers ----
-  const parseIngredients = useCallback((text: string): string[] => {
-    return text
-      .split(/[,\n]/)
-      .map((i) => i.trim())
-      .filter(Boolean);
-  }, []);
-
   // ---- Visual feedback ----
   const flashReset = useCallback(() => {
     setResetPressed(true);
@@ -177,6 +173,8 @@ export function useRecipeFilters({
   const handleReset = useCallback(() => {
     setIngredientsToUseText('');
     setIngredientsToExcludeText('');
+    setIngredientsToUseItems([]);
+    setIngredientsToExcludeItems([]);
     setFormField('ingredientsToUse', []);
     setFormField('ingredientsToExclude', []);
     setFormField('useFavoriteIngredients', false);
@@ -193,6 +191,8 @@ export function useRecipeFilters({
   const handleClearAll = useCallback(() => {
     setIngredientsToUseText('');
     setIngredientsToExcludeText('');
+    setIngredientsToUseItems([]);
+    setIngredientsToExcludeItems([]);
     setFormField('ingredientsToUse', []);
     setFormField('ingredientsToExclude', []);
     setFormField('useFavoriteIngredients', false);
@@ -207,10 +207,10 @@ export function useRecipeFilters({
   }, [setFormField, flashClear]);
 
   const handleApply = useCallback(() => {
-    setFormField('ingredientsToUse', parseIngredients(ingredientsToUseText));
-    setFormField('ingredientsToExclude', parseIngredients(ingredientsToExcludeText));
+    setFormField('ingredientsToUse', ingredientsToUseItems);
+    setFormField('ingredientsToExclude', ingredientsToExcludeItems);
     onClose();
-  }, [setFormField, parseIngredients, ingredientsToUseText, ingredientsToExcludeText, onClose]);
+  }, [setFormField, ingredientsToUseItems, ingredientsToExcludeItems, onClose]);
 
   const handleMaxCaloriesChange = useCallback(
     (value: number) => {
@@ -255,6 +255,31 @@ export function useRecipeFilters({
     [setFormField],
   );
 
+  // ---- Tag input handlers ----
+  const addIngredientToUse = useCallback(() => {
+    const trimmed = ingredientsToUseText.trim();
+    if (trimmed && !ingredientsToUseItems.includes(trimmed)) {
+      setIngredientsToUseItems((prev) => [...prev, trimmed]);
+      setIngredientsToUseText('');
+    }
+  }, [ingredientsToUseText, ingredientsToUseItems]);
+
+  const removeIngredientToUse = useCallback((item: string) => {
+    setIngredientsToUseItems((prev) => prev.filter((i) => i !== item));
+  }, []);
+
+  const addIngredientToExclude = useCallback(() => {
+    const trimmed = ingredientsToExcludeText.trim();
+    if (trimmed && !ingredientsToExcludeItems.includes(trimmed)) {
+      setIngredientsToExcludeItems((prev) => [...prev, trimmed]);
+      setIngredientsToExcludeText('');
+    }
+  }, [ingredientsToExcludeText, ingredientsToExcludeItems]);
+
+  const removeIngredientToExclude = useCallback((item: string) => {
+    setIngredientsToExcludeItems((prev) => prev.filter((i) => i !== item));
+  }, []);
+
   return {
     // Form state (from store)
     form,
@@ -264,6 +289,14 @@ export function useRecipeFilters({
     setIngredientsToUseText,
     ingredientsToExcludeText,
     setIngredientsToExcludeText,
+
+    // Tag items
+    ingredientsToUseItems,
+    ingredientsToExcludeItems,
+    addIngredientToUse,
+    removeIngredientToUse,
+    addIngredientToExclude,
+    removeIngredientToExclude,
 
     // Profile data
     profileFavoriteIngredients,

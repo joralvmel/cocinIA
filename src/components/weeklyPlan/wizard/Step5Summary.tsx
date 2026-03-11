@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Card, Badge } from '@/components/ui';
-import { useWeeklyPlanStore } from '@/stores';
+import { useWeeklyPlanStore, useProfileStore } from '@/stores';
 import { DAYS_OF_WEEK } from '@/types';
 import { getMealTypeLabel } from '@/utils';
 
@@ -25,17 +25,30 @@ export function Step5Summary() {
     specialNotes,
     planName,
     startDate,
+    routineMeals,
+    useProfileRoutineMeals,
   } = useWeeklyPlanStore();
+
+  const profileRoutineMeals = useProfileStore((s) => s.routineMeals);
+  const hasProfileRoutineMeals = profileRoutineMeals.some((m) => m.description.trim());
+
+  // Effective routine meals
+  const effectiveRoutineMeals = React.useMemo(() => {
+    if (useProfileRoutineMeals && hasProfileRoutineMeals) {
+      const result: Record<string, string> = {};
+      for (const rm of profileRoutineMeals) {
+        if (rm.description.trim()) result[rm.meal_type] = rm.description;
+      }
+      return result;
+    }
+    return Object.fromEntries(
+      Object.entries(routineMeals).filter(([, v]) => v.trim())
+    );
+  }, [useProfileRoutineMeals, hasProfileRoutineMeals, profileRoutineMeals, routineMeals]);
 
   // Calculate total meals
   const totalMeals = selectedDays.reduce((sum, day) => {
-    const cfg = dayConfigs[day];
-    const homeMeals = cfg.meals.filter((m) => !cfg.eatingOut.includes(m)).length;
-    return sum + homeMeals;
-  }, 0);
-
-  const totalEatingOut = selectedDays.reduce((sum, day) => {
-    return sum + dayConfigs[day].eatingOut.length;
+    return sum + dayConfigs[day].meals.length;
   }, 0);
 
   const SummaryRow = ({
@@ -94,7 +107,7 @@ export function Step5Summary() {
           <SummaryRow
             icon="cutlery"
             label={t('weeklyPlan.wizard.totalMeals', { count: totalMeals })}
-            value={`${totalMeals} + ${totalEatingOut} ${t('weeklyPlan.wizard.eatingOut' as any)}`}
+            value={`${totalMeals}`}
           />
 
           <SummaryRow
@@ -158,17 +171,14 @@ export function Step5Summary() {
                     {t(`weeklyPlan.daysShort.${day}` as any)}
                   </Text>
                   <View className="flex-1 flex-row flex-wrap gap-1">
-                    {cfg.meals.map((meal) => {
-                      const isEatingOut = cfg.eatingOut.includes(meal);
-                      return (
-                        <Badge
-                          key={meal}
-                          variant={isEatingOut ? 'warning' : 'primary'}
-                          size="sm"
-                          label={`${getMealTypeLabel(meal, t)}${isEatingOut ? ' 🍽️' : ''}`}
-                        />
-                      );
-                    })}
+                    {cfg.meals.map((meal) => (
+                      <Badge
+                        key={meal}
+                        variant="primary"
+                        size="sm"
+                        label={getMealTypeLabel(meal, t)}
+                      />
+                    ))}
                   </View>
                   <Text className="text-sm text-gray-400 dark:text-gray-500">
                     {cfg.cookingTimeMinutes}min
@@ -183,7 +193,8 @@ export function Step5Summary() {
       {(ingredientsToInclude.length > 0 ||
         ingredientsToExclude.length > 0 ||
         useFavoriteIngredients ||
-        specialNotes) && (
+        specialNotes ||
+        Object.keys(effectiveRoutineMeals).length > 0) && (
         <Card variant="outlined" className="mb-4">
           <View className="p-4 gap-2">
             {useFavoriteIngredients && (
@@ -214,6 +225,35 @@ export function Step5Summary() {
                 <Text className="text-red-600 dark:text-red-400">
                   {ingredientsToExclude.join(', ')}
                 </Text>
+              </View>
+            )}
+
+            {/* Routine meals summary */}
+            {Object.keys(effectiveRoutineMeals).length > 0 && (
+              <View>
+                <Text className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {t('weeklyPlan.wizard.routineMeals')}:
+                </Text>
+                {effectiveRoutineMeals.breakfast ? (
+                  <Text className="text-gray-700 dark:text-gray-300 text-sm">
+                    🍳 {effectiveRoutineMeals.breakfast}
+                  </Text>
+                ) : null}
+                {effectiveRoutineMeals.lunch ? (
+                  <Text className="text-gray-700 dark:text-gray-300 text-sm">
+                    🍲 {effectiveRoutineMeals.lunch}
+                  </Text>
+                ) : null}
+                {effectiveRoutineMeals.dinner ? (
+                  <Text className="text-gray-700 dark:text-gray-300 text-sm">
+                    🌙 {effectiveRoutineMeals.dinner}
+                  </Text>
+                ) : null}
+                {effectiveRoutineMeals.snack ? (
+                  <Text className="text-gray-700 dark:text-gray-300 text-sm">
+                    🍎 {effectiveRoutineMeals.snack}
+                  </Text>
+                ) : null}
               </View>
             )}
 

@@ -65,16 +65,6 @@ export const BatchConfigSchema = z.object({
 export type BatchConfig = z.infer<typeof BatchConfigSchema>;
 
 /**
- * Eating out configuration per day
- */
-export const EatingOutEntrySchema = z.object({
-  day: DayOfWeek,
-  meal_type: PlanMealType,
-  description: z.string().optional(),
-});
-export type EatingOutEntry = z.infer<typeof EatingOutEntrySchema>;
-
-/**
  * Weekly plan as stored in Supabase
  */
 export interface WeeklyPlan {
@@ -137,7 +127,6 @@ export interface DayConfig {
   day: DayOfWeek;
   enabled: boolean;
   meals: PlanMealType[];
-  eatingOut: PlanMealType[];
   cookingTimeMinutes: number;
 }
 
@@ -149,7 +138,6 @@ export const WeeklyPlanFormSchema = z.object({
   selectedDays: z.array(DayOfWeek).min(1),
   dayConfigs: z.record(DayOfWeek, z.object({
     meals: z.array(PlanMealType).min(1),
-    eatingOut: z.array(PlanMealType).default([]),
     cookingTimeMinutes: z.coerce.number().min(5).max(480).default(60),
   })),
 
@@ -168,6 +156,14 @@ export const WeeklyPlanFormSchema = z.object({
   // Nutrition
   dailyCalorieTarget: z.coerce.number().min(500).max(10000).optional(),
   servings: z.coerce.number().min(1).max(20).default(1),
+
+  // Routine meals — what the user typically eats (rotate instead of inventing)
+  routineMeals: z.object({
+    breakfast: z.string().default(''),
+    lunch: z.string().default(''),
+    dinner: z.string().default(''),
+    snack: z.string().default(''),
+  }).default({ breakfast: '', lunch: '', dinner: '', snack: '' }),
 
   // Notes
   specialNotes: z.string().default(''),

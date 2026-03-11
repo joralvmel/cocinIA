@@ -17,6 +17,7 @@ export { useEditPersonalForm } from './useEditPersonalForm';
 export { useEditNutritionForm } from './useEditNutritionForm';
 export { useEditIngredientsForm, type IngredientState } from './useEditIngredientsForm';
 export { useEditPreferencesForm, type RestrictionState, type CuisineState, type EquipmentState } from './useEditPreferencesForm';
+export { useEditRoutineMealsForm, type RoutineMealState } from './useEditRoutineMealsForm';
 
 // Auth & Onboarding hooks
 export { useAlertModal, type AlertVariant, type AlertModalState as AlertModalHookState } from './useAlertModal';

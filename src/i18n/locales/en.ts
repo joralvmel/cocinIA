@@ -76,6 +76,24 @@
     equipmentDesc: 'Appliances and utensils',
     favoriteIngredients: 'Favorite Ingredients',
     favoriteIngredientsDesc: 'Ingredients you love to cook with',
+    routineMeals: 'Routine Meals',
+    routineMealsDesc: 'Define what you usually eat',
+    routineMealsTitle: 'What do you usually eat?',
+    routineMealsDescription: 'Define what you usually have for breakfast, lunch, dinner, and snacks. The weekly planner will rotate among these options instead of inventing new ones each day.',
+    routineMealType: {
+      breakfast: 'Breakfast',
+      lunch: 'Lunch',
+      dinner: 'Dinner',
+      snack: 'Snack',
+    },
+    routineMealPlaceholder: {
+      breakfast: 'E.g: scrambled eggs',
+      lunch: 'E.g: pasta with veggies',
+      dinner: 'E.g: homemade pita pizza',
+      snack: 'E.g: yogurt with fruit',
+    },
+    routineMealHint: 'Add meals you usually prepare.',
+    saveError: 'Error saving changes',
     // Basic info fields
     displayName: 'Name',
     displayNamePlaceholder: 'Your name',
@@ -357,6 +375,7 @@
       ingredientsToExcludePlaceholder: 'E.g: seafood, cilantro...',
       useFavoriteIngredients: 'Use my favorite ingredients',
       useFavoriteIngredientsHint: 'Prioritize ingredients from your profile',
+      noFavoriteIngredients: 'No favorite ingredients in your profile yet.',
 
       // Step 4
       servings: 'Servings per recipe',
@@ -370,6 +389,19 @@
       planNamePlaceholder: 'E.g: Healthy Week, Meal Prep March...',
       planNameAuto: 'Auto-generated if empty',
       startDate: 'Week start date',
+
+      // Routine meals
+      routineMeals: 'Routine meals',
+      routineMealsHint: 'Define what you usually eat. The AI will rotate among these options instead of inventing new ones each day.',
+      routineMealsNote: 'Leave empty to let the AI generate varied options.',
+      routineBreakfastPlaceholder: 'E.g: scrambled eggs, toast with ham, oatmeal, quesadillas...',
+      routineLunchPlaceholder: 'E.g: pasta, rice with chicken, salads, tacos...',
+      routineDinnerPlaceholder: 'E.g: homemade pizza, tuna tacos, omelettes, sandwiches...',
+      routineSnackPlaceholder: 'E.g: fruit, yogurt, nuts, toast...',
+      useProfileRoutineMeals: 'Use profile meals',
+      useProfileRoutineMealsHint: 'Use routine meals saved in your profile',
+      noProfileRoutineMeals: 'No routine meals configured in your profile',
+      editProfileRoutineMeals: 'Edit profile routine meals',
 
       // Step 5 - Summary
       summaryTitle: 'Plan Summary',

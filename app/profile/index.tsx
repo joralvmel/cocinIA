@@ -101,6 +101,7 @@ export default function ProfileScreen() {
                   <ListItem leftIcon="line-chart" title={t('profile.nutritionGoals')} subtitle={t('profile.nutritionGoalsDesc')} showChevron onPress={() => router.push('/profile/edit-nutrition' as any)} />
                   <ListItem leftIcon="cutlery" title={t('profile.cookingPreferences')} subtitle={t('profile.cookingPreferencesDesc')} showChevron onPress={() => router.push('/profile/edit-preferences' as any)} />
                   <ListItem leftIcon="lemon-o" title={t('profile.favoriteIngredients')} subtitle={t('profile.favoriteIngredientsDesc')} showChevron onPress={() => router.push('/profile/edit-ingredients' as any)} />
+                  <ListItem leftIcon="calendar" title={t('profile.routineMeals')} subtitle={t('profile.routineMealsDesc')} showChevron onPress={() => router.push('/profile/edit-routine-meals' as any)} />
                 </ListGroup>
               </Section>
             )}

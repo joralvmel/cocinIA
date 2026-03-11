@@ -6,7 +6,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { Section, SwitchItem, NumberInput, DaySelector, Input } from '@/components/ui';
 import { useWeeklyPlanStore } from '@/stores';
 import { DAYS_OF_WEEK, type DayOfWeek, type BatchConfig, type PlanMealType } from '@/types';
-import { getMealTypeLabel, getMealTypeIcon } from '@/utils';
+import { getMealTypeLabel, getMealTypeIcon, MEAL_TYPE_ORDER } from '@/utils';
 
 // Map DayOfWeek names to display indices (0=Monday, ..., 6=Sunday)
 const DAY_TO_INDEX: Record<DayOfWeek, number> = {
@@ -35,8 +35,7 @@ export function Step2CookingPreferences() {
     const types = new Set<PlanMealType>();
     selectedDays.forEach((day) => dayConfigs[day].meals.forEach((m) => types.add(m)));
     return Array.from(types).sort((a, b) => {
-      const order = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 };
-      return (order[a] || 99) - (order[b] || 99);
+      return (MEAL_TYPE_ORDER[a] ?? 99) - (MEAL_TYPE_ORDER[b] ?? 99);
     });
   }, [selectedDays, dayConfigs]);
 
