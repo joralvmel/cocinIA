@@ -6,7 +6,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Section, Input, NumberInput, DatePicker, SwitchItem } from '@/components/ui';
 import { useWeeklyPlanStore, useProfileStore } from '@/stores';
-import { getMealTypeLabel, getMealTypeIcon, MEAL_TYPE_ORDER } from '@/utils';
+import { getMealTypeLabel, MEAL_TYPE_ORDER } from '@/utils';
 import type { PlanMealType } from '@/types';
 
 const MEAL_EMOJI: Record<string, string> = {
@@ -27,7 +27,6 @@ export function Step4NutritionAndNotes() {
     planName,
     startDate,
     servings,
-    routineMeals,
     useProfileRoutineMeals,
     selectedDays,
     dayConfigs,
@@ -36,7 +35,6 @@ export function Step4NutritionAndNotes() {
     setPlanName,
     setStartDate,
     setServings,
-    setRoutineMeals,
     setUseProfileRoutineMeals,
   } = useWeeklyPlanStore();
 
@@ -56,12 +54,12 @@ export function Step4NutritionAndNotes() {
     });
   }, [selectedDays, dayConfigs]);
 
-  // Get effective routine meal text for a given type (from profile or local)
+  // Get effective routine meal text for a given type (from profile)
   const getEffectiveRoutine = (mealType: string): string => {
     if (useProfileRoutineMeals) {
       return profileRoutineMeals.find((m) => m.meal_type === mealType)?.description || '';
     }
-    return routineMeals[mealType as keyof typeof routineMeals] || '';
+    return '';
   };
 
   return (
@@ -195,40 +193,6 @@ export function Step4NutritionAndNotes() {
                 </View>
               );
             })}
-          </View>
-        )}
-
-        {/* Manual input when not using profile */}
-        {!useProfileRoutineMeals && (
-          <View className="mt-3 gap-4">
-            {uniqueMealTypes.map((mealType) => (
-              <View key={mealType}>
-                <View className="flex-row items-center gap-2 mb-1.5">
-                  <FontAwesome name={getMealTypeIcon(mealType) as any} size={14} color={colors.primary} />
-                  <Text className="font-medium text-gray-700 dark:text-gray-300">
-                    {getMealTypeLabel(mealType, t)}
-                  </Text>
-                </View>
-                <Input
-                  placeholder={
-                    mealType === 'breakfast'
-                      ? t('weeklyPlan.wizard.routineBreakfastPlaceholder')
-                      : mealType === 'dinner'
-                      ? t('weeklyPlan.wizard.routineDinnerPlaceholder')
-                      : mealType === 'lunch'
-                      ? t('weeklyPlan.wizard.routineLunchPlaceholder')
-                      : t('weeklyPlan.wizard.routineSnackPlaceholder')
-                  }
-                  value={routineMeals[mealType] || ''}
-                  onChangeText={(text) => setRoutineMeals(mealType, text)}
-                  multiline
-                  numberOfLines={2}
-                />
-              </View>
-            ))}
-            <Text className="text-xs text-gray-400 dark:text-gray-500">
-              {t('weeklyPlan.wizard.routineMealsNote')}
-            </Text>
           </View>
         )}
       </Section>

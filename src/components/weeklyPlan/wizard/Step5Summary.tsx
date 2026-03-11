@@ -17,6 +17,7 @@ export function Step5Summary() {
     dayConfigs,
     batchCookingEnabled,
     batchConfig,
+    cookingTimeByMealType,
     cuisines,
     ingredientsToInclude,
     ingredientsToExclude,
@@ -25,14 +26,13 @@ export function Step5Summary() {
     specialNotes,
     planName,
     startDate,
-    routineMeals,
     useProfileRoutineMeals,
   } = useWeeklyPlanStore();
 
   const profileRoutineMeals = useProfileStore((s) => s.routineMeals);
   const hasProfileRoutineMeals = profileRoutineMeals.some((m) => m.description.trim());
 
-  // Effective routine meals
+  // Effective routine meals (only from profile when enabled)
   const effectiveRoutineMeals = React.useMemo(() => {
     if (useProfileRoutineMeals && hasProfileRoutineMeals) {
       const result: Record<string, string> = {};
@@ -41,10 +41,8 @@ export function Step5Summary() {
       }
       return result;
     }
-    return Object.fromEntries(
-      Object.entries(routineMeals).filter(([, v]) => v.trim())
-    );
-  }, [useProfileRoutineMeals, hasProfileRoutineMeals, profileRoutineMeals, routineMeals]);
+    return {};
+  }, [useProfileRoutineMeals, hasProfileRoutineMeals, profileRoutineMeals]);
 
   // Calculate total meals
   const totalMeals = selectedDays.reduce((sum, day) => {
@@ -181,7 +179,9 @@ export function Step5Summary() {
                     ))}
                   </View>
                   <Text className="text-sm text-gray-400 dark:text-gray-500">
-                    {cfg.cookingTimeMinutes}min
+                    {cfg.meals
+                      .filter((m) => !(batchCookingEnabled && m === 'lunch'))
+                      .reduce((sum, m) => sum + (cookingTimeByMealType[m] ?? 30), 0)}min
                   </Text>
                 </View>
               );

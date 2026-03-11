@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -37,12 +37,17 @@ export default function EditRoutineMealsScreen() {
       <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
         <ScreenHeader title={t('profile.routineMeals')} onBack={form.handleBack} />
 
-        <View className="flex-1 bg-white dark:bg-gray-900">
-          <ScrollView
-            contentContainerClassName="px-4 py-6 pb-24"
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+          <View className="flex-1 bg-white dark:bg-gray-900">
+            <ScrollView
+              contentContainerClassName="px-4 py-6 pb-24"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             {/* Explanation */}
             <View className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 mb-6">
               <View className="flex-row items-center gap-2 mb-2">
@@ -83,7 +88,8 @@ export default function EditRoutineMealsScreen() {
               );
             })}
           </ScrollView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
 
         <AlertModal
           visible={form.alertVisible}

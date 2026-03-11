@@ -348,6 +348,9 @@
       // Step 2
       batchCooking: 'Batch cooking mode',
       batchCookingDescription: 'Cook multiple meals in advance on specific prep days',
+      batchLunchOnly: 'Batch cooking applies to lunches. Base preparations will be generated and reused to assemble each day\'s dishes.',
+      batchLunchTimeNote: 'Lunch cooking time is already included in the batch cooking session.',
+      onlyBatchMeals: 'Only batch meals selected — time was set in the previous step.',
       prepDays: 'Prep day(s)',
       prepDaysHint: 'Which days will you do batch cooking?',
       maxPrepTime: 'Max prep time',
@@ -432,6 +435,9 @@
       // Base preparations (batch cooking)
       basePreparations: 'Base Preparations',
       basePrepsDescription: 'Prepare these in advance on your prep day(s)',
+      viewRecipe: 'View full recipe',
+      basePreparation: 'Base preparation',
+      noPrepRecipe: 'No detailed recipe was generated for this preparation.',
       usedIn: 'Used in:',
       prepTime: '{{minutes}} min prep',
 

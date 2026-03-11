@@ -155,8 +155,8 @@ const initialWizardState: WizardState = {
   cookingTimeByMealType: {
     breakfast: 15,
     lunch: 45,
-    dinner: 60,
-    snack: 15,
+    dinner: 20,
+    snack: 10,
   },
   cuisines: [],
   equipment: [],
@@ -169,7 +169,7 @@ const initialWizardState: WizardState = {
   startDate: getNextMonday(),
   servings: 1,
   routineMeals: { breakfast: '', lunch: '', dinner: '', snack: '' },
-  useProfileRoutineMeals: true,
+  useProfileRoutineMeals: false,
 };
 
 const initialGenerationState: GenerationState = {
@@ -220,22 +220,41 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
 
       // Step 1: Days & meals
       toggleDay: (day) => {
-        const { selectedDays } = get();
+        const { selectedDays, batchCookingEnabled, dayConfigs } = get();
         if (selectedDays.includes(day)) {
           set({ selectedDays: selectedDays.filter((d) => d !== day) });
         } else {
-          set({ selectedDays: [...selectedDays, day] });
+          // When adding a day with batch enabled, ensure lunch is included
+          if (batchCookingEnabled && !dayConfigs[day].meals.includes('lunch')) {
+            set({
+              selectedDays: [...selectedDays, day],
+              dayConfigs: {
+                ...dayConfigs,
+                [day]: {
+                  ...dayConfigs[day],
+                  meals: [...dayConfigs[day].meals, 'lunch'],
+                },
+              },
+            });
+          } else {
+            set({ selectedDays: [...selectedDays, day] });
+          }
         }
       },
 
       setSelectedDays: (days) => set({ selectedDays: days }),
 
       setDayMeals: (day, meals) => {
-        const { dayConfigs } = get();
+        const { dayConfigs, batchCookingEnabled } = get();
+        // When batch cooking is enabled, lunch cannot be removed
+        let finalMeals = meals;
+        if (batchCookingEnabled && !meals.includes('lunch')) {
+          finalMeals = [...meals, 'lunch'];
+        }
         set({
           dayConfigs: {
             ...dayConfigs,
-            [day]: { ...dayConfigs[day], meals },
+            [day]: { ...dayConfigs[day], meals: finalMeals },
           },
         });
       },
@@ -252,7 +271,23 @@ export const useWeeklyPlanStore = create<WeeklyPlanStoreState>()(
       },
 
       // Step 2: Batch cooking
-      setBatchCookingEnabled: (enabled) => set({ batchCookingEnabled: enabled }),
+      setBatchCookingEnabled: (enabled) => {
+        set({ batchCookingEnabled: enabled });
+        // When batch cooking is enabled, ensure lunch is in all selected days
+        if (enabled) {
+          const { selectedDays, dayConfigs } = get();
+          const updatedConfigs = { ...dayConfigs };
+          for (const day of selectedDays) {
+            if (!updatedConfigs[day].meals.includes('lunch')) {
+              updatedConfigs[day] = {
+                ...updatedConfigs[day],
+                meals: [...updatedConfigs[day].meals, 'lunch'],
+              };
+            }
+          }
+          set({ dayConfigs: updatedConfigs });
+        }
+      },
       setCookingTimeByMealType: (mealType, minutes) => set((state) => ({
         cookingTimeByMealType: { ...state.cookingTimeByMealType, [mealType]: minutes },
       })),

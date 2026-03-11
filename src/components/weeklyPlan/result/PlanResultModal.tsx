@@ -12,7 +12,7 @@ import {
   ProgressBar,
 } from '@/components/ui';
 import { useWeeklyPlanStore } from '@/stores';
-import { type DayOfWeek, type PlanMealType, type AIPlanMeal, type Recipe, DAYS_OF_WEEK } from '@/types';
+import { type DayOfWeek, type PlanMealType, type AIPlanMeal, type BasePreparation, type Recipe, DAYS_OF_WEEK } from '@/types';
 import { DayCard } from './DayCard';
 import { BatchPreparationsCard } from './BatchPreparationsCard';
 import { RecipePickerSheet } from './RecipePickerSheet';
@@ -99,6 +99,10 @@ export function PlanResultModal({
     day: DayOfWeek;
     mealType: PlanMealType;
   } | null>(null);
+
+  // State for base preparation preview
+  const [previewPrep, setPreviewPrep] = useState<BasePreparation | null>(null);
+  const [showPrepPreview, setShowPrepPreview] = useState(false);
 
   // Don't render if not visible
   if (!visible) return null;
@@ -278,7 +282,13 @@ export function PlanResultModal({
 
             {/* Batch preparations */}
             {generatedPlan.base_preparations.length > 0 && (
-              <BatchPreparationsCard preparations={generatedPlan.base_preparations} />
+              <BatchPreparationsCard
+                preparations={generatedPlan.base_preparations}
+                onPrepPress={(prep) => {
+                  setPreviewPrep(prep);
+                  setShowPrepPreview(true);
+                }}
+              />
             )}
 
             {/* Day cards */}
@@ -412,6 +422,78 @@ export function PlanResultModal({
                 },
               ]}
             />
+          </View>
+        )}
+      </FullScreenModal>
+
+      {/* Base Preparation Preview */}
+      <FullScreenModal
+        visible={showPrepPreview}
+        onClose={() => setShowPrepPreview(false)}
+        title={previewPrep?.name || ''}
+        useChevron
+      >
+        {previewPrep?.recipe && (
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            <View className="px-4 pt-4 pb-24">
+              {/* Prep type badge and description */}
+              <View className="flex-row items-center gap-2 mb-2">
+                <View className="bg-amber-100 dark:bg-amber-900/30 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    {t('weeklyPlan.result.basePreparation')} · {previewPrep.type}
+                  </Text>
+                </View>
+                {previewPrep.estimated_time_minutes != null && (
+                  <View className="flex-row items-center gap-1">
+                    <FontAwesome name="clock-o" size={12} color={colors.textMuted} />
+                    <Text className="text-xs text-gray-500 dark:text-gray-400">
+                      {previewPrep.estimated_time_minutes} min
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Text className="text-gray-600 dark:text-gray-400 mb-4">
+                {previewPrep.description}
+              </Text>
+
+              {previewPrep.storage_instructions && (
+                <View className="flex-row items-center gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 mb-4">
+                  <FontAwesome name="snowflake-o" size={14} color={colors.primary} />
+                  <Text className="text-sm text-blue-700 dark:text-blue-300 flex-1">
+                    {previewPrep.storage_instructions}
+                  </Text>
+                </View>
+              )}
+
+              <NutritionCard nutrition={previewPrep.recipe.nutrition} />
+
+              <Divider className="my-4" />
+
+              <IngredientsList ingredients={previewPrep.recipe.ingredients} />
+
+              <Divider className="my-4" />
+
+              <StepsList
+                steps={previewPrep.recipe.steps}
+                expandedTips={{}}
+                onToggleTip={() => {}}
+              />
+
+              {previewPrep.recipe.chef_tips && previewPrep.recipe.chef_tips.length > 0 && (
+                <ChefTips tips={previewPrep.recipe.chef_tips} />
+              )}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* Fallback if no recipe data */}
+        {previewPrep && !previewPrep.recipe && (
+          <View className="flex-1 items-center justify-center px-8">
+            <FontAwesome name="cutlery" size={32} color={colors.textMuted} />
+            <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
+              {t('weeklyPlan.result.noPrepRecipe')}
+            </Text>
           </View>
         )}
       </FullScreenModal>

@@ -348,6 +348,9 @@
       // Step 2
       batchCooking: 'Modo batch cooking',
       batchCookingDescription: 'Cocina varias comidas de antemano en días de preparación',
+      batchLunchOnly: 'El batch cooking aplica a las comidas (almuerzos). Se generarán preparaciones base que se reutilizarán para armar los platos de cada día.',
+      batchLunchTimeNote: 'El tiempo de cocina para las comidas ya está incluido en la sesión de batch cooking.',
+      onlyBatchMeals: 'Solo hay comidas batch — el tiempo se configuró en el paso anterior.',
       prepDays: 'Día(s) de preparación',
       prepDaysHint: '¿Qué días harás batch cooking?',
       maxPrepTime: 'Tiempo máximo de preparación',
@@ -432,6 +435,9 @@
       // Base preparations (batch cooking)
       basePreparations: 'Preparaciones Base',
       basePrepsDescription: 'Prepara estos con antelación en tus días de preparación',
+      viewRecipe: 'Ver receta completa',
+      basePreparation: 'Preparación base',
+      noPrepRecipe: 'No se generó receta detallada para esta preparación.',
       usedIn: 'Se usa en:',
       prepTime: '{{minutes}} min de prep',
 

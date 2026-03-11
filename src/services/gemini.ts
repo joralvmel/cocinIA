@@ -684,6 +684,198 @@ ${t('returnModified')}`;
 /*  Weekly Plan Generation Service                                     */
 /* ================================================================== */
 
+/**
+ * Build prompt to generate base preparations for batch cooking
+ */
+function buildBasePreparationsPrompt(
+  form: WeeklyPlanForm,
+  profile: Profile | null,
+  restrictions: ProfileRestriction[],
+  lang: Language = 'es'
+): string {
+  const t = (key: string) => getPromptTranslation(key, lang);
+  const config = form.batchConfig!;
+  const numDays = form.selectedDays.length;
+  const numPreps = config.base_preparations_count || 3;
+
+  const parts: string[] = [
+    t('systemIntro'),
+    '',
+    lang === 'es'
+      ? `IDIOMA: Genera TODO el contenido en ESPAÑOL.`
+      : `LANGUAGE: Generate ALL content in ENGLISH.`,
+    '',
+    lang === 'es'
+      ? `Tu tarea es generar ${numPreps} PREPARACIONES BASE para batch cooking.
+Estas preparaciones se cocinarán en una sesión de preparación y se almacenarán en la nevera para armar las comidas (almuerzos) de ${numDays} días de la semana.
+
+REGLAS:
+- Genera EXACTAMENTE ${numPreps} preparaciones base de diferentes tipos (proteína, grano/carbohidrato, salsa, vegetal, guarnición).
+- Cada preparación debe poder almacenarse en la nevera al menos 4-5 días.
+- Las preparaciones deben ser VERSÁTILES: poder combinarse de diferentes formas para crear platos variados.
+- El tiempo TOTAL de preparación de todas las bases no debe exceder ${config.max_prep_time_minutes || 180} minutos.
+- Estrategia de reutilización: ${config.reuse_strategy === 'maximize_reuse' ? 'Maximizar reutilización — pocas bases muy versátiles' : config.reuse_strategy === 'variety' ? 'Variedad — más bases diferentes' : 'Equilibrado — balance entre reutilización y variedad'}`
+      : `Your task is to generate ${numPreps} BASE PREPARATIONS for batch cooking.
+These will be cooked in a prep session and stored in the fridge to assemble lunches for ${numDays} days of the week.
+
+RULES:
+- Generate EXACTLY ${numPreps} base preparations of different types (protein, grain/carb, sauce, vegetable, side).
+- Each preparation must keep in the fridge for at least 4-5 days.
+- Preparations must be VERSATILE: combinable in different ways to create varied dishes.
+- TOTAL prep time for all bases must not exceed ${config.max_prep_time_minutes || 180} minutes.
+- Reuse strategy: ${config.reuse_strategy === 'maximize_reuse' ? 'Maximize reuse — few very versatile bases' : config.reuse_strategy === 'variety' ? 'Variety — more different bases' : 'Balanced — balance between reuse and variety'}`,
+    '',
+  ];
+
+  // Restrictions
+  const allergies = restrictions.filter(r => r.is_allergy).map(r => r.custom_value || r.restriction_type);
+  const preferences = restrictions.filter(r => !r.is_allergy).map(r => r.custom_value || r.restriction_type);
+  if (allergies.length > 0) parts.push(`${t('allergiesWarning')}: ${allergies.join(', ')}`);
+  if (preferences.length > 0) parts.push(`${t('dietaryPreferences')}: ${preferences.join(', ')}`);
+
+  // Profile context
+  if (profile?.country) parts.push(`${t('country')}: ${profile.country}`);
+  if (profile?.currency) parts.push(`${t('currency')}: ${profile.currency}`);
+
+  // Cuisines
+  if (form.cuisines.length > 0) {
+    const cuisineNames = form.cuisines.map(resolveChipName);
+    parts.push(`${t('cuisineType')}: ${cuisineNames.join(', ')}`);
+  }
+
+  // Equipment
+  if (form.equipment.length > 0) {
+    const equipNames = form.equipment.map(resolveChipName);
+    parts.push(`${t('availableEquipment')}: ${equipNames.join(', ')}`);
+  }
+
+  // Ingredients to include — distribute across base preps
+  if (form.ingredientsToInclude.length > 0) {
+    const label = lang === 'es'
+      ? `INGREDIENTES PRINCIPALES A USAR (distribúyelos entre las preparaciones, usa TODOS): ${form.ingredientsToInclude.join(', ')}`
+      : `KEY INGREDIENTS TO USE (distribute across preparations, use ALL): ${form.ingredientsToInclude.join(', ')}`;
+    parts.push(label);
+  }
+
+  // Ingredients to exclude
+  if (form.ingredientsToExclude.length > 0) {
+    parts.push(`${t('excludeIngredients')}: ${form.ingredientsToExclude.join(', ')}`);
+  }
+
+  // Batch notes
+  if (config.notes) {
+    const label = lang === 'es' ? 'NOTAS DEL USUARIO PARA BATCH COOKING' : 'USER BATCH COOKING NOTES';
+    parts.push(`${label}: ${config.notes}`);
+  }
+
+  // Special notes
+  if (form.specialNotes) {
+    const label = lang === 'es' ? 'NOTAS ESPECIALES' : 'SPECIAL NOTES';
+    parts.push(`${label}: ${form.specialNotes}`);
+  }
+
+  // JSON format
+  parts.push('', lang === 'es'
+    ? 'FORMATO: Devuelve SOLO un JSON array. Cada objeto:'
+    : 'FORMAT: Return ONLY a JSON array. Each object:', '', `[
+  {
+    "name": "Pollo deshebrado al chipotle",
+    "type": "protein",
+    "description": "Pechuga de pollo cocida y deshebrada con adobo de chipotle",
+    "recipe": ${getJsonStructureExample(lang)},
+    "storage_instructions": "Refrigerar en recipiente hermético hasta 5 días",
+    "estimated_time_minutes": 45
+  }
+]`);
+
+  parts.push('', lang === 'es'
+    ? 'Tipos válidos: protein, grain, sauce, vegetable, side, other. Devuelve SOLO el JSON.'
+    : 'Valid types: protein, grain, sauce, vegetable, side, other. Return ONLY the JSON.');
+
+  return parts.join('\n');
+}
+
+/**
+ * Generate base preparations for batch cooking
+ */
+async function generateBasePreparations(
+  form: WeeklyPlanForm,
+  profile: Profile | null,
+  restrictions: ProfileRestriction[],
+  lang: Language = 'es',
+): Promise<BasePreparation[]> {
+  const prompt = buildBasePreparationsPrompt(form, profile, restrictions, lang);
+
+  if (__DEV__) {
+    console.log('=== BATCH: BASE PREPARATIONS PROMPT ===');
+    console.log(prompt.substring(0, 500) + '...');
+  }
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      if (attempt > 1) await delay(2000 * attempt);
+
+      const modelName = FALLBACK_MODELS[0];
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        safetySettings,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 8000,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text();
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(sanitizeJson(raw));
+      } catch {
+        const jsonText = extractJsonFromResponse(raw);
+        const repaired = tryRepairTruncatedJson(jsonText);
+        parsed = JSON.parse(repaired || jsonText);
+      }
+
+      const prepsArray = Array.isArray(parsed) ? parsed : (parsed.preparations || [parsed]);
+      const validPreps = prepsArray.filter((p: any) => p?.name && p?.type);
+
+      if (validPreps.length === 0) continue;
+
+      // Validate each prep's recipe
+      return validPreps.map((p: any) => {
+        let validatedRecipe = undefined;
+        if (p.recipe?.title && p.recipe?.ingredients) {
+          try {
+            if (p.recipe?.meal_types) p.recipe.meal_types = normalizeMealTypes(p.recipe.meal_types);
+            validatedRecipe = AIRecipeResponseSchema.parse(p.recipe);
+          } catch {
+            // If recipe validation fails, skip the recipe but keep the prep
+          }
+        }
+        return {
+          name: p.name,
+          type: p.type || 'other',
+          description: p.description || '',
+          recipe: validatedRecipe,
+          used_in_days: [],
+          used_in_meals: [],
+          estimated_time_minutes: p.estimated_time_minutes,
+          storage_instructions: p.storage_instructions,
+        } as BasePreparation;
+      });
+    } catch (err: any) {
+      console.error(`Base preparations attempt ${attempt} failed:`, err?.message?.substring(0, 150));
+      if (attempt === 3) {
+        console.warn('Failed to generate base preparations after 3 attempts');
+        return [];
+      }
+    }
+  }
+  return [];
+}
+
 export interface WeeklyPlanGenerationResponse {
   plan: AIWeeklyPlanResponse | null;
   success: boolean;
@@ -825,7 +1017,8 @@ function buildDayUserPrompt(
   favoriteIngredients: string[],
   form: WeeklyPlanForm,
   previousDaysSummary: string,
-  lang: Language = 'es'
+  lang: Language = 'es',
+  basePreparations: BasePreparation[] = [],
 ): string {
   const dayName = i18n.t(`weeklyPlan.days.${day}`, { lng: lang }) as string;
 
@@ -926,6 +1119,60 @@ function buildDayUserPrompt(
     parts.push(excludeReminder);
   }
 
+  // ---- Batch cooking: lunch assembly from base preparations ----
+  if (form.batchCookingEnabled && basePreparations.length > 0 && mealTypes.includes('lunch')) {
+    const prepList = basePreparations
+      .map((p, i) => `${i + 1}. ${p.name} (${p.type}): ${p.description}`)
+      .join('\n');
+
+    // Figure out which day index this is (for rotation hints)
+    const DAYS_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const selectedSorted = form.selectedDays
+      .slice()
+      .sort((a, b) => DAYS_ORDER.indexOf(a) - DAYS_ORDER.indexOf(b));
+    const dayIndex = selectedSorted.indexOf(day);
+    const totalDays = selectedSorted.length;
+
+    // Suggest which preps to highlight for this day to ensure rotation
+    const proteinPreps = basePreparations.filter((p) => p.type === 'protein');
+    const suggestedProteinIndex = proteinPreps.length > 1
+      ? (dayIndex % proteinPreps.length)
+      : 0;
+    const suggestedProtein = proteinPreps[suggestedProteinIndex]?.name;
+
+    if (lang === 'es') {
+      parts.push('');
+      parts.push(`🍱 BATCH COOKING - COMIDA DE ENSAMBLAJE:
+Para la COMIDA (lunch) de hoy, crea un plato que se ARME usando las preparaciones base que ya están listas en la nevera.
+NO cocines desde cero — usa estas preparaciones como ingredientes principales y describe SOLO instrucciones de ensamblaje/calentamiento (máx 10-15 min).
+La receta debe incluir las preparaciones base en sus ingredientes (ya preparados) y opcionalmente ingredientes frescos adicionales mínimos.
+
+PREPARACIONES BASE DISPONIBLES:
+${prepList}
+
+REGLAS DE ROTACIÓN (día ${dayIndex + 1} de ${totalDays}):
+- NO mezcles TODAS las proteínas en un solo plato. Cada día debe tener UNA proteína principal diferente.${suggestedProtein ? `\n- HOY usa como proteína principal: "${suggestedProtein}".` : ''}
+- Combina la proteína con 1-2 bases complementarias (grano, salsa, vegetales o guarnición).
+- Crea un plato con identidad propia y diferente a los otros días.
+- Un día puede ser: proteína A + grano + salsa. Otro: proteína B + vegetales + guarnición. Varía las combinaciones.`);
+    } else {
+      parts.push('');
+      parts.push(`🍱 BATCH COOKING - ASSEMBLY LUNCH:
+For today's LUNCH, create a dish that ASSEMBLES from these base preparations already in the fridge.
+DO NOT cook from scratch — use these as main ingredients and describe ONLY assembly/reheating instructions (max 10-15 min).
+The recipe should list base preparations as ingredients (pre-prepared) plus minimal fresh additions.
+
+AVAILABLE BASE PREPARATIONS:
+${prepList}
+
+ROTATION RULES (day ${dayIndex + 1} of ${totalDays}):
+- Do NOT mix ALL proteins in one dish. Each day should feature ONE main protein.${suggestedProtein ? `\n- TODAY use as main protein: "${suggestedProtein}".` : ''}
+- Pair the protein with 1-2 complementary bases (grain, sauce, vegetables, or side).
+- Create a dish with its own identity, different from other days.
+- One day could be: protein A + grain + sauce. Another: protein B + vegetables + side. Vary combinations.`);
+    }
+  }
+
   // Previous days summary to avoid repetition
   if (previousDaysSummary) {
     const avoidLabel = lang === 'es'
@@ -964,12 +1211,22 @@ export const weeklyPlanGenerationService = {
     try {
       const allMeals: AIPlanMeal[] = [];
       const generatedTitles: string[] = [];
+      let basePreparations: BasePreparation[] = [];
 
       // Sort selected days in order
       const DAYS_ORDER: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
       const sortedDays = form.selectedDays.sort(
         (a, b) => DAYS_ORDER.indexOf(a) - DAYS_ORDER.indexOf(b)
       );
+
+      // ---- Phase 1: Generate base preparations if batch cooking ----
+      if (form.batchCookingEnabled && form.batchConfig) {
+        if (__DEV__) console.log('=== BATCH COOKING: Generating base preparations ===');
+        basePreparations = await generateBasePreparations(form, profile, restrictions, normalizedLang);
+        if (__DEV__) console.log(`Generated ${basePreparations.length} base preparations:`, basePreparations.map(p => p.name));
+        // Small delay before starting day generation
+        if (basePreparations.length > 0) await delay(1500);
+      }
 
       // Build system prompt once
       const systemPrompt = buildDayPlanSystemPrompt(profile, restrictions, form, normalizedLang);
@@ -996,6 +1253,7 @@ export const weeklyPlanGenerationService = {
           form,
           previousSummary,
           normalizedLang,
+          basePreparations,
         );
 
         const fullPrompt = `${systemPrompt}\n\n${'='.repeat(50)}\n\n${userPrompt}`;
@@ -1146,7 +1404,7 @@ export const weeklyPlanGenerationService = {
       const plan: AIWeeklyPlanResponse = {
         plan_name: form.planName || `Plan ${new Date(form.startDate || Date.now()).toLocaleDateString()}`,
         meals: allMeals.filter((m) => m.recipe?.title), // Only meals with actual recipes
-        base_preparations: [],
+        base_preparations: basePreparations,
         total_estimated_calories: allMeals.reduce(
           (sum, m) => sum + (m.estimated_calories || 0),
           0
