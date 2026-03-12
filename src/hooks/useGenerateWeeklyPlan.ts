@@ -45,6 +45,8 @@ export function useGenerateWeeklyPlan() {
   const [showRetryError, setShowRetryError] = useState(false);
   const [regeneratingMeal, setRegeneratingMeal] = useState<{ day: DayOfWeek; mealType: PlanMealType } | null>(null);
   const [modifyingMeal, setModifyingMeal] = useState<{ day: DayOfWeek; mealType: PlanMealType } | null>(null);
+  const [regeneratingPrepIndex, setRegeneratingPrepIndex] = useState<number | null>(null);
+  const [modifyingPrepIndex, setModifyingPrepIndex] = useState<number | null>(null);
 
   const getProfileData = () => {
     const { profile, restrictions, favoriteIngredients } = useProfileStore.getState();
@@ -201,6 +203,229 @@ export function useGenerateWeeklyPlan() {
     }
   };
 
+  // ---- Helper: after a base prep changes, regenerate affected day meals ----
+  const updateMealsForChangedPrep = async (
+    planSnapshot: typeof generatedPlan,
+    prepIndex: number,
+  ) => {
+    if (!planSnapshot) return;
+
+    const oldPrep = planSnapshot.base_preparations[prepIndex];
+    const form = getWizardForm();
+
+    // Determine affected days/meals — fallback to all batch cooking days if not specified
+    let affectedDays = oldPrep.used_in_days || [];
+    let affectedMealTypes = oldPrep.used_in_meals || [];
+
+    // If empty, default to all selected days with lunch (batch cooking mainly affects lunch)
+    if (affectedDays.length === 0) {
+      affectedDays = form.selectedDays.filter((d) =>
+        form.dayConfigs[d]?.meals?.includes('lunch')
+      );
+    }
+    if (affectedMealTypes.length === 0) {
+      affectedMealTypes = ['lunch'];
+    }
+
+    if (affectedDays.length === 0) return;
+
+    // For each affected meal, regenerate it so it uses the new base prep
+    const { profile, restrictions, favoriteIngredients } = getProfileData();
+    const favIngredientNames = favoriteIngredients.map((fi: any) =>
+      typeof fi === 'string' ? fi : fi.ingredient_name
+    );
+    let currentPlan = planSnapshot;
+
+    for (const day of affectedDays) {
+      for (const mealType of affectedMealTypes) {
+        const meal = currentPlan.meals.find(
+          (m) => m.day_of_week === day && m.meal_type === mealType
+        );
+        if (!meal || meal.is_external) continue;
+
+        setRegeneratingMeal({ day, mealType });
+
+        const cookingTime = form.cookingTimeByMealType?.[mealType]
+          || form.dayConfigs[day]?.cookingTimeMinutes
+          || 45;
+
+        const result = await weeklyPlanGenerationService.regenerateSingleMeal(
+          day,
+          mealType,
+          currentPlan.meals,
+          cookingTime,
+          profile,
+          restrictions,
+          favIngredientNames,
+          {
+            ...form,
+            // Inject all base preparations into specialNotes so the AI builds meals from them
+            specialNotes: [
+              form.specialNotes,
+              currentLang === 'es'
+                ? `BATCH COOKING: Arma el plato usando estas preparaciones base ya preparadas como ingredientes principales: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(', ')}. No cocines desde cero, solo ensambla/calienta.`
+                : `BATCH COOKING: Assemble the dish using these pre-made base preparations as main ingredients: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(', ')}. Don't cook from scratch, only assemble/reheat.`,
+            ].filter(Boolean).join('. '),
+          },
+          currentLang,
+        );
+
+        if (result.success && result.recipe) {
+          const updatedMeals = currentPlan.meals.map((m) => {
+            if (m.day_of_week === day && m.meal_type === mealType) {
+              return { ...m, recipe: result.recipe!, estimated_calories: result.recipe!.nutrition.calories };
+            }
+            return m;
+          });
+          currentPlan = { ...currentPlan, meals: updatedMeals };
+          setGeneratedPlan(currentPlan);
+        }
+      }
+    }
+    setRegeneratingMeal(null);
+  };
+
+  // ---- Regenerate a single base preparation ----
+  const handleRegeneratePrep = async (index: number) => {
+    if (!generatedPlan) return;
+    const prep = generatedPlan.base_preparations[index];
+    if (!prep?.recipe) return;
+
+    setRegeneratingPrepIndex(index);
+
+    const { profile, restrictions } = getProfileData();
+
+    // Build a prompt to regenerate a base preparation recipe
+    const modification = currentLang === 'es'
+      ? `Genera una receta diferente de tipo "${prep.type}" para reemplazar "${prep.name}". Debe servir como preparación base para batch cooking, que se pueda almacenar y reutilizar durante la semana.`
+      : `Generate a different "${prep.type}" recipe to replace "${prep.name}". It must serve as a base preparation for batch cooking, storable and reusable throughout the week.`;
+
+    const result = await recipeGenerationService.modifyRecipe(
+      prep.recipe,
+      modification,
+      profile,
+      restrictions,
+      currentLang,
+    );
+
+    if (result.success && result.recipe) {
+      const updatedPreps = [...generatedPlan.base_preparations];
+      const updatedPrep = {
+        ...prep,
+        name: result.recipe.title,
+        description: result.recipe.description,
+        recipe: result.recipe,
+        estimated_time_minutes: result.recipe.total_time_minutes,
+        storage_instructions: result.recipe.storage_instructions || prep.storage_instructions,
+      };
+      updatedPreps[index] = updatedPrep;
+      const updatedPlan = { ...generatedPlan, base_preparations: updatedPreps };
+      setGeneratedPlan(updatedPlan);
+      setRegeneratingPrepIndex(null);
+
+      // Now regenerate meals that used this base prep
+      await updateMealsForChangedPrep(updatedPlan, index);
+    } else {
+      setRegeneratingPrepIndex(null);
+      Alert.alert(
+        String(t('common.error')),
+        result.error || String(t('weeklyPlan.result.regenerateError'))
+      );
+    }
+  };
+
+  // ---- Modify a single base preparation with AI ----
+  const handleModifyPrep = async (index: number, modification: string) => {
+    if (!generatedPlan) return;
+    const prep = generatedPlan.base_preparations[index];
+    if (!prep?.recipe) return;
+
+    setModifyingPrepIndex(index);
+
+    const { profile, restrictions } = getProfileData();
+
+    const result = await recipeGenerationService.modifyRecipe(
+      prep.recipe,
+      modification,
+      profile,
+      restrictions,
+      currentLang,
+    );
+
+    if (result.success && result.recipe) {
+      const updatedPreps = [...generatedPlan.base_preparations];
+      const updatedPrep = {
+        ...prep,
+        name: result.recipe.title,
+        description: result.recipe.description,
+        recipe: result.recipe,
+        estimated_time_minutes: result.recipe.total_time_minutes,
+        storage_instructions: result.recipe.storage_instructions || prep.storage_instructions,
+      };
+      updatedPreps[index] = updatedPrep;
+      const updatedPlan = { ...generatedPlan, base_preparations: updatedPreps };
+      setGeneratedPlan(updatedPlan);
+      setModifyingPrepIndex(null);
+
+      // Now regenerate meals that used this base prep
+      await updateMealsForChangedPrep(updatedPlan, index);
+    } else {
+      setModifyingPrepIndex(null);
+      Alert.alert(
+        String(t('common.error')),
+        result.error || String(t('weeklyPlan.result.modifyError' as any))
+      );
+    }
+  };
+
+  // ---- Swap a base preparation with a recipe from the cookbook ----
+  const handleSwapPrep = async (index: number, recipe: any) => {
+    if (!generatedPlan) return;
+    const prep = generatedPlan.base_preparations[index];
+    if (!prep) return;
+
+    setRegeneratingPrepIndex(index);
+
+    const updatedPreps = [...generatedPlan.base_preparations];
+    const updatedPrep = {
+      ...prep,
+      name: recipe.title,
+      description: recipe.description,
+      recipe: {
+        title: recipe.title,
+        description: recipe.description,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        prep_time_minutes: recipe.prep_time_minutes,
+        cook_time_minutes: recipe.cook_time_minutes,
+        total_time_minutes: recipe.total_time_minutes || (recipe.prep_time_minutes + recipe.cook_time_minutes),
+        servings: recipe.servings,
+        difficulty: recipe.difficulty,
+        nutrition: recipe.nutrition,
+        estimated_cost: recipe.estimated_cost,
+        cost_currency: recipe.cost_currency,
+        cost_per_serving: recipe.cost_per_serving || (recipe.estimated_cost / (recipe.servings || 1)),
+        meal_types: recipe.meal_types,
+        cuisine: recipe.cuisine,
+        tags: recipe.tags,
+        chef_tips: recipe.chef_tips || [],
+        storage_instructions: recipe.storage_instructions || '',
+        variations: recipe.variations || [],
+      },
+      estimated_time_minutes: recipe.total_time_minutes,
+      storage_instructions: recipe.storage_instructions || prep.storage_instructions,
+    } as any;
+    // Track swapped recipe id for save logic
+    updatedPrep._swapped_recipe_id = recipe.id;
+    updatedPreps[index] = updatedPrep;
+    const updatedPlan = { ...generatedPlan, base_preparations: updatedPreps };
+    setGeneratedPlan(updatedPlan);
+    setRegeneratingPrepIndex(null);
+
+    // Regenerate meals that used this base prep
+    await updateMealsForChangedPrep(updatedPlan, index);
+  };
+
   // ---- Save plan ----
   const handleSavePlan = async () => {
     if (!generatedPlan) return;
@@ -245,12 +470,63 @@ export function useGenerateWeeklyPlan() {
         titleToIdMap.set(meal.recipe.title, saved.id);
       }
 
+      // 2b. Save base preparation recipes (batch cooking)
+      const savedBasePreps: Array<{ name: string; type: string; recipe_id: string; description: string }> = [];
+      if (generatedPlan.base_preparations.length > 0) {
+        for (const prep of generatedPlan.base_preparations) {
+          if (!prep.recipe?.title) continue;
+
+          // If swapped from cookbook, use existing recipe id
+          if ((prep as any)._swapped_recipe_id) {
+            savedBasePreps.push({
+              name: prep.name,
+              type: prep.type,
+              recipe_id: (prep as any)._swapped_recipe_id,
+              description: prep.description,
+            });
+            titleToIdMap.set(prep.recipe.title, (prep as any)._swapped_recipe_id);
+            continue;
+          }
+
+          // Check dedup
+          const existingId = titleToIdMap.get(prep.recipe.title);
+          if (existingId) {
+            savedBasePreps.push({
+              name: prep.name,
+              type: prep.type,
+              recipe_id: existingId,
+              description: prep.description,
+            });
+            continue;
+          }
+
+          const saved = await recipeService.saveRecipe({
+            recipe: prep.recipe,
+            originalPrompt: `Weekly plan: ${generatedPlan.plan_name} - Base preparation: ${prep.name}`,
+            generationParams: { weekly_plan: true, base_preparation: true, prep_type: prep.type },
+            aiModel: AI_CONFIG.model,
+          });
+
+          savedBasePreps.push({
+            name: prep.name,
+            type: prep.type,
+            recipe_id: saved.id,
+            description: prep.description,
+          });
+          titleToIdMap.set(prep.recipe.title, saved.id);
+        }
+      }
+
       // 3. Calculate end date
       const startDate = form.startDate || new Date().toISOString().split('T')[0];
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 6);
 
-      // 4. Create the weekly plan
+      // 4. Create the weekly plan — include base prep recipe ids in batch_config
+      const batchConfigToSave = form.batchConfig
+        ? { ...form.batchConfig, saved_base_preparations: savedBasePreps }
+        : undefined;
+
       const plan = await weeklyPlanService.createPlan({
         name: generatedPlan.plan_name,
         start_date: startDate,
@@ -259,7 +535,7 @@ export function useGenerateWeeklyPlan() {
         meals_per_day: [...new Set(form.selectedDays.flatMap((d) => form.dayConfigs[d].meals))],
         daily_calorie_target: form.dailyCalorieTarget,
         is_batch_cooking: form.batchCookingEnabled,
-        batch_config: form.batchConfig,
+        batch_config: batchConfigToSave,
         notes: form.specialNotes || undefined,
         special_requests: form.specialNotes || undefined,
       });
@@ -384,6 +660,8 @@ export function useGenerateWeeklyPlan() {
     showRetryError,
     regeneratingMeal,
     modifyingMeal,
+    regeneratingPrepIndex,
+    modifyingPrepIndex,
 
     // Handlers
     handleGenerate,
@@ -395,6 +673,9 @@ export function useGenerateWeeklyPlan() {
     handleDiscard,
     handleDismissRetryError,
     handleSwapMeal,
+    handleRegeneratePrep,
+    handleModifyPrep,
+    handleSwapPrep,
   };
 }
 

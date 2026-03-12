@@ -62,6 +62,11 @@ export default function WeeklyPlanScreen() {
     regeneratingMeal,
     modifyingMeal,
     handleModifyMeal,
+    regeneratingPrepIndex,
+    modifyingPrepIndex,
+    handleRegeneratePrep,
+    handleModifyPrep,
+    handleSwapPrep,
   } = useGenerateWeeklyPlan();
 
   const { generationProgress, setShowWizard, setShowResult, wizardStep, resetWizard } = useWeeklyPlanStore();
@@ -290,6 +295,11 @@ export default function WeeklyPlanScreen() {
         regeneratingMeal={regeneratingMeal}
         modifyingMeal={modifyingMeal}
         onModifyMeal={handleModifyMeal}
+        regeneratingPrepIndex={regeneratingPrepIndex}
+        modifyingPrepIndex={modifyingPrepIndex}
+        onRegeneratePrep={handleRegeneratePrep}
+        onModifyPrep={handleModifyPrep}
+        onSwapPrep={handleSwapPrep}
       />
 
       {/* Save success modal */}

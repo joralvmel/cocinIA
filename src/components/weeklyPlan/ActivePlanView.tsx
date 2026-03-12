@@ -1,16 +1,23 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, RefreshControl, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Card, Badge, ProgressBar } from '@/components/ui';
+import { Card, Badge, ProgressBar, FullScreenModal, Divider } from '@/components/ui';
+import {
+  NutritionCard,
+  IngredientsList,
+  StepsList,
+  ChefTips,
+} from '@/components/recipes/detail';
 import {
   type WeeklyPlanWithMeals,
   type WeeklyPlanMealWithRecipe,
   type DayOfWeek,
   DAYS_OF_WEEK,
+  type Recipe,
 } from '@/types';
+import { recipeService } from '@/services';
 import { getDayLabel, getMealTypeLabel, getMealTypeIcon, formatDateRange, getCurrentDayOfWeek } from '@/utils';
 
 interface ActivePlanViewProps {
@@ -35,8 +42,12 @@ export function ActivePlanView({
 }: ActivePlanViewProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
-  const router = useRouter();
   const currentDay = getCurrentDayOfWeek();
+
+  // Recipe detail modal state
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [loadingPrepRecipe, setLoadingPrepRecipe] = useState<string | null>(null);
 
   // Group meals by day
   const mealsByDay: Record<DayOfWeek, WeeklyPlanMealWithRecipe[]> = {} as any;
@@ -52,14 +63,32 @@ export function ActivePlanView({
     0
   );
 
-  // Navigate to recipe detail
+  // Open recipe detail in a modal instead of navigating away
   const handleMealPress = (meal: WeeklyPlanMealWithRecipe) => {
-    if (meal.recipe_id && !meal.is_external) {
-      router.push(`/(app)/recipes/${meal.recipe_id}` as any);
+    if (meal.recipe && !meal.is_external) {
+      setSelectedRecipe(meal.recipe);
+      setShowRecipeModal(true);
+    }
+  };
+
+  // Fetch and open a base preparation recipe by ID
+  const handleBasePrepPress = async (recipeId: string) => {
+    setLoadingPrepRecipe(recipeId);
+    try {
+      const recipe = await recipeService.getRecipeById(recipeId);
+      if (recipe) {
+        setSelectedRecipe(recipe);
+        setShowRecipeModal(true);
+      }
+    } catch (err) {
+      console.error('Error fetching base prep recipe:', err);
+    } finally {
+      setLoadingPrepRecipe(null);
     }
   };
 
   return (
+    <>
     <ScrollView
       className="flex-1"
       showsVerticalScrollIndicator={false}
@@ -102,6 +131,47 @@ export function ActivePlanView({
             </View>
           </View>
         </Card>
+
+        {/* Batch cooking base preparations */}
+        {plan.is_batch_cooking && (plan.batch_config as any)?.saved_base_preparations?.length > 0 && (
+          <Card variant="outlined" className="mb-4">
+            <View className="p-4">
+              <View className="flex-row items-center gap-2 mb-3">
+                <FontAwesome name="tasks" size={16} color={colors.primary} />
+                <Text className="font-bold text-gray-900 dark:text-gray-50">
+                  {t('weeklyPlan.result.basePreparations')}
+                </Text>
+              </View>
+              <View className="gap-2">
+                {((plan.batch_config as any).saved_base_preparations as Array<{ name: string; type: string; recipe_id: string; description: string }>).map((bp, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() => handleBasePrepPress(bp.recipe_id)}
+                    disabled={loadingPrepRecipe === bp.recipe_id}
+                    className="flex-row items-center bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"
+                  >
+                    <View className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 items-center justify-center mr-3">
+                      {loadingPrepRecipe === bp.recipe_id ? (
+                        <ActivityIndicator size="small" color="#F59E0B" />
+                      ) : (
+                        <FontAwesome name="fire" size={14} color="#F59E0B" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-medium text-gray-900 dark:text-gray-50 text-sm">
+                        {bp.name}
+                      </Text>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
+                        {bp.description}
+                      </Text>
+                    </View>
+                    <Badge variant="info" size="sm" label={bp.type} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </Card>
+        )}
 
         {/* Day tabs */}
         <ScrollView
@@ -193,6 +263,49 @@ export function ActivePlanView({
         <View className="h-24" />
       </View>
     </ScrollView>
+
+    {/* Recipe Detail Modal — shows recipe without navigating away */}
+    <FullScreenModal
+      visible={showRecipeModal}
+      onClose={() => { setShowRecipeModal(false); setSelectedRecipe(null); }}
+      title={selectedRecipe?.title || ''}
+      useChevron
+    >
+      {selectedRecipe && (
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="px-4 pt-4 pb-24">
+            <Text className="text-gray-600 dark:text-gray-400 mb-4">
+              {selectedRecipe.description}
+            </Text>
+
+            {selectedRecipe.nutrition && (
+              <NutritionCard nutrition={selectedRecipe.nutrition} />
+            )}
+
+            <Divider className="my-4" />
+
+            {selectedRecipe.ingredients && (
+              <IngredientsList ingredients={selectedRecipe.ingredients} />
+            )}
+
+            <Divider className="my-4" />
+
+            {selectedRecipe.steps && (
+              <StepsList
+                steps={selectedRecipe.steps}
+                expandedTips={{}}
+                onToggleTip={() => {}}
+              />
+            )}
+
+            {selectedRecipe.chef_tips && selectedRecipe.chef_tips.length > 0 && (
+              <ChefTips tips={selectedRecipe.chef_tips} />
+            )}
+          </View>
+        </ScrollView>
+      )}
+    </FullScreenModal>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -8,10 +8,13 @@ import { type BasePreparation } from '@/types';
 
 interface BatchPreparationsCardProps {
   preparations: BasePreparation[];
-  onPrepPress?: (prep: BasePreparation) => void;
+  onPrepPress?: (prep: BasePreparation, index: number) => void;
+  onPrepLongPress?: (prep: BasePreparation, index: number) => void;
+  /** Index of the prep currently being regenerated/modified — shows a loading indicator */
+  loadingIndex?: number | null;
 }
 
-export function BatchPreparationsCard({ preparations, onPrepPress }: BatchPreparationsCardProps) {
+export function BatchPreparationsCard({ preparations, onPrepPress, onPrepLongPress, loadingIndex }: BatchPreparationsCardProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
 
@@ -56,14 +59,24 @@ export function BatchPreparationsCard({ preparations, onPrepPress }: BatchPrepar
         <View className="gap-3">
           {preparations.map((prep, index) => {
             const hasRecipe = !!prep.recipe?.title;
+            const isLoading = loadingIndex === index;
             return (
               <Pressable
                 key={index}
-                onPress={() => hasRecipe && onPrepPress?.(prep)}
+                onPress={() => hasRecipe && !isLoading && onPrepPress?.(prep, index)}
+                onLongPress={() => hasRecipe && !isLoading && onPrepLongPress?.(prep, index)}
                 className={`bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-200 dark:border-amber-800/50 ${
-                  hasRecipe ? 'active:bg-amber-100 dark:active:bg-amber-900/40' : ''
+                  isLoading ? 'opacity-60' : hasRecipe ? 'active:bg-amber-100 dark:active:bg-amber-900/40' : ''
                 }`}
               >
+                {isLoading && (
+                  <View className="absolute inset-0 z-10 rounded-xl items-center justify-center bg-amber-50/70 dark:bg-amber-900/40">
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('weeklyPlan.result.regenerating')}
+                    </Text>
+                  </View>
+                )}
                 <View className="flex-row items-center gap-2 mb-1">
                   <FontAwesome
                     name={getTypeIcon(prep.type) as any}

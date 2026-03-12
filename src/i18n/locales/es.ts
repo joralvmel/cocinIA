@@ -473,6 +473,7 @@
       saveError: 'Error al guardar el plan.',
       regenerateError: 'Error al regenerar la comida.',
       modifyError: 'Error al modificar la receta.',
+      regeneratingPrep: 'Regenerando preparación base...',
     },
 
     // Active plan view

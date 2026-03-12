@@ -41,6 +41,12 @@ interface PlanResultModalProps {
   regeneratingMeal?: { day: DayOfWeek; mealType: PlanMealType } | null;
   modifyingMeal?: { day: DayOfWeek; mealType: PlanMealType } | null;
   onModifyMeal?: (day: DayOfWeek, mealType: PlanMealType, modification: string) => void;
+  // Base preparation actions
+  regeneratingPrepIndex?: number | null;
+  modifyingPrepIndex?: number | null;
+  onRegeneratePrep?: (index: number) => void;
+  onModifyPrep?: (index: number, modification: string) => void;
+  onSwapPrep?: (index: number, recipe: Recipe) => void;
 }
 
 export function PlanResultModal({
@@ -57,6 +63,11 @@ export function PlanResultModal({
   regeneratingMeal,
   modifyingMeal,
   onModifyMeal,
+  regeneratingPrepIndex,
+  modifyingPrepIndex,
+  onRegeneratePrep,
+  onModifyPrep,
+  onSwapPrep,
 }: PlanResultModalProps) {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
@@ -74,6 +85,13 @@ export function PlanResultModal({
       );
       if (updatedMeal && updatedMeal !== previewMeal) {
         setPreviewMeal(updatedMeal);
+      }
+    }
+    // Keep prep preview in sync
+    if (previewPrepIndex != null && generatedPlan && showPrepPreview) {
+      const updatedPrep = generatedPlan.base_preparations[previewPrepIndex];
+      if (updatedPrep && updatedPrep !== previewPrep) {
+        setPreviewPrep(updatedPrep);
       }
     }
   }, [generatedPlan]);
@@ -102,7 +120,21 @@ export function PlanResultModal({
 
   // State for base preparation preview
   const [previewPrep, setPreviewPrep] = useState<BasePreparation | null>(null);
+  const [previewPrepIndex, setPreviewPrepIndex] = useState<number | null>(null);
   const [showPrepPreview, setShowPrepPreview] = useState(false);
+
+  // State for prep actions (long-press bottom sheet)
+  const [actionPrepIndex, setActionPrepIndex] = useState<number | null>(null);
+  const [showPrepActions, setShowPrepActions] = useState(false);
+
+  // State for prep-specific modify
+  const [showPrepModifySheet, setShowPrepModifySheet] = useState(false);
+  const [prepModifyText, setPrepModifyText] = useState('');
+  const [prepModifyIndex, setPrepModifyIndex] = useState<number | null>(null);
+
+  // State for prep-specific recipe picker (swap)
+  const [showPrepPicker, setShowPrepPicker] = useState(false);
+  const [prepPickerIndex, setPrepPickerIndex] = useState<number | null>(null);
 
   // Don't render if not visible
   if (!visible) return null;
@@ -207,9 +239,6 @@ export function PlanResultModal({
 
   // Handle meal long press -> show actions
   const handleMealLongPress = (day: DayOfWeek, mealType: PlanMealType) => {
-    const meal = generatedPlan.meals.find(
-      (m) => m.day_of_week === day && m.meal_type === mealType
-    );
     setActionMeal({ day, mealType });
     setShowActions(true);
   };
@@ -284,9 +313,15 @@ export function PlanResultModal({
             {generatedPlan.base_preparations.length > 0 && (
               <BatchPreparationsCard
                 preparations={generatedPlan.base_preparations}
-                onPrepPress={(prep) => {
+                loadingIndex={regeneratingPrepIndex ?? modifyingPrepIndex ?? null}
+                onPrepPress={(prep, index) => {
                   setPreviewPrep(prep);
+                  setPreviewPrepIndex(index);
                   setShowPrepPreview(true);
+                }}
+                onPrepLongPress={(prep, index) => {
+                  setActionPrepIndex(index);
+                  setShowPrepActions(true);
                 }}
               />
             )}
@@ -487,6 +522,20 @@ export function PlanResultModal({
           </ScrollView>
         )}
 
+        {/* Modifying/Regenerating overlay for prep */}
+        {previewPrepIndex != null && (
+          (modifyingPrepIndex === previewPrepIndex || regeneratingPrepIndex === previewPrepIndex) && (
+            <View className="absolute inset-0 z-50 bg-white/80 dark:bg-gray-900/80 items-center justify-center">
+              <Loader size="lg" />
+              <Text className="mt-4 text-gray-600 dark:text-gray-400 text-center font-medium">
+                {modifyingPrepIndex === previewPrepIndex
+                  ? t('recipeGeneration.modifyingMessage')
+                  : t('weeklyPlan.result.regeneratingPrep' as any)}
+              </Text>
+            </View>
+          )
+        )}
+
         {/* Fallback if no recipe data */}
         {previewPrep && !previewPrep.recipe && (
           <View className="flex-1 items-center justify-center px-8">
@@ -494,6 +543,51 @@ export function PlanResultModal({
             <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
               {t('weeklyPlan.result.noPrepRecipe')}
             </Text>
+          </View>
+        )}
+
+        {/* FAB for actions on the previewed prep */}
+        {previewPrep?.recipe && previewPrepIndex != null && (
+          <View className="absolute bottom-6 right-6">
+            <MultiActionButton
+              icon="ellipsis-v"
+              variant="floating"
+              floatingColor="amber-600"
+              loading={modifyingPrepIndex === previewPrepIndex || regeneratingPrepIndex === previewPrepIndex}
+              disabled={modifyingPrepIndex === previewPrepIndex || regeneratingPrepIndex === previewPrepIndex}
+              options={[
+                {
+                  id: 'modify',
+                  label: t('recipeGeneration.modify'),
+                  icon: 'pencil',
+                  color: '#F59E0B',
+                  onPress: () => {
+                    setPrepModifyIndex(previewPrepIndex);
+                    setShowPrepModifySheet(true);
+                  },
+                },
+                {
+                  id: 'regenerate',
+                  label: t('weeklyPlan.result.regenerateMeal'),
+                  icon: 'refresh',
+                  color: '#3B82F6',
+                  onPress: () => {
+                    onRegeneratePrep?.(previewPrepIndex);
+                  },
+                },
+                {
+                  id: 'swap',
+                  label: t('weeklyPlan.result.swapFromCookbook'),
+                  icon: 'exchange',
+                  color: '#8B5CF6',
+                  onPress: () => {
+                    setShowPrepPreview(false);
+                    setPrepPickerIndex(previewPrepIndex);
+                    setShowPrepPicker(true);
+                  },
+                },
+              ]}
+            />
           </View>
         )}
       </FullScreenModal>
@@ -568,6 +662,82 @@ export function PlanResultModal({
           }
         }}
         isModifying={!!modifyingMeal}
+      />
+
+      {/* Prep Actions Sheet (long-press on base preparation) */}
+      <BottomSheet
+        visible={showPrepActions}
+        onClose={() => setShowPrepActions(false)}
+        title={
+          actionPrepIndex != null && generatedPlan?.base_preparations[actionPrepIndex]
+            ? generatedPlan.base_preparations[actionPrepIndex].name
+            : ''
+        }
+      >
+        <View className="px-4 pb-6 gap-3">
+          <MealActionButton
+            icon="pencil"
+            label={t('recipeGeneration.modify')}
+            onPress={() => {
+              if (actionPrepIndex != null) {
+                setPrepModifyIndex(actionPrepIndex);
+                setShowPrepActions(false);
+                setShowPrepModifySheet(true);
+              }
+            }}
+          />
+          <MealActionButton
+            icon="refresh"
+            label={t('weeklyPlan.result.regenerateMeal')}
+            onPress={() => {
+              if (actionPrepIndex != null) {
+                onRegeneratePrep?.(actionPrepIndex);
+              }
+              setShowPrepActions(false);
+            }}
+          />
+          <MealActionButton
+            icon="exchange"
+            label={t('weeklyPlan.result.swapFromCookbook')}
+            onPress={() => {
+              if (actionPrepIndex != null) {
+                setPrepPickerIndex(actionPrepIndex);
+                setShowPrepActions(false);
+                setShowPrepPicker(true);
+              }
+            }}
+          />
+        </View>
+      </BottomSheet>
+
+      {/* Prep Recipe Picker for swapping from cookbook */}
+      <RecipePickerSheet
+        visible={showPrepPicker}
+        onClose={() => { setShowPrepPicker(false); setPrepPickerIndex(null); }}
+        onSelect={(recipe: Recipe) => {
+          if (prepPickerIndex != null && onSwapPrep) {
+            onSwapPrep(prepPickerIndex, recipe);
+          }
+          setPrepPickerIndex(null);
+          setShowPrepPicker(false);
+        }}
+        title={t('weeklyPlan.result.swapFromCookbook')}
+      />
+
+      {/* Prep Modify Sheet */}
+      <ModifyRecipeSheet
+        visible={showPrepModifySheet}
+        onClose={() => { setShowPrepModifySheet(false); setPrepModifyText(''); }}
+        modifyText={prepModifyText}
+        onModifyTextChange={setPrepModifyText}
+        onSubmit={() => {
+          if (prepModifyIndex != null && prepModifyText.trim() && onModifyPrep) {
+            onModifyPrep(prepModifyIndex, prepModifyText.trim());
+            setShowPrepModifySheet(false);
+            setPrepModifyText('');
+          }
+        }}
+        isModifying={modifyingPrepIndex != null}
       />
     </>
   );

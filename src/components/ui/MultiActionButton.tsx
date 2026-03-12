@@ -35,6 +35,26 @@ export function MultiActionButton({
   const [expanded, setExpanded] = useState(false);
   const { colors } = useAppTheme();
 
+  // Resolve floatingColor to a hex value for style-based backgroundColor
+  // Dynamic Tailwind classnames (bg-${var}) don't work with NativeWind
+  const resolvedFloatingColor = (() => {
+    const colorMap: Record<string, string> = {
+      'primary-500': '#22C55E',
+      'primary-600': '#16A34A',
+      'amber-500': '#F59E0B',
+      'amber-600': '#D97706',
+      'green-500': '#22C55E',
+      'green-600': '#16A34A',
+      'red-500': '#EF4444',
+      'red-600': '#DC2626',
+      'blue-500': '#3B82F6',
+      'blue-600': '#2563EB',
+      'purple-500': '#8B5CF6',
+      'purple-600': '#7C3AED',
+    };
+    return colorMap[floatingColor] || '#16A34A';
+  })();
+
   // Use refs to persist animations across re-renders
   const animationsRef = useRef<Array<{ scale: Animated.Value; opacity: Animated.Value }>>([]);
   const rotateAnimRef = useRef(new Animated.Value(0));
@@ -300,10 +320,11 @@ export function MultiActionButton({
             <Pressable
                 onPress={handleMainPress}
                 disabled={disabled || loading}
-                className={`w-16 h-16 rounded-full items-center justify-center shadow-xl bg-${floatingColor} ${
+                className={`w-16 h-16 rounded-full items-center justify-center shadow-xl ${
                     disabled ? 'opacity-50' : ''
                 }`}
                 style={{
+                  backgroundColor: resolvedFloatingColor,
                   shadowColor: colors.primary,
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,

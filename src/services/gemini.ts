@@ -585,7 +585,8 @@ export const geminiRecipeGenerationService = {
         safetySettings,
         generationConfig: {
           temperature: AI_CONFIG.temperature,
-          maxOutputTokens: AI_CONFIG.maxOutputTokens,
+          // modifyRecipe returns a full recipe — needs more tokens than AI_CONFIG.maxOutputTokens
+          maxOutputTokens: 4096,
           responseMimeType: 'application/json',
         },
       });
@@ -850,8 +851,29 @@ async function generateBasePreparations(
           try {
             if (p.recipe?.meal_types) p.recipe.meal_types = normalizeMealTypes(p.recipe.meal_types);
             validatedRecipe = AIRecipeResponseSchema.parse(p.recipe);
-          } catch {
-            // If recipe validation fails, skip the recipe but keep the prep
+          } catch (recipeErr: any) {
+            if (__DEV__) {
+              console.warn(`Base prep "${p.name}" recipe validation failed, attempting lenient parse:`, recipeErr?.message?.substring(0, 200));
+            }
+            // Try a more lenient parse — fill in missing optional fields
+            try {
+              const lenient = {
+                ...p.recipe,
+                meal_types: p.recipe.meal_types || ['lunch'],
+                cuisine: p.recipe.cuisine || 'other',
+                tags: p.recipe.tags || [],
+                chef_tips: p.recipe.chef_tips || [],
+                storage_instructions: p.recipe.storage_instructions || '',
+                variations: p.recipe.variations || [],
+                estimated_cost: p.recipe.estimated_cost ?? 0,
+                cost_currency: p.recipe.cost_currency || 'EUR',
+                cost_per_serving: p.recipe.cost_per_serving ?? 0,
+              };
+              validatedRecipe = AIRecipeResponseSchema.parse(lenient);
+            } catch {
+              // Still failed — skip the recipe but keep the prep
+              if (__DEV__) console.warn(`Base prep "${p.name}" recipe could not be parsed even leniently`);
+            }
           }
         }
         return {
@@ -859,8 +881,8 @@ async function generateBasePreparations(
           type: p.type || 'other',
           description: p.description || '',
           recipe: validatedRecipe,
-          used_in_days: [],
-          used_in_meals: [],
+          used_in_days: p.used_in_days || [],
+          used_in_meals: p.used_in_meals || ['lunch'],
           estimated_time_minutes: p.estimated_time_minutes,
           storage_instructions: p.storage_instructions,
         } as BasePreparation;
@@ -1397,6 +1419,23 @@ export const weeklyPlanGenerationService = {
         // Delay between days to avoid rate limiting (1.5s)
         if (sortedDays.indexOf(day) < sortedDays.length - 1) {
           await delay(1500);
+        }
+      }
+
+      // Populate used_in_days / used_in_meals on base preparations
+      // For batch cooking, base preps are used for lunch on all selected days
+      if (form.batchCookingEnabled && basePreparations.length > 0) {
+        const lunchDays = sortedDays.filter((d) => {
+          const dayConfig = form.dayConfigs[d];
+          return dayConfig?.meals?.includes('lunch');
+        });
+        for (const prep of basePreparations) {
+          if (prep.used_in_days.length === 0) {
+            prep.used_in_days = [...lunchDays];
+          }
+          if (prep.used_in_meals.length === 0) {
+            prep.used_in_meals = ['lunch'];
+          }
         }
       }
 
