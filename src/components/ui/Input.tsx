@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { View, TextInput, Text, Pressable, TextInputProps } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -21,7 +21,7 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   showClearButton?: boolean;
 }
 
-export function Input({
+export const Input = forwardRef<TextInput, InputProps>(function Input({
   label,
   placeholder,
   value,
@@ -38,7 +38,7 @@ export function Input({
   className = '',
   showClearButton = false,
   ...rest
-}: InputProps) {
+}, ref) {
   const { colors } = useAppTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
@@ -77,6 +77,7 @@ export function Input({
           </View>
         )}
         <TextInput
+          ref={ref}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -123,4 +124,4 @@ export function Input({
       )}
     </View>
   );
-}
+});

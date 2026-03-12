@@ -18,6 +18,7 @@ export function useActivePlan() {
     showResult,
     setShowWizard,
     clearActivePlan,
+    resetWizard,
   } = useWeeklyPlanStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +66,8 @@ export function useActivePlan() {
 
   // Start creating a new plan
   const handleCreatePlan = useCallback(() => {
+    // Always reset wizard when starting fresh
+    resetWizard();
     if (activePlan) {
       setShowReplaceConfirm(true);
     } else {
@@ -74,6 +77,7 @@ export function useActivePlan() {
 
   const confirmCreatePlan = useCallback(() => {
     setShowReplaceConfirm(false);
+    resetWizard();
     setShowWizard(true);
   }, []);
 

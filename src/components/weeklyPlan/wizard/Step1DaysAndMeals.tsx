@@ -113,6 +113,7 @@ export function Step1DaysAndMeals() {
       className="flex-1"
       showsVerticalScrollIndicator={false}
       contentContainerClassName="px-4 pb-8"
+      keyboardShouldPersistTaps="handled"
     >
       {/* Days Selection */}
       <Section

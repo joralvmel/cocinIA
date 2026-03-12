@@ -121,6 +121,7 @@ export function Step3FoodPreferences() {
       className="flex-1"
       showsVerticalScrollIndicator={false}
       contentContainerClassName="px-4 pb-8"
+      keyboardShouldPersistTaps="handled"
     >
       {/* Cuisine preferences */}
       <Section

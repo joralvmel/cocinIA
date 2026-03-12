@@ -509,6 +509,8 @@
     fab: {
       reopenPlan: 'View generated plan',
       createNew: 'Create new plan',
+      continueWizard: 'Continue setup',
+      discardWizard: 'Discard setup',
     },
   },
   shoppingList: {

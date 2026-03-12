@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -33,21 +33,18 @@ export default function EditRoutineMealsScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.card }}>
-      <SafeAreaView className="flex-1" edges={['top']} style={{ backgroundColor: colors.card }}>
-        <ScreenHeader title={t('profile.routineMeals')} onBack={form.handleBack} />
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
+      <ScreenHeader title={t('profile.routineMeals')} onBack={form.handleBack} />
 
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      <KeyboardAvoidingView
+        behavior="padding"
+        className="flex-1"
+      >
+        <ScrollView
+          contentContainerClassName="px-4 py-6 pb-24"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View className="flex-1 bg-white dark:bg-gray-900">
-            <ScrollView
-              contentContainerClassName="px-4 py-6 pb-24"
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
             {/* Explanation */}
             <View className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 mb-6">
               <View className="flex-row items-center gap-2 mb-2">
@@ -88,20 +85,18 @@ export default function EditRoutineMealsScreen() {
               );
             })}
           </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
 
-        <AlertModal
-          visible={form.alertVisible}
-          onClose={() => form.setAlertVisible(false)}
-          title={t('common.error')}
-          message={t('profile.saveError')}
-          variant="danger"
-          confirmLabel={t('common.ok')}
-          onConfirm={() => form.setAlertVisible(false)}
-        />
-      </SafeAreaView>
-    </View>
+      <AlertModal
+        visible={form.alertVisible}
+        onClose={() => form.setAlertVisible(false)}
+        title={t('common.error')}
+        message={t('profile.saveError')}
+        variant="danger"
+        confirmLabel={t('common.ok')}
+        onConfirm={() => form.setAlertVisible(false)}
+      />
+    </SafeAreaView>
   );
 }
 

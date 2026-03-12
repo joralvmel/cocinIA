@@ -64,13 +64,16 @@ export default function WeeklyPlanScreen() {
     handleModifyMeal,
   } = useGenerateWeeklyPlan();
 
-  const { generationProgress, setShowWizard, setShowResult } = useWeeklyPlanStore();
+  const { generationProgress, setShowWizard, setShowResult, wizardStep, resetWizard } = useWeeklyPlanStore();
 
   // Whether we have a minimized (not yet saved) plan that can be reopened
   const hasMinimizedPlan = !!generatedPlan && !showResult && !isSaving && !isGenerating;
 
   // Whether generation is in progress but modal was closed
   const isGeneratingMinimized = isGenerating && !showResult;
+
+  // Whether the wizard is in progress (user started but minimized it)
+  const hasWizardInProgress = wizardStep > 0 && !showWizard && !isGenerating && !generatedPlan;
 
   // Loading state
   if (!activePlanLoaded || isLoading) {
@@ -156,6 +159,45 @@ export default function WeeklyPlanScreen() {
                 icon: 'trash',
                 color: '#EF4444',
                 onPress: handleDiscard,
+              },
+            ]}
+          />
+        ) : hasWizardInProgress ? (
+          /* Wizard in progress but minimized */
+          <MultiActionButton
+            icon="pencil-square-o"
+            variant="floating"
+            floatingColor="amber-500"
+            options={[
+              {
+                id: 'continue',
+                label: t('weeklyPlan.fab.continueWizard'),
+                icon: 'pencil-square-o',
+                color: '#F59E0B',
+                onPress: () => setShowWizard(true),
+              },
+              {
+                id: 'create',
+                label: t('weeklyPlan.fab.createNew'),
+                icon: 'plus',
+                color: '#22C55E',
+                onPress: handleCreatePlan,
+              },
+              {
+                id: 'history',
+                label: t('weeklyPlan.active.viewHistory'),
+                icon: 'history',
+                color: '#8B5CF6',
+                onPress: () => navigateTo('/(app)/weekly-plan/history'),
+              },
+              {
+                id: 'discard',
+                label: t('weeklyPlan.fab.discardWizard'),
+                icon: 'trash',
+                color: '#EF4444',
+                onPress: () => {
+                  resetWizard();
+                },
               },
             ]}
           />

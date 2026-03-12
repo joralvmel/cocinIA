@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Pressable, TextInput } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Input } from './Input';
 import { Chip } from './Chip';
@@ -26,6 +26,15 @@ export function TagInput({
   className = '',
 }: TagInputProps) {
   const canAdd = inputText.trim().length > 0;
+  const inputRef = useRef<TextInput>(null);
+
+  const handleAdd = () => {
+    if (canAdd) {
+      onAdd();
+      // Keep focus on the input so the keyboard stays open
+      inputRef.current?.focus();
+    }
+  };
 
   return (
     <View className={className}>
@@ -48,15 +57,18 @@ export function TagInput({
       <View className="flex-row items-center gap-2">
         <View className="flex-1">
           <Input
+            ref={inputRef}
             placeholder={placeholder}
             value={inputText}
             onChangeText={onChangeText}
-            onSubmitEditing={onAdd}
+            onSubmitEditing={handleAdd}
             returnKeyType="done"
+            submitBehavior="submit"
           />
         </View>
         <Pressable
-          onPress={onAdd}
+          onPress={handleAdd}
+          onStartShouldSetResponder={() => true}
           className="w-10 h-10 rounded-full items-center justify-center bg-primary-600 dark:bg-primary-500"
           style={{ opacity: canAdd ? 1 : 0.4 }}
           disabled={!canAdd}

@@ -67,6 +67,7 @@ export function Step4NutritionAndNotes() {
       className="flex-1"
       showsVerticalScrollIndicator={false}
       contentContainerClassName="px-4 pb-8"
+      keyboardShouldPersistTaps="handled"
     >
       {/* Plan name */}
       <Section className="mb-6">
