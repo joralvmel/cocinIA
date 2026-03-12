@@ -905,12 +905,14 @@ These will be cooked in a prep session and stored in the fridge to assemble lunc
 
 RULES:
 - Generate EXACTLY {{numPreps}} base preparations of different types (protein, grain/carb, sauce, vegetable, side).
+- If the user specifies ingredients (e.g. "chicken and salmon"), EACH ONE must be a separate "protein" type base preparation. Generate as many proteins as the user requests.
 - Each preparation must keep in the fridge for at least 4-5 days.
 - Preparations must be VERSATILE: combinable in different ways to create varied dishes.
 - TOTAL prep time for all bases must not exceed {{maxPrepTime}} minutes.
 - Reuse strategy: {{reuseStrategy}}.`,
     batchKeyIngredients: 'KEY INGREDIENTS TO USE (distribute across preparations, use ALL): {{list}}',
     batchNotesLabel: 'USER BATCH COOKING NOTES',
+    batchNotesReinforce: '⚠️ IMPORTANT: Respect these user instructions for base preparations: {{notes}}. If they mention specific ingredients, you MUST use them by distributing them across the preparations.',
     specialNotesLabel: 'SPECIAL NOTES',
     batchFormatInstruction: 'FORMAT: Return ONLY a JSON array. Each object:',
     batchValidTypes: 'Valid types: protein, grain, sauce, vegetable, side, other. Return ONLY the JSON.',
@@ -932,19 +934,23 @@ RULES:
     wpSpecialNotesReminder: 'USER NOTES (respect these): {{notes}}',
     wpForbiddenIngredients: '⚠️ FORBIDDEN ingredients - DO NOT use in ANY recipe: {{list}}',
     wpBatchAssembly: `🍱 BATCH COOKING - ASSEMBLY LUNCH:
-For today's LUNCH, create a dish that ASSEMBLES from these base preparations already in the fridge.
-DO NOT cook from scratch — use these as main ingredients and describe ONLY assembly/reheating instructions (max 10-15 min).
-The recipe should list base preparations as ingredients (pre-prepared) plus minimal fresh additions.
+For today's LUNCH, create a DIFFERENT dish that assembles from the base preparations in the fridge.
 
 AVAILABLE BASE PREPARATIONS:
 {{prepList}}
 
-ROTATION RULES (day {{dayIndex}} of {{totalDays}}):
-- Do NOT mix ALL proteins in one dish. Each day should feature ONE main protein.
-- TODAY use as main protein: "{{suggestedProtein}}".
-- Pair the protein with 1-2 complementary bases (grain, sauce, vegetables, or side).
-- Create a dish with its own identity, different from other days.
-- One day could be: protein A + grain + sauce. Another: protein B + vegetables + side. Vary combinations.`,
+STRICT VARIETY RULES (day {{dayIndex}} of {{totalDays}}):
+1. Use MAXIMUM 2-3 base preparations for this dish. DO NOT use all of them.
+2. TODAY'S ASSIGNMENT: You must use "{{suggestedProtein}}" as the main protein, combine it with ONLY 1-2 of the other bases.
+3. DO NOT repeat the same combination or concept from other days.
+4. DISH FORMAT: Choose a DIFFERENT format from other days. Examples: tacos/burritos, salad, wrap, stir-fry, pasta, bowl, sandwich, quesadilla, soup, poke bowl, empanada, baked dish.
+5. The recipe should describe ONLY assembly/reheating instructions (max 10-15 min), DO NOT cook from scratch.
+6. You may add 1-2 minimal fresh ingredients (lettuce, cheese, tortilla, bread, lime, etc.).
+
+SUGGESTED COMBO FOR TODAY:
+{{suggestedCombo}}
+
+IMPORTANT: If other days already used bowl/wrap/salad, choose a completely different format.`,
     wpAvoidRepetition: 'AVOID repeating these dishes already generated for other days: {{titles}}',
     wpReturnJsonOnly: 'Return ONLY the JSON array. Do not add explanations.',
 

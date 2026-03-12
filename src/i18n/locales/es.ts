@@ -905,12 +905,14 @@ Estas preparaciones se cocinarán en una sesión de preparación y se almacenar�
 
 REGLAS:
 - Genera EXACTAMENTE {{numPreps}} preparaciones base de diferentes tipos (proteína, grano/carbohidrato, salsa, vegetal, guarnición).
+- Si el usuario indica ingredientes específicos (ej: "pollo y salmón"), CADA UNO debe ser una preparación base separada de tipo "protein". Genera tantas proteínas como ingredientes pida el usuario.
 - Cada preparación debe poder almacenarse en la nevera al menos 4-5 días.
 - Las preparaciones deben ser VERSÁTILES: poder combinarse de diferentes formas para crear platos variados.
 - El tiempo TOTAL de preparación de todas las bases no debe exceder {{maxPrepTime}} minutos.
 - Estrategia de reutilización: {{reuseStrategy}}.`,
     batchKeyIngredients: 'INGREDIENTES PRINCIPALES A USAR (distribúyelos entre las preparaciones, usa TODOS): {{list}}',
     batchNotesLabel: 'NOTAS DEL USUARIO PARA BATCH COOKING',
+    batchNotesReinforce: '⚠️ IMPORTANTE: Respeta estas indicaciones del usuario para las preparaciones base: {{notes}}. Si mencionan ingredientes específicos, úsalos obligatoriamente distribuyéndolos entre las preparaciones.',
     specialNotesLabel: 'NOTAS ESPECIALES',
     batchFormatInstruction: 'FORMATO: Devuelve SOLO un JSON array. Cada objeto:',
     batchValidTypes: 'Tipos válidos: protein, grain, sauce, vegetable, side, other. Devuelve SOLO el JSON.',
@@ -932,19 +934,23 @@ REGLAS:
     wpSpecialNotesReminder: 'NOTAS DEL USUARIO (respétalas): {{notes}}',
     wpForbiddenIngredients: '⚠️ PROHIBIDO usar estos ingredientes en NINGUNA receta: {{list}}',
     wpBatchAssembly: `🍱 BATCH COOKING - COMIDA DE ENSAMBLAJE:
-Para la COMIDA (lunch) de hoy, crea un plato que se ARME usando las preparaciones base que ya están listas en la nevera.
-NO cocines desde cero — usa estas preparaciones como ingredientes principales y describe SOLO instrucciones de ensamblaje/calentamiento (máx 10-15 min).
-La receta debe incluir las preparaciones base en sus ingredientes (ya preparados) y opcionalmente ingredientes frescos adicionales mínimos.
+Para la COMIDA (lunch) de hoy, crea un PLATO DIFERENTE que se arme con las preparaciones base de la nevera.
 
 PREPARACIONES BASE DISPONIBLES:
 {{prepList}}
 
-REGLAS DE ROTACIÓN (día {{dayIndex}} de {{totalDays}}):
-- NO mezcles TODAS las proteínas en un solo plato. Cada día debe tener UNA proteína principal diferente.
-- HOY usa como proteína principal: "{{suggestedProtein}}".
-- Combina la proteína con 1-2 bases complementarias (grano, salsa, vegetales o guarnición).
-- Crea un plato con identidad propia y diferente a los otros días.
-- Un día puede ser: proteína A + grano + salsa. Otro: proteína B + vegetales + guarnición. Varía las combinaciones.`,
+REGLAS ESTRICTAS DE VARIEDAD (día {{dayIndex}} de {{totalDays}}):
+1. USA MÁXIMO 2-3 preparaciones base para este plato. NO uses todas.
+2. ASIGNACIÓN DE HOY: Usa obligatoriamente "{{suggestedProtein}}" como proteína principal, combínala con SOLO 1-2 de las otras bases.
+3. NO repitas la misma combinación ni concepto de otros días.
+4. FORMATO DEL PLATO: Elige un formato DIFERENTE al de otros días. Ejemplos: tacos/burritos, ensalada, wrap, salteado/stir-fry, pasta, bowl, sándwich/torta, quesadilla, sopa, poke bowl, empanada, plato al horno.
+5. La receta debe describir SOLO instrucciones de ensamblaje/calentamiento (máx 10-15 min), NO cocinar desde cero.
+6. Puedes añadir 1-2 ingredientes frescos mínimos (lechuga, queso, tortilla, pan, limón, etc.).
+
+COMBINACIONES SUGERIDAS PARA HOY:
+{{suggestedCombo}}
+
+IMPORTANTE: Si otros días ya usaron bowl/wrap/ensalada, elige un formato completamente distinto.`,
     wpAvoidRepetition: 'EVITA repetir estos platos que ya se generaron para otros días: {{titles}}',
     wpReturnJsonOnly: 'Devuelve SOLO el JSON array. No añadas explicaciones.',
 

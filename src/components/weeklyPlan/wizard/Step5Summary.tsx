@@ -189,6 +189,56 @@ export function Step5Summary() {
         </View>
       </Card>
 
+      {/* Batch cooking details */}
+      {batchCookingEnabled && (
+        <Card variant="outlined" className="mb-4">
+          <View className="p-4 gap-2">
+            <View className="flex-row items-center gap-2 mb-1">
+              <FontAwesome name="tasks" size={16} color={colors.primary} />
+              <Text className="font-semibold text-gray-900 dark:text-gray-50">
+                Batch Cooking
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <FontAwesome name="calendar" size={12} color={colors.textSecondary} />
+              <Text className="text-gray-600 dark:text-gray-400">
+                {t('weeklyPlan.wizard.prepDays')}: {batchConfig.prep_days
+                  .map((d) => t(`weeklyPlan.daysShort.${d}` as any))
+                  .join(', ') || '—'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <FontAwesome name="cubes" size={12} color={colors.textSecondary} />
+              <Text className="text-gray-600 dark:text-gray-400">
+                {t('weeklyPlan.wizard.basePrepsCount')}: {batchConfig.base_preparations_count || 3}
+              </Text>
+            </View>
+
+            {batchConfig.max_prep_time_minutes ? (
+              <View className="flex-row items-center gap-2">
+                <FontAwesome name="clock-o" size={12} color={colors.textSecondary} />
+                <Text className="text-gray-600 dark:text-gray-400">
+                  {t('weeklyPlan.wizard.maxPrepTime')}: {batchConfig.max_prep_time_minutes} min
+                </Text>
+              </View>
+            ) : null}
+
+            {batchConfig.notes ? (
+              <View className="mt-1">
+                <Text className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {t('weeklyPlan.wizard.batchNotes' as any)}:
+                </Text>
+                <Text className="text-gray-700 dark:text-gray-300 italic">
+                  "{batchConfig.notes}"
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </Card>
+      )}
+
       {/* Ingredients & extras */}
       {(ingredientsToInclude.length > 0 ||
         ingredientsToExclude.length > 0 ||

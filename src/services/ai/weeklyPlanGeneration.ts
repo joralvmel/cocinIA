@@ -92,7 +92,10 @@ function buildBasePreparationsPrompt(
     parts.push(`${t('excludeIngredients')}: ${form.ingredientsToExclude.join(', ')}`);
   }
 
-  if (config.notes) parts.push(`${tp('batchNotesLabel', lang)}: ${config.notes}`);
+  if (config.notes) {
+    parts.push(`${tp('batchNotesLabel', lang)}: ${config.notes}`);
+    parts.push(tp('batchNotesReinforce', lang, { notes: config.notes }));
+  }
   if (form.specialNotes) parts.push(`${tp('specialNotesLabel', lang)}: ${form.specialNotes}`);
 
   // JSON format example
@@ -360,10 +363,30 @@ function buildDayUserPrompt(
     const dayIndex = sorted.indexOf(day);
     const totalDays = sorted.length;
 
+    // Rotate protein
     const proteinPreps = basePreparations.filter((p) => p.type === 'protein');
+    const nonProteinPreps = basePreparations.filter((p) => p.type !== 'protein');
     const suggestedProtein = proteinPreps.length > 1
       ? proteinPreps[dayIndex % proteinPreps.length]?.name
       : proteinPreps[0]?.name;
+
+    // Build explicit combo suggestion: protein + 1-2 non-protein preps (rotating)
+    const comboPreps: string[] = [];
+    if (suggestedProtein) comboPreps.push(suggestedProtein);
+    if (nonProteinPreps.length > 0) {
+      const count = Math.min(2, nonProteinPreps.length);
+      for (let i = 0; i < count; i++) {
+        const idx = (dayIndex + i) % nonProteinPreps.length;
+        comboPreps.push(nonProteinPreps[idx].name);
+      }
+    }
+
+    const dishFormats = ['tacos/burritos', 'ensalada/salad', 'wrap/tortilla', 'stir-fry/salteado', 'pasta', 'bowl', 'sándwich/torta', 'quesadilla', 'sopa/soup', 'plato al horno'];
+    const suggestedFormat = dishFormats[dayIndex % dishFormats.length];
+
+    const suggestedCombo = lang === 'es'
+      ? `Usa: ${comboPreps.join(' + ')}. Formato sugerido: ${suggestedFormat}.`
+      : `Use: ${comboPreps.join(' + ')}. Suggested format: ${suggestedFormat}.`;
 
     parts.push('');
     parts.push(tp('wpBatchAssembly', lang, {
@@ -371,6 +394,7 @@ function buildDayUserPrompt(
       dayIndex: dayIndex + 1,
       totalDays,
       suggestedProtein: suggestedProtein || '',
+      suggestedCombo,
     }));
   }
 
