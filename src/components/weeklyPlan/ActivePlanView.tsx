@@ -48,6 +48,7 @@ export function ActivePlanView({
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [loadingPrepRecipe, setLoadingPrepRecipe] = useState<string | null>(null);
+  const [prepsVisible, setPrepsVisible] = useState(false);
 
   // Group meals by day
   const mealsByDay: Record<DayOfWeek, WeeklyPlanMealWithRecipe[]> = {} as any;
@@ -131,47 +132,6 @@ export function ActivePlanView({
             </View>
           </View>
         </Card>
-
-        {/* Batch cooking base preparations */}
-        {plan.is_batch_cooking && (plan.batch_config as any)?.saved_base_preparations?.length > 0 && (
-          <Card variant="outlined" className="mb-4">
-            <View className="p-4">
-              <View className="flex-row items-center gap-2 mb-3">
-                <FontAwesome name="tasks" size={16} color={colors.primary} />
-                <Text className="font-bold text-gray-900 dark:text-gray-50">
-                  {t('weeklyPlan.result.basePreparations')}
-                </Text>
-              </View>
-              <View className="gap-2">
-                {((plan.batch_config as any).saved_base_preparations as Array<{ name: string; type: string; recipe_id: string; description: string }>).map((bp, idx) => (
-                  <Pressable
-                    key={idx}
-                    onPress={() => handleBasePrepPress(bp.recipe_id)}
-                    disabled={loadingPrepRecipe === bp.recipe_id}
-                    className="flex-row items-center bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"
-                  >
-                    <View className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 items-center justify-center mr-3">
-                      {loadingPrepRecipe === bp.recipe_id ? (
-                        <ActivityIndicator size="small" color="#F59E0B" />
-                      ) : (
-                        <FontAwesome name="fire" size={14} color="#F59E0B" />
-                      )}
-                    </View>
-                    <View className="flex-1">
-                      <Text className="font-medium text-gray-900 dark:text-gray-50 text-sm">
-                        {bp.name}
-                      </Text>
-                      <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
-                        {bp.description}
-                      </Text>
-                    </View>
-                    <Badge variant="info" size="sm" label={bp.type} />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </Card>
-        )}
 
         {/* Day tabs */}
         <ScrollView
@@ -257,6 +217,61 @@ export function ActivePlanView({
               {t('weeklyPlan.active.noPlanForToday')}
             </Text>
           </View>
+        )}
+
+        {/* Batch cooking base preparations — collapsible, hidden by default */}
+        {plan.is_batch_cooking && (plan.batch_config as any)?.saved_base_preparations?.length > 0 && (
+          <Card variant="outlined" className="mt-4">
+            <Pressable onPress={() => setPrepsVisible((v) => !v)}>
+              <View className="flex-row items-center justify-between p-4">
+                <View className="flex-row items-center gap-2">
+                  <FontAwesome name="tasks" size={16} color={colors.primary} />
+                  <Text className="font-bold text-gray-900 dark:text-gray-50">
+                    {t('weeklyPlan.result.basePreparations')}
+                  </Text>
+                  <Badge
+                    variant="warning"
+                    size="sm"
+                    label={String((plan.batch_config as any).saved_base_preparations.length)}
+                  />
+                </View>
+                <FontAwesome
+                  name={prepsVisible ? 'chevron-up' : 'chevron-down'}
+                  size={13}
+                  color={colors.textMuted}
+                />
+              </View>
+            </Pressable>
+            {prepsVisible && (
+              <View className="px-4 pb-4 gap-2">
+                {((plan.batch_config as any).saved_base_preparations as Array<{ name: string; type: string; recipe_id: string; description: string }>).map((bp, idx) => (
+                  <Pressable
+                    key={idx}
+                    onPress={() => handleBasePrepPress(bp.recipe_id)}
+                    disabled={loadingPrepRecipe === bp.recipe_id}
+                    className="flex-row items-center bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"
+                  >
+                    <View className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 items-center justify-center mr-3">
+                      {loadingPrepRecipe === bp.recipe_id ? (
+                        <ActivityIndicator size="small" color="#F59E0B" />
+                      ) : (
+                        <FontAwesome name="fire" size={14} color="#F59E0B" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-medium text-gray-900 dark:text-gray-50 text-sm">
+                        {bp.name}
+                      </Text>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
+                        {bp.description}
+                      </Text>
+                    </View>
+                    <Badge variant="info" size="sm" label={bp.type} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </Card>
         )}
 
         {/* Spacer for FAB */}
