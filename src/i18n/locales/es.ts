@@ -829,4 +829,127 @@
       returnModified: 'Devuelve la receta modificada completa en formato JSON.',
     },
   },
+
+  // ── AI Prompt translations (used by src/services/ai/*) ──
+  aiPrompts: {
+    // Shared
+    systemIntro: 'Eres CocinIA, un chef experto y asistente de cocina con IA.',
+    systemTask: 'Genera recetas detalladas y precisas basadas en la petición actual del usuario. Responde ÚNICAMENTE con un objeto JSON válido siguiendo la estructura especificada.',
+    languageInstruction: 'IDIOMA: Genera TODO el contenido en ESPAÑOL (título, descripción, ingredientes, pasos, consejos, etc.)',
+
+    // Restrictions
+    restrictionsImportant: 'IMPORTANTE sobre restricciones dietéticas:',
+    restrictionsRule: '- Si el usuario tiene ALERGIAS o RESTRICCIONES DIETÉTICAS listadas más abajo, NO uses esos ingredientes bajo ninguna circunstancia.',
+    restrictionsConditional: '- Si NO hay alergias ni restricciones listadas, genera la receta normalmente sin modificaciones.',
+    restrictionsNoAssumptions: '- NO asumas restricciones que no estén explícitamente indicadas.',
+    allergiesWarning: '⚠️ ALERGIAS CRÍTICAS - PROHIBIDO usar',
+    dietaryPreferences: '🔒 RESTRICCIONES DIETÉTICAS ACTIVAS - Respetar estrictamente',
+    noRestrictionsActive: '✓ Sin restricciones dietéticas - Genera receta sin modificaciones',
+
+    // Description & format
+    descriptionRule: 'REGLA DE DESCRIPCIÓN: Escribe una descripción breve (1 oración, máximo 15 palabras) que sea atractiva y directa. No uses frases de relleno.',
+    jsonInstruction: 'FORMATO DE RESPUESTA: Responde ÚNICAMENTE con el objeto JSON. No agregues explicaciones, comentarios ni texto adicional.',
+    jsonStructure: 'Estructura JSON requerida:',
+    jsonDescriptionHint: 'Descripción breve de máximo 15 palabras',
+    jsonMealTypesNote: '// CRÍTICO: meal_types SOLO puede ser: "breakfast", "lunch", "dinner", "snack", "dessert"',
+
+    // Meal types rule
+    mealTypesRule: `REGLA CRÍTICA DE meal_types:
+El campo "meal_types" SOLO puede contener estos valores EXACTOS (sin excepciones):
+• "breakfast" - para desayunos
+• "lunch" - para comidas/almuerzos (también para salsas, acompañamientos, guarniciones)
+• "dinner" - para cenas (también para platos principales)
+• "snack" - para meriendas, aperitivos, entrantes
+• "dessert" - para postres
+
+NO INVENTES otros valores como "side dish", "condiment", "appetizer", "main course", etc.
+Si es una salsa o acompañamiento, usa "lunch" o "dinner" según cuándo se sirva.`,
+
+    // User context
+    userContext: '--- CONTEXTO DEL USUARIO ---',
+    country: 'País',
+    currency: 'Moneda',
+    measurementSystem: 'Sistema de medidas',
+    metric: 'Métrico',
+    imperial: 'Imperial',
+
+    // Recipe requirements
+    requirements: 'Requisitos de la receta',
+    userRequest: 'Solicitud del usuario',
+    useIngredients: 'DEBE incluir estos ingredientes',
+    excludeIngredients: 'NO incluir estos ingredientes',
+    preferFavoriteIngredients: 'Preferir usar estos ingredientes favoritos: {{list}}',
+    mealType: 'Tipo de comida',
+    servings: 'Porciones',
+    maxTime: 'Tiempo máximo de preparación',
+    minutes: 'minutos',
+    caloriesPerServing: 'calorías por porción',
+    maximum: 'Máximo',
+    cuisineType: 'Estilo de cocina',
+    difficultyLabel: 'Nivel de dificultad',
+    difficultyLevels: {
+      easy: 'fácil',
+      medium: 'intermedio',
+      hard: 'difícil',
+    },
+    availableEquipment: 'Equipamiento disponible',
+
+    // Modify
+    modifyRequest: 'Modificación solicitada',
+    currentRecipe: 'Receta actual a modificar',
+    returnModified: 'Devuelve la receta modificada completa en formato JSON.',
+
+    // Batch cooking
+    batchPreparationRules: `Tu tarea es generar {{numPreps}} PREPARACIONES BASE para batch cooking.
+Estas preparaciones se cocinarán en una sesión de preparación y se almacenarán en la nevera para armar las comidas (almuerzos) de {{numDays}} días de la semana.
+
+REGLAS:
+- Genera EXACTAMENTE {{numPreps}} preparaciones base de diferentes tipos (proteína, grano/carbohidrato, salsa, vegetal, guarnición).
+- Cada preparación debe poder almacenarse en la nevera al menos 4-5 días.
+- Las preparaciones deben ser VERSÁTILES: poder combinarse de diferentes formas para crear platos variados.
+- El tiempo TOTAL de preparación de todas las bases no debe exceder {{maxPrepTime}} minutos.
+- Estrategia de reutilización: {{reuseStrategy}}.`,
+    batchKeyIngredients: 'INGREDIENTES PRINCIPALES A USAR (distribúyelos entre las preparaciones, usa TODOS): {{list}}',
+    batchNotesLabel: 'NOTAS DEL USUARIO PARA BATCH COOKING',
+    specialNotesLabel: 'NOTAS ESPECIALES',
+    batchFormatInstruction: 'FORMATO: Devuelve SOLO un JSON array. Cada objeto:',
+    batchValidTypes: 'Tipos válidos: protein, grain, sauce, vegetable, side, other. Devuelve SOLO el JSON.',
+
+    // Weekly plan — day prompts
+    wpDayTask: 'Tu tarea es generar las recetas para UN DÍA de un plan semanal de comidas.',
+    wpCalorieTarget: 'OBJETIVO CALÓRICO DIARIO: {{calories}} calorías. Distribuye entre las comidas del día.',
+    wpServings: 'PORCIONES: Cada receta debe ser para {{count}} porción(es) individual(es).',
+    wpBatchCookingMode: 'MODO BATCH COOKING: El usuario prepara comidas de antemano. Genera recetas que se puedan preparar en lote, reutilicen ingredientes base y se almacenen bien. Estrategia de reutilización: {{strategy}}.',
+    wpResponseFormat: 'FORMATO DE RESPUESTA: Devuelve un JSON array con objetos de recetas. Cada objeto debe seguir EXACTAMENTE esta estructura:',
+    wpGenerateForDay: 'Genera las recetas para el {{day}}.',
+    wpMealsToGenerate: 'Comidas a generar: {{meals}}',
+    wpMaxCookingTimeDetailed: 'Tiempo máximo de cocina: {{details}}',
+    wpMaxCookingTime: 'Tiempo máximo de cocina por receta: {{minutes}} minutos.',
+    wpTryIngredients: 'Intentar usar estos ingredientes: {{list}}',
+    wpRoutineMealRotation: 'Para {{mealLabel}}, rota entre estas opciones habituales del usuario (no inventes otras a menos que se pida variedad): {{routine}}',
+    wpQuickMealGuidance: 'Para desayunos y cenas, prioriza recetas de ensamblaje rápido (≤15 min, pocos ingredientes) a menos que el usuario haya indicado lo contrario. Las comidas/almuerzos pueden ser más elaboradas.',
+    wpCuisineReminder: 'RECUERDA: Solo genera recetas de estos estilos de cocina: {{list}}',
+    wpSpecialNotesReminder: 'NOTAS DEL USUARIO (respétalas): {{notes}}',
+    wpForbiddenIngredients: '⚠️ PROHIBIDO usar estos ingredientes en NINGUNA receta: {{list}}',
+    wpBatchAssembly: `🍱 BATCH COOKING - COMIDA DE ENSAMBLAJE:
+Para la COMIDA (lunch) de hoy, crea un plato que se ARME usando las preparaciones base que ya están listas en la nevera.
+NO cocines desde cero — usa estas preparaciones como ingredientes principales y describe SOLO instrucciones de ensamblaje/calentamiento (máx 10-15 min).
+La receta debe incluir las preparaciones base en sus ingredientes (ya preparados) y opcionalmente ingredientes frescos adicionales mínimos.
+
+PREPARACIONES BASE DISPONIBLES:
+{{prepList}}
+
+REGLAS DE ROTACIÓN (día {{dayIndex}} de {{totalDays}}):
+- NO mezcles TODAS las proteínas en un solo plato. Cada día debe tener UNA proteína principal diferente.
+- HOY usa como proteína principal: "{{suggestedProtein}}".
+- Combina la proteína con 1-2 bases complementarias (grano, salsa, vegetales o guarnición).
+- Crea un plato con identidad propia y diferente a los otros días.
+- Un día puede ser: proteína A + grano + salsa. Otro: proteína B + vegetales + guarnición. Varía las combinaciones.`,
+    wpAvoidRepetition: 'EVITA repetir estos platos que ya se generaron para otros días: {{titles}}',
+    wpReturnJsonOnly: 'Devuelve SOLO el JSON array. No añadas explicaciones.',
+
+    // Regenerate single meal
+    wpRegenMealInstruction: 'Genera una receta para el {{meal}} del {{day}}. Tiempo máximo: {{minutes}} min.',
+    wpDoNotRepeat: 'NO repitas: {{titles}}',
+  },
 };
