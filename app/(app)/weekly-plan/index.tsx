@@ -211,7 +211,7 @@ export default function WeeklyPlanScreen() {
           <MultiActionButton
             icon="ellipsis-v"
             variant="floating"
-            floatingColor="primary-500"
+            floatingColor="primary-600"
             options={[
               {
                 id: 'create',
@@ -249,7 +249,7 @@ export default function WeeklyPlanScreen() {
             icon="calendar-plus-o"
             label={t('weeklyPlan.createNew')}
             variant="floating"
-            floatingColor="primary-500"
+            floatingColor="primary-600"
             loading={isGenerating}
             disabled={isGenerating}
             options={[

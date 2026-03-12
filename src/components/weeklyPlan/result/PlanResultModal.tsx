@@ -552,7 +552,7 @@ export function PlanResultModal({
             <MultiActionButton
               icon="ellipsis-v"
               variant="floating"
-              floatingColor="amber-600"
+              floatingColor="primary-600"
               loading={modifyingPrepIndex === previewPrepIndex || regeneratingPrepIndex === previewPrepIndex}
               disabled={modifyingPrepIndex === previewPrepIndex || regeneratingPrepIndex === previewPrepIndex}
               options={[

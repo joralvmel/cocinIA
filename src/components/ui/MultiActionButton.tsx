@@ -171,19 +171,22 @@ export function MultiActionButton({
   }, []);
 
   const getColorClasses = (color?: string): { bg: string; shadow: string; hex?: string } => {
-    const colorMap: Record<string, { bg: string; shadow: string }> = {
-      red: { bg: 'bg-red-500', shadow: 'shadow-red-500/30' },
-      green: { bg: 'bg-green-500', shadow: 'shadow-green-500/30' },
-      blue: { bg: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-      amber: { bg: 'bg-amber-500', shadow: 'shadow-amber-500/30' },
-      purple: { bg: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-      pink: { bg: 'bg-pink-500', shadow: 'shadow-pink-500/30' },
+    // Map named colors to hex — Tailwind dynamic classnames don't work reliably with NativeWind
+    const hexMap: Record<string, string> = {
+      primary: '#16A34A',
+      green: '#22C55E',
+      red: '#EF4444',
+      blue: '#3B82F6',
+      amber: '#F59E0B',
+      purple: '#8B5CF6',
+      pink: '#EC4899',
     };
-    // Support hex colors
+    // Support hex colors directly
     if (color?.startsWith('#')) {
       return { bg: '', shadow: '', hex: color };
     }
-    return colorMap[color || 'blue'] || colorMap.blue;
+    const hex = hexMap[color || 'blue'] || hexMap.blue;
+    return { bg: '', shadow: '', hex };
   };
 
   const rotation = rotateAnimRef.current.interpolate({
@@ -279,8 +282,8 @@ export function MultiActionButton({
 
                         {/* Icon button */}
                         <View
-                            className={`w-14 h-14 rounded-full items-center justify-center shadow-lg ${colorClasses.hex ? '' : colorClasses.bg} ${colorClasses.hex ? '' : colorClasses.shadow}`}
-                            style={colorClasses.hex ? { backgroundColor: colorClasses.hex, shadowColor: colorClasses.hex } : undefined}
+                            className="w-14 h-14 rounded-full items-center justify-center shadow-lg"
+                            style={{ backgroundColor: colorClasses.hex, shadowColor: colorClasses.hex }}
                         >
                           {option.loading ? (
                               <ActivityIndicator size="small" color="white" />

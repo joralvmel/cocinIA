@@ -185,7 +185,7 @@ export default function EditPreferencesScreen() {
 
         {/* Floating Add Button */}
         <View className="absolute bottom-6 right-6">
-          <MultiActionButton icon="plus" options={customActionOptions} variant="floating" floatingColor="primary-500" loading={form.saving} />
+          <MultiActionButton icon="plus" options={customActionOptions} variant="floating" floatingColor="primary-600" loading={form.saving} />
         </View>
 
         {/* Custom Input BottomSheet */}

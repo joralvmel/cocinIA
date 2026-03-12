@@ -69,7 +69,7 @@ export function GenerateFAB({
           icon="magic"
           label={String(t('recipeGeneration.generateButton'))}
           variant="floating"
-          floatingColor="primary-500"
+          floatingColor="primary-600"
           loading={isLoading}
           disabled={isLoading}
           options={[
