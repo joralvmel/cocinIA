@@ -423,7 +423,7 @@ export const weeklyPlanGenerationService = {
     restrictions: ProfileRestriction[],
     favoriteIngredients: string[] = [],
     lang: Language = 'es',
-    onDayProgress?: (day: DayOfWeek) => void,
+    onDayProgress?: (day: DayOfWeek) => void | Promise<void>,
   ): Promise<WeeklyPlanGenerationResponse> {
     const normalizedLang = getLanguage(lang);
 
@@ -448,7 +448,11 @@ export const weeklyPlanGenerationService = {
 
       // Phase 2: generate each day
       for (const day of sortedDays) {
-        onDayProgress?.(day);
+        // Call the progress callback (supports both sync and async)
+        const callbackResult = onDayProgress?.(day);
+        if (callbackResult instanceof Promise) {
+          await callbackResult;
+        }
 
         const dayConfig = form.dayConfigs[day];
         if (!dayConfig) continue;

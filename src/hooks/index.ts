@@ -37,4 +37,5 @@ export { useRecipeResult, type UseRecipeResultOptions } from './useRecipeResult'
 export { useGenerateWeeklyPlan } from './useGenerateWeeklyPlan';
 export { useActivePlan } from './useActivePlan';
 export { usePlanHistory } from './usePlanHistory';
+export { useWeeklyPlanNotifications } from './useWeeklyPlanNotifications';
 

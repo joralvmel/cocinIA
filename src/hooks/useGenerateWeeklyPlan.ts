@@ -10,6 +10,7 @@ import {
 } from '@/services';
 import { AI_CONFIG } from '@/config';
 import { weeklyPlanEvents, recipeEvents } from '@/utils';
+import { useWeeklyPlanNotifications } from './useWeeklyPlanNotifications';
 import {
   type DayOfWeek,
   type PlanMealType,
@@ -22,6 +23,7 @@ import {
 export function useGenerateWeeklyPlan() {
   const { t, i18n } = useTranslation();
   const currentLang = (i18n.language?.startsWith('es') ? 'es' : 'en') as 'es' | 'en';
+  const { showProgressNotification, showCompletionNotification, showErrorNotification, clearAllNotifications } = useWeeklyPlanNotifications();
 
   const {
     generatedPlan,
@@ -67,34 +69,52 @@ export function useGenerateWeeklyPlan() {
     const totalDays = form.selectedDays.length;
     let completedDays = 0;
 
-    // The callback fires at the START of each day, so completedDays
-    // represents how many days finished before this one started.
-    const result = await weeklyPlanGenerationService.generateWeeklyPlan(
-      form,
-      profile,
-      restrictions,
-      favNames,
-      currentLang,
-      (day: DayOfWeek) => {
-        const dayLabel = t(`weeklyPlan.days.${day}` as any);
-        const pct = Math.round((completedDays / totalDays) * 100);
-        setGenerationProgress(
-          JSON.stringify({ day: dayLabel, pct, completed: completedDays, total: totalDays })
+    try {
+      // The callback fires at the START of each day, so completedDays
+      // represents how many days finished before this one started.
+      const result = await weeklyPlanGenerationService.generateWeeklyPlan(
+        form,
+        profile,
+        restrictions,
+        favNames,
+        currentLang,
+        async (day: DayOfWeek) => {
+          const dayLabel = t(`weeklyPlan.days.${day}` as any);
+          const pct = Math.round((completedDays / totalDays) * 100);
+          setGenerationProgress(
+            JSON.stringify({ day: dayLabel, pct, completed: completedDays, total: totalDays })
+          );
+          // Show progress notification
+          await showProgressNotification(dayLabel, completedDays, totalDays);
+          // Increment AFTER setting progress so this day shows the correct "before" count
+          completedDays++;
+        },
+      );
+
+      setIsGenerating(false);
+      setGenerationProgress('');
+
+      if (result.success && result.plan) {
+        setGeneratedPlan(result.plan);
+        // Show completion notification
+        await showCompletionNotification(
+          result.plan.plan_name,
+          result.plan.meals.length
         );
-        // Increment AFTER setting progress so this day shows the correct "before" count
-        completedDays++;
-      },
-    );
-
-    setIsGenerating(false);
-    setGenerationProgress('');
-
-    if (result.success && result.plan) {
-      setGeneratedPlan(result.plan);
-      // Now open the result modal
-      setShowResult(true);
-    } else {
-      setGenerationError(result.error || t('weeklyPlan.result.generateError'));
+        // Now open the result modal
+        setShowResult(true);
+      } else {
+        const errorMsg = result.error || t('weeklyPlan.result.generateError');
+        setGenerationError(errorMsg);
+        // Show error notification
+        await showErrorNotification(errorMsg);
+        setShowResult(false);
+        setShowRetryError(true);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setGenerationError(errorMsg);
+      await showErrorNotification(errorMsg);
       setShowResult(false);
       setShowRetryError(true);
     }
