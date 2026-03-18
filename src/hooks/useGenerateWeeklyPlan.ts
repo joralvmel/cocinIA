@@ -84,6 +84,8 @@ export function useGenerateWeeklyPlan() {
     const form = getWizardForm();
     const { profile, restrictions, favoriteIngredients } = getProfileData();
     const favNames = favoriteIngredients.map((i) => i.ingredient_name);
+    const useSingleSystemNotification =
+      backgroundGenerationService.isBackgroundExecutionSupported();
 
     try {
       // The callback fires at the START of each day, so completedDays
@@ -101,8 +103,11 @@ export function useGenerateWeeklyPlan() {
             setGenerationProgress(
               JSON.stringify({ day: dayLabel, pct, completed, total }),
             );
-            // Show progress notification
-            await showProgressNotification(dayLabel, completed, total);
+
+            // In Android background mode we use only the foreground service notification.
+            if (!useSingleSystemNotification) {
+              await showProgressNotification(dayLabel, completed, total);
+            }
           },
         });
 
@@ -111,18 +116,11 @@ export function useGenerateWeeklyPlan() {
 
       if (result.success && result.plan) {
         setGeneratedPlan(result.plan);
-        // Show completion notification
-        await showCompletionNotification(
-          result.plan.plan_name,
-          result.plan.meals.length,
-        );
         // Now open the result modal
         setShowResult(true);
       } else {
         const errorMsg = result.error || t("weeklyPlan.result.generateError");
         setGenerationError(errorMsg);
-        // Show error notification
-        await showErrorNotification(errorMsg);
         setShowResult(false);
         setShowRetryError(true);
       }
@@ -131,7 +129,6 @@ export function useGenerateWeeklyPlan() {
       setIsGenerating(false);
       setGenerationProgress("");
       setGenerationError(errorMsg);
-      await showErrorNotification(errorMsg);
       setShowResult(false);
       setShowRetryError(true);
     }

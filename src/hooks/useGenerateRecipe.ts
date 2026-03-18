@@ -69,14 +69,18 @@ export function useGenerateRecipe({
     const favIngredientNames = favoriteIngredients.map(
       (i) => i.ingredient_name,
     );
+    const useSingleSystemNotification =
+      backgroundGenerationService.isBackgroundExecutionSupported();
 
     try {
-      await generationNotificationsService.showRecipeProgress(
-        currentLang === "es"
-          ? "Iniciando generacion..."
-          : "Starting generation...",
-        currentLang,
-      );
+      if (!useSingleSystemNotification) {
+        await generationNotificationsService.showRecipeProgress(
+          currentLang === "es"
+            ? "Iniciando generacion..."
+            : "Starting generation...",
+          currentLang,
+        );
+      }
 
       const result =
         await backgroundGenerationService.generateRecipeWithRetryInBackground({
@@ -87,7 +91,7 @@ export function useGenerateRecipe({
           lang: currentLang,
           maxRetries: 3,
           onAttemptFailed: async (attempt, maxRetries) => {
-            if (attempt < maxRetries) {
+            if (!useSingleSystemNotification && attempt < maxRetries) {
               await generationNotificationsService.showRecipeProgress(
                 currentLang === "es"
                   ? `Reintentando (${attempt + 1}/${maxRetries})...`
@@ -101,19 +105,11 @@ export function useGenerateRecipe({
       if (result.success && result.recipe) {
         setGeneratedRecipe(result.recipe);
         setHasUnsavedRecipe(true);
-        await generationNotificationsService.showRecipeCompletion(
-          result.recipe.title,
-          currentLang,
-        );
         return;
       }
 
       setShowRecipeResult(false);
       setShowRetryErrorModal(true);
-      await generationNotificationsService.showRecipeError(
-        result.error || t("recipeGeneration.generateError"),
-        currentLang,
-      );
     } catch (error) {
       const errorMsg =
         error instanceof Error
@@ -121,10 +117,6 @@ export function useGenerateRecipe({
           : t("recipeGeneration.generateError");
       setShowRecipeResult(false);
       setShowRetryErrorModal(true);
-      await generationNotificationsService.showRecipeError(
-        String(errorMsg),
-        currentLang,
-      );
     } finally {
       setLoading(false);
     }

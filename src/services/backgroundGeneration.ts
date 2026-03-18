@@ -7,6 +7,7 @@ import {
 } from "./ai";
 import { geminiRecipeGenerationService as recipeGenerationService } from "./ai/recipeGeneration";
 import { weeklyPlanGenerationService } from "./ai/weeklyPlanGeneration";
+import { generationNotificationsService } from "./generationNotifications";
 import type { Profile, ProfileRestriction } from "./profile";
 
 type AppLanguage = "es" | "en";
@@ -48,7 +49,9 @@ function shouldUseBackgroundService(): boolean {
 
 async function runWithOptionalBackground<T>(
   taskType: BackgroundTaskType,
-  task: (reportProgress: (message: string) => Promise<void>) => Promise<T>,
+  task: (
+    reportProgress: (message: string, progress?: number) => Promise<void>,
+  ) => Promise<T>,
 ): Promise<T> {
   const isAndroidBackgroundSupported = shouldUseBackgroundService();
 
@@ -92,24 +95,46 @@ async function runWithOptionalBackground<T>(
 
   const initialTaskDesc =
     taskType === "weekly-plan"
-      ? "Generating weekly plan in background"
-      : "Generating recipe in background";
+      ? "Starting generation..."
+      : "Starting generation...";
+
+  const updateForeground = async (message: string, progress?: number) => {
+    try {
+      if (typeof BackgroundService.updateNotification !== "function") return;
+
+      const normalizedProgress =
+        typeof progress === "number"
+          ? Math.max(0, Math.min(100, Math.round(progress)))
+          : undefined;
+
+      await BackgroundService.updateNotification({
+        taskDesc: message,
+        progressBar:
+          typeof normalizedProgress === "number"
+            ? {
+                max: 100,
+                value: normalizedProgress,
+                indeterminate: false,
+              }
+            : {
+                max: 100,
+                value: 0,
+                indeterminate: true,
+              },
+      });
+    } catch {
+      // Ignore notification update failures.
+    }
+  };
 
   return await new Promise<T>((resolve, reject) => {
     const runTask = async () => {
       try {
-        const result = await task(async (message: string) => {
-          try {
-            if (typeof BackgroundService.updateNotification === "function") {
-              await BackgroundService.updateNotification({ taskDesc: message });
-            }
-          } catch {
-            // Ignore notification update failures.
-          }
-        });
-
+        const result = await task(updateForeground);
         resolve(result);
       } catch (error) {
+        await updateForeground("Generation failed", 100);
+        await new Promise((r) => setTimeout(r, 10000));
         reject(error);
       } finally {
         try {
@@ -166,13 +191,16 @@ export const backgroundGenerationService = {
 
       await reportProgress(
         lang === "es" ? "Generando receta..." : "Generating recipe...",
+        5,
       );
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const pct = Math.round((attempt / maxRetries) * 90);
         await reportProgress(
           lang === "es"
-            ? `Intento ${attempt}/${maxRetries}`
-            : `Attempt ${attempt}/${maxRetries}`,
+            ? `Generando receta (${attempt}/${maxRetries})`
+            : `Generating recipe (${attempt}/${maxRetries})`,
+          pct,
         );
 
         const result = await recipeGenerationService.generateRecipe(
@@ -184,6 +212,15 @@ export const backgroundGenerationService = {
         );
 
         if (result.success && result.recipe) {
+          await reportProgress(
+            lang === "es" ? "Receta generada" : "Recipe generated",
+            100,
+          );
+          await generationNotificationsService.showRecipeCompletion(
+            result.recipe.title ||
+              (lang === "es" ? "Tu receta" : "Your recipe"),
+            lang,
+          );
           return result;
         }
 
@@ -198,14 +235,20 @@ export const backgroundGenerationService = {
         }
       }
 
+      await reportProgress(
+        lang === "es" ? "Error al generar receta" : "Recipe generation error",
+        100,
+      );
+      const errorMsg =
+        lastError ||
+        (lang === "es" ? "Error generando receta" : "Error generating recipe");
+      await new Promise((r) => setTimeout(r, 1200));
+      await generationNotificationsService.showRecipeError(errorMsg, lang);
+
       return {
         recipe: null,
         success: false,
-        error:
-          lastError ||
-          (lang === "es"
-            ? "Error generando receta"
-            : "Error generating recipe"),
+        error: errorMsg,
       };
     });
   },
@@ -226,21 +269,25 @@ export const backgroundGenerationService = {
         lang === "es"
           ? "Generando plan semanal..."
           : "Generating weekly plan...",
+        5,
       );
 
-      return weeklyPlanGenerationService.generateWeeklyPlan(
+      const result = await weeklyPlanGenerationService.generateWeeklyPlan(
         form,
         profile,
         restrictions,
         favoriteIngredients,
         lang,
         async (day) => {
+          const pct = Math.round(
+            (completedDays / Math.max(totalDays, 1)) * 100,
+          );
           const message =
             lang === "es"
-              ? `Procesando ${day} (${completedDays}/${totalDays})`
-              : `Processing ${day} (${completedDays}/${totalDays})`;
+              ? `Generando plan ${completedDays}/${totalDays} (${pct}%)`
+              : `Generating plan ${completedDays}/${totalDays} (${pct}%)`;
 
-          await reportProgress(message);
+          await reportProgress(message, pct);
 
           if (onDayProgress) {
             await onDayProgress({
@@ -253,6 +300,35 @@ export const backgroundGenerationService = {
           completedDays++;
         },
       );
+
+      if (result.success && result.plan) {
+        await reportProgress(
+          lang === "es" ? "Plan semanal generado" : "Weekly plan generated",
+          100,
+        );
+        await generationNotificationsService.showWeeklyPlanCompletion(
+          result.plan.plan_name || (lang === "es" ? "Tu plan" : "Your plan"),
+          result.plan.meals.length,
+          lang,
+        );
+      } else {
+        await reportProgress(
+          lang === "es"
+            ? "Error al generar plan"
+            : "Weekly plan generation error",
+          100,
+        );
+        const errorMsg =
+          result.error ||
+          (lang === "es" ? "Error generando plan" : "Error generating plan");
+        await new Promise((r) => setTimeout(r, 1200));
+        await generationNotificationsService.showWeeklyPlanError(
+          errorMsg,
+          lang,
+        );
+      }
+
+      return result;
     });
   },
 };
