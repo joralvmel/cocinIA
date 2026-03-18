@@ -1,29 +1,36 @@
-import { useState } from 'react';
-import { Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useWeeklyPlanStore, useProfileStore } from '@/stores';
+import { AI_CONFIG } from "@/config";
 import {
+  backgroundGenerationService,
+  recipeGenerationService,
+  recipeService,
   weeklyPlanGenerationService,
   weeklyPlanService,
-  recipeService,
-  recipeGenerationService,
-} from '@/services';
-import { AI_CONFIG } from '@/config';
-import { weeklyPlanEvents, recipeEvents } from '@/utils';
-import { useWeeklyPlanNotifications } from './useWeeklyPlanNotifications';
+} from "@/services";
+import { useProfileStore, useWeeklyPlanStore } from "@/stores";
 import {
   type DayOfWeek,
   type PlanMealType,
   type SavePlanMealPayload,
-} from '@/types';
+} from "@/types";
+import { recipeEvents, weeklyPlanEvents } from "@/utils";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Alert } from "react-native";
+import { useWeeklyPlanNotifications } from "./useWeeklyPlanNotifications";
 
 /**
  * Hook that encapsulates weekly plan generation, saving, and management
  */
 export function useGenerateWeeklyPlan() {
   const { t, i18n } = useTranslation();
-  const currentLang = (i18n.language?.startsWith('es') ? 'es' : 'en') as 'es' | 'en';
-  const { showProgressNotification, showCompletionNotification, showErrorNotification, clearAllNotifications } = useWeeklyPlanNotifications();
+  const currentLang = (i18n.language?.startsWith("es") ? "es" : "en") as
+    | "es"
+    | "en";
+  const {
+    showProgressNotification,
+    showCompletionNotification,
+    showErrorNotification,
+  } = useWeeklyPlanNotifications();
 
   const {
     generatedPlan,
@@ -45,13 +52,24 @@ export function useGenerateWeeklyPlan() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [showRetryError, setShowRetryError] = useState(false);
-  const [regeneratingMeal, setRegeneratingMeal] = useState<{ day: DayOfWeek; mealType: PlanMealType } | null>(null);
-  const [modifyingMeal, setModifyingMeal] = useState<{ day: DayOfWeek; mealType: PlanMealType } | null>(null);
-  const [regeneratingPrepIndex, setRegeneratingPrepIndex] = useState<number | null>(null);
-  const [modifyingPrepIndex, setModifyingPrepIndex] = useState<number | null>(null);
+  const [regeneratingMeal, setRegeneratingMeal] = useState<{
+    day: DayOfWeek;
+    mealType: PlanMealType;
+  } | null>(null);
+  const [modifyingMeal, setModifyingMeal] = useState<{
+    day: DayOfWeek;
+    mealType: PlanMealType;
+  } | null>(null);
+  const [regeneratingPrepIndex, setRegeneratingPrepIndex] = useState<
+    number | null
+  >(null);
+  const [modifyingPrepIndex, setModifyingPrepIndex] = useState<number | null>(
+    null,
+  );
 
   const getProfileData = () => {
-    const { profile, restrictions, favoriteIngredients } = useProfileStore.getState();
+    const { profile, restrictions, favoriteIngredients } =
+      useProfileStore.getState();
     return { profile, restrictions, favoriteIngredients };
   };
 
@@ -66,45 +84,42 @@ export function useGenerateWeeklyPlan() {
     const form = getWizardForm();
     const { profile, restrictions, favoriteIngredients } = getProfileData();
     const favNames = favoriteIngredients.map((i) => i.ingredient_name);
-    const totalDays = form.selectedDays.length;
-    let completedDays = 0;
 
     try {
       // The callback fires at the START of each day, so completedDays
       // represents how many days finished before this one started.
-      const result = await weeklyPlanGenerationService.generateWeeklyPlan(
-        form,
-        profile,
-        restrictions,
-        favNames,
-        currentLang,
-        async (day: DayOfWeek) => {
-          const dayLabel = t(`weeklyPlan.days.${day}` as any);
-          const pct = Math.round((completedDays / totalDays) * 100);
-          setGenerationProgress(
-            JSON.stringify({ day: dayLabel, pct, completed: completedDays, total: totalDays })
-          );
-          // Show progress notification
-          await showProgressNotification(dayLabel, completedDays, totalDays);
-          // Increment AFTER setting progress so this day shows the correct "before" count
-          completedDays++;
-        },
-      );
+      const result =
+        await backgroundGenerationService.generateWeeklyPlanInBackground({
+          form,
+          profile,
+          restrictions,
+          favoriteIngredients: favNames,
+          lang: currentLang,
+          onDayProgress: async ({ day, completed, total }) => {
+            const dayLabel = t(`weeklyPlan.days.${day}` as any);
+            const pct = Math.round((completed / total) * 100);
+            setGenerationProgress(
+              JSON.stringify({ day: dayLabel, pct, completed, total }),
+            );
+            // Show progress notification
+            await showProgressNotification(dayLabel, completed, total);
+          },
+        });
 
       setIsGenerating(false);
-      setGenerationProgress('');
+      setGenerationProgress("");
 
       if (result.success && result.plan) {
         setGeneratedPlan(result.plan);
         // Show completion notification
         await showCompletionNotification(
           result.plan.plan_name,
-          result.plan.meals.length
+          result.plan.meals.length,
         );
         // Now open the result modal
         setShowResult(true);
       } else {
-        const errorMsg = result.error || t('weeklyPlan.result.generateError');
+        const errorMsg = result.error || t("weeklyPlan.result.generateError");
         setGenerationError(errorMsg);
         // Show error notification
         await showErrorNotification(errorMsg);
@@ -113,6 +128,8 @@ export function useGenerateWeeklyPlan() {
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
+      setIsGenerating(false);
+      setGenerationProgress("");
       setGenerationError(errorMsg);
       await showErrorNotification(errorMsg);
       setShowResult(false);
@@ -127,7 +144,10 @@ export function useGenerateWeeklyPlan() {
   };
 
   // ---- Regenerate a single meal ----
-  const handleRegenerateMeal = async (day: DayOfWeek, mealType: PlanMealType) => {
+  const handleRegenerateMeal = async (
+    day: DayOfWeek,
+    mealType: PlanMealType,
+  ) => {
     if (!generatedPlan) return;
 
     setRegeneratingMeal({ day, mealType });
@@ -170,18 +190,22 @@ export function useGenerateWeeklyPlan() {
       });
     } else {
       Alert.alert(
-        String(t('common.error')),
-        result.error || String(t('weeklyPlan.result.regenerateError'))
+        String(t("common.error")),
+        result.error || String(t("weeklyPlan.result.regenerateError")),
       );
     }
   };
 
   // ---- Modify a single meal with AI ----
-  const handleModifyMeal = async (day: DayOfWeek, mealType: PlanMealType, modification: string) => {
+  const handleModifyMeal = async (
+    day: DayOfWeek,
+    mealType: PlanMealType,
+    modification: string,
+  ) => {
     if (!generatedPlan) return;
 
     const meal = generatedPlan.meals.find(
-      (m) => m.day_of_week === day && m.meal_type === mealType
+      (m) => m.day_of_week === day && m.meal_type === mealType,
     );
     if (!meal?.recipe) return;
 
@@ -217,8 +241,8 @@ export function useGenerateWeeklyPlan() {
       });
     } else {
       Alert.alert(
-        String(t('common.error')),
-        result.error || String(t('weeklyPlan.result.modifyError' as any))
+        String(t("common.error")),
+        result.error || String(t("weeklyPlan.result.modifyError" as any)),
       );
     }
   };
@@ -240,11 +264,11 @@ export function useGenerateWeeklyPlan() {
     // If empty, default to all selected days with lunch (batch cooking mainly affects lunch)
     if (affectedDays.length === 0) {
       affectedDays = form.selectedDays.filter((d) =>
-        form.dayConfigs[d]?.meals?.includes('lunch')
+        form.dayConfigs[d]?.meals?.includes("lunch"),
       );
     }
     if (affectedMealTypes.length === 0) {
-      affectedMealTypes = ['lunch'];
+      affectedMealTypes = ["lunch"];
     }
 
     if (affectedDays.length === 0) return;
@@ -252,22 +276,23 @@ export function useGenerateWeeklyPlan() {
     // For each affected meal, regenerate it so it uses the new base prep
     const { profile, restrictions, favoriteIngredients } = getProfileData();
     const favIngredientNames = favoriteIngredients.map((fi: any) =>
-      typeof fi === 'string' ? fi : fi.ingredient_name
+      typeof fi === "string" ? fi : fi.ingredient_name,
     );
     let currentPlan = planSnapshot;
 
     for (const day of affectedDays) {
       for (const mealType of affectedMealTypes) {
         const meal = currentPlan.meals.find(
-          (m) => m.day_of_week === day && m.meal_type === mealType
+          (m) => m.day_of_week === day && m.meal_type === mealType,
         );
         if (!meal || meal.is_external) continue;
 
         setRegeneratingMeal({ day, mealType });
 
-        const cookingTime = form.cookingTimeByMealType?.[mealType]
-          || form.dayConfigs[day]?.cookingTimeMinutes
-          || 45;
+        const cookingTime =
+          form.cookingTimeByMealType?.[mealType] ||
+          form.dayConfigs[day]?.cookingTimeMinutes ||
+          45;
 
         const result = await weeklyPlanGenerationService.regenerateSingleMeal(
           day,
@@ -282,10 +307,12 @@ export function useGenerateWeeklyPlan() {
             // Inject all base preparations into specialNotes so the AI builds meals from them
             specialNotes: [
               form.specialNotes,
-              currentLang === 'es'
-                ? `BATCH COOKING: Arma el plato usando estas preparaciones base ya preparadas como ingredientes principales: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(', ')}. No cocines desde cero, solo ensambla/calienta.`
-                : `BATCH COOKING: Assemble the dish using these pre-made base preparations as main ingredients: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(', ')}. Don't cook from scratch, only assemble/reheat.`,
-            ].filter(Boolean).join('. '),
+              currentLang === "es"
+                ? `BATCH COOKING: Arma el plato usando estas preparaciones base ya preparadas como ingredientes principales: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(", ")}. No cocines desde cero, solo ensambla/calienta.`
+                : `BATCH COOKING: Assemble the dish using these pre-made base preparations as main ingredients: ${currentPlan.base_preparations.map((p) => `"${p.name}" (${p.type})`).join(", ")}. Don't cook from scratch, only assemble/reheat.`,
+            ]
+              .filter(Boolean)
+              .join(". "),
           },
           currentLang,
         );
@@ -293,7 +320,11 @@ export function useGenerateWeeklyPlan() {
         if (result.success && result.recipe) {
           const updatedMeals = currentPlan.meals.map((m) => {
             if (m.day_of_week === day && m.meal_type === mealType) {
-              return { ...m, recipe: result.recipe!, estimated_calories: result.recipe!.nutrition.calories };
+              return {
+                ...m,
+                recipe: result.recipe!,
+                estimated_calories: result.recipe!.nutrition.calories,
+              };
             }
             return m;
           });
@@ -316,9 +347,10 @@ export function useGenerateWeeklyPlan() {
     const { profile, restrictions } = getProfileData();
 
     // Build a prompt to regenerate a base preparation recipe
-    const modification = currentLang === 'es'
-      ? `Genera una receta diferente de tipo "${prep.type}" para reemplazar "${prep.name}". Debe servir como preparación base para batch cooking, que se pueda almacenar y reutilizar durante la semana.`
-      : `Generate a different "${prep.type}" recipe to replace "${prep.name}". It must serve as a base preparation for batch cooking, storable and reusable throughout the week.`;
+    const modification =
+      currentLang === "es"
+        ? `Genera una receta diferente de tipo "${prep.type}" para reemplazar "${prep.name}". Debe servir como preparación base para batch cooking, que se pueda almacenar y reutilizar durante la semana.`
+        : `Generate a different "${prep.type}" recipe to replace "${prep.name}". It must serve as a base preparation for batch cooking, storable and reusable throughout the week.`;
 
     const result = await recipeGenerationService.modifyRecipe(
       prep.recipe,
@@ -336,7 +368,8 @@ export function useGenerateWeeklyPlan() {
         description: result.recipe.description,
         recipe: result.recipe,
         estimated_time_minutes: result.recipe.total_time_minutes,
-        storage_instructions: result.recipe.storage_instructions || prep.storage_instructions,
+        storage_instructions:
+          result.recipe.storage_instructions || prep.storage_instructions,
       };
       updatedPreps[index] = updatedPrep;
       const updatedPlan = { ...generatedPlan, base_preparations: updatedPreps };
@@ -348,8 +381,8 @@ export function useGenerateWeeklyPlan() {
     } else {
       setRegeneratingPrepIndex(null);
       Alert.alert(
-        String(t('common.error')),
-        result.error || String(t('weeklyPlan.result.regenerateError'))
+        String(t("common.error")),
+        result.error || String(t("weeklyPlan.result.regenerateError")),
       );
     }
   };
@@ -380,7 +413,8 @@ export function useGenerateWeeklyPlan() {
         description: result.recipe.description,
         recipe: result.recipe,
         estimated_time_minutes: result.recipe.total_time_minutes,
-        storage_instructions: result.recipe.storage_instructions || prep.storage_instructions,
+        storage_instructions:
+          result.recipe.storage_instructions || prep.storage_instructions,
       };
       updatedPreps[index] = updatedPrep;
       const updatedPlan = { ...generatedPlan, base_preparations: updatedPreps };
@@ -392,8 +426,8 @@ export function useGenerateWeeklyPlan() {
     } else {
       setModifyingPrepIndex(null);
       Alert.alert(
-        String(t('common.error')),
-        result.error || String(t('weeklyPlan.result.modifyError' as any))
+        String(t("common.error")),
+        result.error || String(t("weeklyPlan.result.modifyError" as any)),
       );
     }
   };
@@ -418,22 +452,27 @@ export function useGenerateWeeklyPlan() {
         steps: recipe.steps,
         prep_time_minutes: recipe.prep_time_minutes,
         cook_time_minutes: recipe.cook_time_minutes,
-        total_time_minutes: recipe.total_time_minutes || (recipe.prep_time_minutes + recipe.cook_time_minutes),
+        total_time_minutes:
+          recipe.total_time_minutes ||
+          recipe.prep_time_minutes + recipe.cook_time_minutes,
         servings: recipe.servings,
         difficulty: recipe.difficulty,
         nutrition: recipe.nutrition,
         estimated_cost: recipe.estimated_cost,
         cost_currency: recipe.cost_currency,
-        cost_per_serving: recipe.cost_per_serving || (recipe.estimated_cost / (recipe.servings || 1)),
+        cost_per_serving:
+          recipe.cost_per_serving ||
+          recipe.estimated_cost / (recipe.servings || 1),
         meal_types: recipe.meal_types,
         cuisine: recipe.cuisine,
         tags: recipe.tags,
         chef_tips: recipe.chef_tips || [],
-        storage_instructions: recipe.storage_instructions || '',
+        storage_instructions: recipe.storage_instructions || "",
         variations: recipe.variations || [],
       },
       estimated_time_minutes: recipe.total_time_minutes,
-      storage_instructions: recipe.storage_instructions || prep.storage_instructions,
+      storage_instructions:
+        recipe.storage_instructions || prep.storage_instructions,
     } as any;
     // Track swapped recipe id for save logic
     updatedPrep._swapped_recipe_id = recipe.id;
@@ -482,7 +521,11 @@ export function useGenerateWeeklyPlan() {
         const saved = await recipeService.saveRecipe({
           recipe: meal.recipe,
           originalPrompt: `Weekly plan: ${generatedPlan.plan_name} - ${meal.day_of_week} ${meal.meal_type}`,
-          generationParams: { weekly_plan: true, day: meal.day_of_week, meal_type: meal.meal_type },
+          generationParams: {
+            weekly_plan: true,
+            day: meal.day_of_week,
+            meal_type: meal.meal_type,
+          },
           aiModel: AI_CONFIG.model,
         });
 
@@ -491,7 +534,12 @@ export function useGenerateWeeklyPlan() {
       }
 
       // 2b. Save base preparation recipes (batch cooking)
-      const savedBasePreps: Array<{ name: string; type: string; recipe_id: string; description: string }> = [];
+      const savedBasePreps: Array<{
+        name: string;
+        type: string;
+        recipe_id: string;
+        description: string;
+      }> = [];
       if (generatedPlan.base_preparations.length > 0) {
         for (const prep of generatedPlan.base_preparations) {
           if (!prep.recipe?.title) continue;
@@ -504,7 +552,10 @@ export function useGenerateWeeklyPlan() {
               recipe_id: (prep as any)._swapped_recipe_id,
               description: prep.description,
             });
-            titleToIdMap.set(prep.recipe.title, (prep as any)._swapped_recipe_id);
+            titleToIdMap.set(
+              prep.recipe.title,
+              (prep as any)._swapped_recipe_id,
+            );
             continue;
           }
 
@@ -523,7 +574,11 @@ export function useGenerateWeeklyPlan() {
           const saved = await recipeService.saveRecipe({
             recipe: prep.recipe,
             originalPrompt: `Weekly plan: ${generatedPlan.plan_name} - Base preparation: ${prep.name}`,
-            generationParams: { weekly_plan: true, base_preparation: true, prep_type: prep.type },
+            generationParams: {
+              weekly_plan: true,
+              base_preparation: true,
+              prep_type: prep.type,
+            },
             aiModel: AI_CONFIG.model,
           });
 
@@ -538,7 +593,8 @@ export function useGenerateWeeklyPlan() {
       }
 
       // 3. Calculate end date
-      const startDate = form.startDate || new Date().toISOString().split('T')[0];
+      const startDate =
+        form.startDate || new Date().toISOString().split("T")[0];
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 6);
 
@@ -550,9 +606,13 @@ export function useGenerateWeeklyPlan() {
       const plan = await weeklyPlanService.createPlan({
         name: generatedPlan.plan_name,
         start_date: startDate,
-        end_date: endDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split("T")[0],
         days_included: form.selectedDays,
-        meals_per_day: [...new Set(form.selectedDays.flatMap((d) => form.dayConfigs[d].meals))],
+        meals_per_day: [
+          ...new Set(
+            form.selectedDays.flatMap((d) => form.dayConfigs[d].meals),
+          ),
+        ],
         daily_calorie_target: form.dailyCalorieTarget,
         is_batch_cooking: form.batchCookingEnabled,
         batch_config: batchConfigToSave,
@@ -576,7 +636,8 @@ export function useGenerateWeeklyPlan() {
           servings: meal.recipe?.servings || 1,
           is_prep_day: meal.is_prep_day || false,
           is_external: false,
-          estimated_calories: meal.estimated_calories || meal.recipe?.nutrition?.calories || 0,
+          estimated_calories:
+            meal.estimated_calories || meal.recipe?.nutrition?.calories || 0,
           sort_order: sortOrder++,
         });
       }
@@ -597,10 +658,10 @@ export function useGenerateWeeklyPlan() {
       // 8. Show success
       setShowSaveSuccess(true);
     } catch (error) {
-      console.error('Error saving plan:', error);
+      console.error("Error saving plan:", error);
       Alert.alert(
-        String(t('common.error')),
-        String(t('weeklyPlan.result.saveError'))
+        String(t("common.error")),
+        String(t("weeklyPlan.result.saveError")),
       );
     } finally {
       setIsSaving(false);
@@ -628,7 +689,11 @@ export function useGenerateWeeklyPlan() {
   };
 
   // ---- Swap a meal with a recipe from the cookbook ----
-  const handleSwapMeal = (day: DayOfWeek, mealType: PlanMealType, recipe: any) => {
+  const handleSwapMeal = (
+    day: DayOfWeek,
+    mealType: PlanMealType,
+    recipe: any,
+  ) => {
     if (!generatedPlan) return;
 
     const updatedMeals = generatedPlan.meals.map((meal) => {
@@ -642,18 +707,22 @@ export function useGenerateWeeklyPlan() {
             steps: recipe.steps,
             prep_time_minutes: recipe.prep_time_minutes,
             cook_time_minutes: recipe.cook_time_minutes,
-            total_time_minutes: recipe.total_time_minutes || (recipe.prep_time_minutes + recipe.cook_time_minutes),
+            total_time_minutes:
+              recipe.total_time_minutes ||
+              recipe.prep_time_minutes + recipe.cook_time_minutes,
             servings: recipe.servings,
             difficulty: recipe.difficulty,
             nutrition: recipe.nutrition,
             estimated_cost: recipe.estimated_cost,
             cost_currency: recipe.cost_currency,
-            cost_per_serving: recipe.cost_per_serving || (recipe.estimated_cost / (recipe.servings || 1)),
+            cost_per_serving:
+              recipe.cost_per_serving ||
+              recipe.estimated_cost / (recipe.servings || 1),
             meal_types: recipe.meal_types,
             cuisine: recipe.cuisine,
             tags: recipe.tags,
             chef_tips: recipe.chef_tips || [],
-            storage_instructions: recipe.storage_instructions || '',
+            storage_instructions: recipe.storage_instructions || "",
             variations: recipe.variations || [],
           },
           estimated_calories: recipe.nutrition?.calories || 0,
@@ -698,5 +767,3 @@ export function useGenerateWeeklyPlan() {
     handleSwapPrep,
   };
 }
-
-

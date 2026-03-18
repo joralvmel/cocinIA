@@ -20,6 +20,12 @@
     "android": {
       "package": "com.joralvmel.cocinIA",
       "versionCode": 1,
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "WAKE_LOCK"
+      ],
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",

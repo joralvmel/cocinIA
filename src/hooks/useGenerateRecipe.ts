@@ -1,10 +1,15 @@
-import { useState } from 'react';
-import { Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useRecipeGenerationStore, useProfileStore } from '@/stores';
-import { recipeGenerationService, recipeService } from '@/services';
-import { AI_CONFIG } from '@/config';
-import { recipeEvents } from '@/utils';
+import { AI_CONFIG } from "@/config";
+import {
+  backgroundGenerationService,
+  generationNotificationsService,
+  recipeGenerationService,
+  recipeService,
+} from "@/services";
+import { useProfileStore, useRecipeGenerationStore } from "@/stores";
+import { recipeEvents } from "@/utils";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Alert } from "react-native";
 
 interface UseGenerateRecipeOptions {
   /** Called after a form reset to re-sync profile defaults */
@@ -15,9 +20,13 @@ interface UseGenerateRecipeOptions {
  * Encapsulates recipe generation, regeneration, modification,
  * save, discard, and reopen logic.
  */
-export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOptions) {
+export function useGenerateRecipe({
+  applyProfileDefaults,
+}: UseGenerateRecipeOptions) {
   const { t, i18n } = useTranslation();
-  const currentLang = (i18n.language?.startsWith('es') ? 'es' : 'en') as 'es' | 'en';
+  const currentLang = (i18n.language?.startsWith("es") ? "es" : "en") as
+    | "es"
+    | "en";
 
   const {
     form,
@@ -38,7 +47,8 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
 
   // Read profile slices directly from the store (avoids prop-drilling)
   const getProfileData = () => {
-    const { profile, restrictions, favoriteIngredients } = useProfileStore.getState();
+    const { profile, restrictions, favoriteIngredients } =
+      useProfileStore.getState();
     return { profile, restrictions, favoriteIngredients };
   };
 
@@ -48,43 +58,76 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
     setError(null);
     setShowRecipeResult(true);
 
-    const actualPrompt = form.prompt.trim() || t('recipeGeneration.surprisePrompt');
+    const actualPrompt =
+      form.prompt.trim() || t("recipeGeneration.surprisePrompt");
     setOriginalPrompt(actualPrompt);
 
-    const formToUse = form.prompt.trim() ? form : { ...form, prompt: actualPrompt };
+    const formToUse = form.prompt.trim()
+      ? form
+      : { ...form, prompt: actualPrompt };
     const { profile, restrictions, favoriteIngredients } = getProfileData();
-    const favIngredientNames = favoriteIngredients.map((i) => i.ingredient_name);
+    const favIngredientNames = favoriteIngredients.map(
+      (i) => i.ingredient_name,
+    );
 
-    const maxRetries = 3;
-    let lastError: string | null = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const result = await recipeGenerationService.generateRecipe(
-        formToUse,
-        profile,
-        restrictions,
-        favIngredientNames,
+    try {
+      await generationNotificationsService.showRecipeProgress(
+        currentLang === "es"
+          ? "Iniciando generacion..."
+          : "Starting generation...",
         currentLang,
       );
 
+      const result =
+        await backgroundGenerationService.generateRecipeWithRetryInBackground({
+          form: formToUse,
+          profile,
+          restrictions,
+          favoriteIngredients: favIngredientNames,
+          lang: currentLang,
+          maxRetries: 3,
+          onAttemptFailed: async (attempt, maxRetries) => {
+            if (attempt < maxRetries) {
+              await generationNotificationsService.showRecipeProgress(
+                currentLang === "es"
+                  ? `Reintentando (${attempt + 1}/${maxRetries})...`
+                  : `Retrying (${attempt + 1}/${maxRetries})...`,
+                currentLang,
+              );
+            }
+          },
+        });
+
       if (result.success && result.recipe) {
-        setLoading(false);
         setGeneratedRecipe(result.recipe);
         setHasUnsavedRecipe(true);
+        await generationNotificationsService.showRecipeCompletion(
+          result.recipe.title,
+          currentLang,
+        );
         return;
       }
 
-      lastError = result.error || t('recipeGeneration.generateError');
-
-      if (attempt < maxRetries) {
-        console.log(`Recipe generation attempt ${attempt} failed, retrying...`);
-      }
+      setShowRecipeResult(false);
+      setShowRetryErrorModal(true);
+      await generationNotificationsService.showRecipeError(
+        result.error || t("recipeGeneration.generateError"),
+        currentLang,
+      );
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : t("recipeGeneration.generateError");
+      setShowRecipeResult(false);
+      setShowRetryErrorModal(true);
+      await generationNotificationsService.showRecipeError(
+        String(errorMsg),
+        currentLang,
+      );
+    } finally {
+      setLoading(false);
     }
-
-    // All retries failed
-    setLoading(false);
-    setShowRecipeResult(false);
-    setShowRetryErrorModal(true);
   };
 
   // ---- Regenerate ----
@@ -93,7 +136,9 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
     setError(null);
 
     const { profile, restrictions, favoriteIngredients } = getProfileData();
-    const favIngredientNames = favoriteIngredients.map((i) => i.ingredient_name);
+    const favIngredientNames = favoriteIngredients.map(
+      (i) => i.ingredient_name,
+    );
 
     const result = await recipeGenerationService.generateRecipe(
       form,
@@ -109,7 +154,7 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
       setGeneratedRecipe(result.recipe);
       setHasUnsavedRecipe(true);
     } else {
-      setError(result.error || t('recipeGeneration.generateError'));
+      setError(result.error || t("recipeGeneration.generateError"));
     }
   };
 
@@ -135,7 +180,10 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
     if (result.success && result.recipe) {
       setGeneratedRecipe(result.recipe);
     } else {
-      Alert.alert(t('common.error'), result.error || t('recipeGeneration.modifyError'));
+      Alert.alert(
+        t("common.error"),
+        result.error || t("recipeGeneration.modifyError"),
+      );
     }
   };
 
@@ -156,7 +204,10 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
       recipeEvents.emit();
       setShowSaveSuccessModal(true);
     } catch {
-      Alert.alert(String(t('common.error')), String(t('recipeGeneration.saveError')));
+      Alert.alert(
+        String(t("common.error")),
+        String(t("recipeGeneration.saveError")),
+      );
     } finally {
       setIsSaving(false);
     }
@@ -218,6 +269,3 @@ export function useGenerateRecipe({ applyProfileDefaults }: UseGenerateRecipeOpt
     handleDismissRetryError,
   };
 }
-
-
-
