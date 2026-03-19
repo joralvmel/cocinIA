@@ -1002,6 +1002,10 @@ REGLAS:
       "FORMATO DE RESPUESTA: Devuelve un JSON array con objetos de recetas. Cada objeto debe seguir EXACTAMENTE esta estructura:",
     wpGenerateForDay: "Genera las recetas para el {{day}}.",
     wpMealsToGenerate: "Comidas a generar: {{meals}}",
+    wpCaloriesPerServingRule:
+      "REGLA NUTRICIONAL CRÍTICA: Todos los valores de calorías y macros deben ser POR PORCIÓN (no por receta completa).",
+    wpDailyCaloriesConsistencyRule:
+      "OBJETIVO DIARIO ESTRICTO: La suma de 'estimated_calories' de las {{mealCount}} comidas del día debe aproximarse a {{calories}} kcal (margen máximo recomendado: +/-{{tolerance}} kcal). Distribuye lógicamente las calorías entre comidas.",
     wpMaxCookingTimeDetailed: "Tiempo máximo de cocina: {{details}}",
     wpMaxCookingTime:
       "Tiempo máximo de cocina por receta: {{minutes}} minutos.",

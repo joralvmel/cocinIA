@@ -993,6 +993,10 @@ RULES:
       "RESPONSE FORMAT: Return a JSON array of recipe objects. Each object must follow EXACTLY this structure:",
     wpGenerateForDay: "Generate recipes for {{day}}.",
     wpMealsToGenerate: "Meals to generate: {{meals}}",
+    wpCaloriesPerServingRule:
+      "CRITICAL NUTRITION RULE: All calorie and macro values must be PER SERVING (not for the full recipe).",
+    wpDailyCaloriesConsistencyRule:
+      "STRICT DAILY TARGET: The sum of 'estimated_calories' for the {{mealCount}} meals of the day should be close to {{calories}} kcal (recommended max margin: +/-{{tolerance}} kcal). Distribute calories logically across meals.",
     wpMaxCookingTimeDetailed: "Maximum cooking time: {{details}}",
     wpMaxCookingTime: "Maximum cooking time per recipe: {{minutes}} minutes.",
     wpTryIngredients: "Try to use these ingredients: {{list}}",
