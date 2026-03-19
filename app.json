@@ -67,6 +67,7 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-notifications",
+      "./plugins/withBackgroundActionsForegroundService",
       [
         "expo-image-picker",
         {
