@@ -1,9 +1,9 @@
 import { AI_CONFIG } from "@/config";
 import {
-  backgroundGenerationService,
-  generationNotificationsService,
-  recipeGenerationService,
-  recipeService,
+    backgroundGenerationService,
+    generationNotificationsService,
+    recipeGenerationService,
+    recipeService,
 } from "@/services";
 import { useProfileStore, useRecipeGenerationStore } from "@/stores";
 import { recipeEvents } from "@/utils";
@@ -42,8 +42,10 @@ export function useGenerateRecipe({
   const [isSaving, setIsSaving] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
-  const [hasUnsavedRecipe, setHasUnsavedRecipe] = useState(false);
   const [showRetryErrorModal, setShowRetryErrorModal] = useState(false);
+
+  // Derive unsaved state from store so it survives screen remounts (e.g. opening app from notification)
+  const hasUnsavedRecipe = !!generatedRecipe;
 
   // Read profile slices directly from the store (avoids prop-drilling)
   const getProfileData = () => {
@@ -90,21 +92,10 @@ export function useGenerateRecipe({
           favoriteIngredients: favIngredientNames,
           lang: currentLang,
           maxRetries: 3,
-          onAttemptFailed: async (attempt, maxRetries) => {
-            if (!useSingleSystemNotification && attempt < maxRetries) {
-              await generationNotificationsService.showRecipeProgress(
-                currentLang === "es"
-                  ? `Reintentando (${attempt + 1}/${maxRetries})...`
-                  : `Retrying (${attempt + 1}/${maxRetries})...`,
-                currentLang,
-              );
-            }
-          },
         });
 
       if (result.success && result.recipe) {
         setGeneratedRecipe(result.recipe);
-        setHasUnsavedRecipe(true);
         return;
       }
 
@@ -144,7 +135,6 @@ export function useGenerateRecipe({
 
     if (result.success && result.recipe) {
       setGeneratedRecipe(result.recipe);
-      setHasUnsavedRecipe(true);
     } else {
       setError(result.error || t("recipeGeneration.generateError"));
     }
@@ -209,7 +199,6 @@ export function useGenerateRecipe({
   const handleSaveSuccessConfirm = () => {
     setShowSaveSuccessModal(false);
     setShowRecipeResult(false);
-    setHasUnsavedRecipe(false);
     setGeneratedRecipe(null);
     resetForm();
     setTimeout(() => applyProfileDefaults(), 0);
@@ -223,7 +212,6 @@ export function useGenerateRecipe({
   // ---- Discard ----
   const handleDiscard = () => {
     setShowRecipeResult(false);
-    setHasUnsavedRecipe(false);
     setGeneratedRecipe(null);
     resetForm();
     setTimeout(() => applyProfileDefaults(), 0);

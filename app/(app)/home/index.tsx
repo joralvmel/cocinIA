@@ -1,19 +1,29 @@
-import { View, KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { Input, AlertModal, Loader } from '@/components/ui';
 import {
-  HomeHeader,
-  RestrictionsBanner,
-  ActiveFiltersBar,
-  GenerateFAB,
-} from '@/components/home';
-import { RecipeFiltersModal, RecipeResultModal } from '@/components/recipes';
-import { useRecipeGenerationStore } from '@/stores';
-import { useKeyboardHeight, useUserProfile, useGenerateRecipe } from '@/hooks';
-import { hasActiveFilters, buildActiveFilterChips } from '@/utils';
+    ActiveFiltersBar,
+    GenerateFAB,
+    HomeHeader,
+    RestrictionsBanner,
+} from "@/components/home";
+import { RecipeFiltersModal, RecipeResultModal } from "@/components/recipes";
+import { AlertModal, Input, Loader } from "@/components/ui";
+import { useGenerateRecipe, useKeyboardHeight, useUserProfile } from "@/hooks";
+import { useRecipeGenerationStore } from "@/stores";
+import { buildActiveFilterChips, hasActiveFilters } from "@/utils";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    View,
+} from "react-native";
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { openResult } = useLocalSearchParams<{ openResult?: string }>();
 
   // ---- Hooks ----
   const keyboardHeight = useKeyboardHeight();
@@ -56,12 +66,20 @@ export default function HomeScreen() {
     showRecipeResult,
     setFormField,
     setShowAdvancedOptions,
+    setShowRecipeResult,
   } = useRecipeGenerationStore();
+
+  useEffect(() => {
+    if (openResult === "1") {
+      setShowRecipeResult(true);
+      router.replace("/(app)/home");
+    }
+  }, [openResult, router, setShowRecipeResult]);
 
   // ---- Derived data ----
   const greeting = userName
-    ? `${String(t('recipeGeneration.greeting' as any))}, ${userName}`
-    : '';
+    ? `${String(t("recipeGeneration.greeting" as any))}, ${userName}`
+    : "";
   const filtersActive = hasActiveFilters(form);
   const filterChips = buildActiveFilterChips(form, t as any);
 
@@ -77,8 +95,8 @@ export default function HomeScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-white dark:bg-gray-900"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <ScrollView
         className="flex-1"
@@ -87,16 +105,16 @@ export default function HomeScreen() {
       >
         <HomeHeader
           greeting={greeting}
-          question={t('recipeGeneration.title')}
-          subtitle={t('recipeGeneration.subtitle')}
+          question={t("recipeGeneration.title")}
+          subtitle={t("recipeGeneration.subtitle")}
         />
 
         {/* Main Input */}
         <View className="mb-5">
           <Input
-            placeholder={t('recipeGeneration.promptPlaceholder')}
+            placeholder={t("recipeGeneration.promptPlaceholder")}
             value={form.prompt}
-            onChangeText={(text) => setFormField('prompt', text)}
+            onChangeText={(text) => setFormField("prompt", text)}
             multiline
             numberOfLines={3}
             leftIcon="lightbulb-o"
@@ -115,7 +133,9 @@ export default function HomeScreen() {
         {/* Error Message */}
         {error && (
           <View className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
-            <Text className="text-red-600 dark:text-red-400 text-sm">{error}</Text>
+            <Text className="text-red-600 dark:text-red-400 text-sm">
+              {error}
+            </Text>
           </View>
         )}
 
@@ -150,20 +170,20 @@ export default function HomeScreen() {
       {/* Save Success Modal */}
       <AlertModal
         visible={showSaveSuccessModal}
-        title={String(t('recipeGeneration.savedTitle'))}
-        message={String(t('recipeGeneration.savedMessage'))}
+        title={String(t("recipeGeneration.savedTitle"))}
+        message={String(t("recipeGeneration.savedMessage"))}
         variant="info"
-        confirmLabel={String(t('common.ok'))}
+        confirmLabel={String(t("common.ok"))}
         onClose={handleSaveSuccessConfirm}
       />
 
       {/* Retry Error Modal */}
       <AlertModal
         visible={showRetryErrorModal}
-        title={String(t('common.error'))}
-        message={String(t('recipeGeneration.retryError'))}
+        title={String(t("common.error"))}
+        message={String(t("recipeGeneration.retryError"))}
         variant="danger"
-        confirmLabel={String(t('common.ok'))}
+        confirmLabel={String(t("common.ok"))}
         onClose={handleDismissRetryError}
       />
 

@@ -1,37 +1,38 @@
-import './global.css';
-import '@/i18n'; // Initialize i18n
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { LogBox, View } from 'react-native';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from '@react-navigation/native';
-import { PaperProvider } from 'react-native-paper';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { queryClient } from '@/services/queryClient';
-import { useThemeStore } from '@/stores/themeStore';
-import { AuthProvider } from '@/contexts';
 import {
-  lightNavigationTheme,
   darkNavigationTheme,
-  lightPaperTheme,
   darkPaperTheme,
-} from '@/constants/theme';
-import { colorScheme as nativeWindColorScheme } from 'nativewind';
+  lightNavigationTheme,
+  lightPaperTheme,
+} from "@/constants/theme";
+import { AuthProvider } from "@/contexts";
+import { useNotificationNavigation } from "@/hooks/useNotificationNavigation";
+import "@/i18n"; // Initialize i18n
+import { queryClient } from "@/services/queryClient";
+import { useThemeStore } from "@/stores/themeStore";
+import { ThemeProvider } from "@react-navigation/native";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Stack } from "expo-router";
+import { colorScheme as nativeWindColorScheme } from "nativewind";
+import { useEffect } from "react";
+import { LogBox, View } from "react-native";
+import { PaperProvider } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import "./global.css";
 
 // Suppress non-fatal NativeWind CSS interop debug warning (dev only)
-LogBox.ignoreLogs([
-  "Couldn't find a navigation context",
-]);
+LogBox.ignoreLogs(["Couldn't find a navigation context"]);
 
-export { ErrorBoundary } from 'expo-router';
+export { ErrorBoundary } from "expo-router";
 
 export default function RootLayout() {
   const { mode } = useThemeStore();
-  const isDark = mode === 'dark';
+  const isDark = mode === "dark";
+
+  useNotificationNavigation();
 
   // Sync NativeWind with our theme store
   useEffect(() => {
-    nativeWindColorScheme.set(isDark ? 'dark' : 'light');
+    nativeWindColorScheme.set(isDark ? "dark" : "light");
   }, [isDark]);
 
   const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;
@@ -43,12 +44,19 @@ export default function RootLayout() {
         <AuthProvider>
           <PaperProvider theme={paperTheme}>
             <ThemeProvider value={navigationTheme}>
-              <View style={{ flex: 1, backgroundColor: navigationTheme.colors.background }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: navigationTheme.colors.background,
+                }}
+              >
                 <Stack
                   screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: navigationTheme.colors.background },
-                    animation: 'fade',
+                    contentStyle: {
+                      backgroundColor: navigationTheme.colors.background,
+                    },
+                    animation: "fade",
                     animationDuration: 150,
                   }}
                 >
@@ -60,8 +68,8 @@ export default function RootLayout() {
                     name="profile"
                     options={{
                       headerShown: false,
-                      presentation: 'card',
-                      animation: 'slide_from_right',
+                      presentation: "card",
+                      animation: "slide_from_right",
                     }}
                   />
                 </Stack>

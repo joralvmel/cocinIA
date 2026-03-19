@@ -2,8 +2,8 @@ import type { DayOfWeek, RecipeSearchForm, WeeklyPlanForm } from "@/types";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import {
-    type RecipeGenerationResponse,
-    type WeeklyPlanGenerationResponse,
+  type RecipeGenerationResponse,
+  type WeeklyPlanGenerationResponse,
 } from "./ai";
 import { geminiRecipeGenerationService as recipeGenerationService } from "./ai/recipeGeneration";
 import { weeklyPlanGenerationService } from "./ai/weeklyPlanGeneration";
@@ -98,6 +98,11 @@ async function runWithOptionalBackground<T>(
       ? "Starting generation..."
       : "Starting generation...";
 
+  const linkingURI =
+    taskType === "weekly-plan"
+      ? "cocinia://weekly-plan?openResult=1&status=progress"
+      : "cocinia://home?openResult=1&status=progress";
+
   const updateForeground = async (message: string, progress?: number) => {
     try {
       if (typeof BackgroundService.updateNotification !== "function") return;
@@ -159,7 +164,7 @@ async function runWithOptionalBackground<T>(
         type: "mipmap",
       },
       color: "#22c55e",
-      linkingURI: "cocinia://",
+      linkingURI,
       parameters: {},
       progressBar: {
         max: 100,
@@ -191,18 +196,10 @@ export const backgroundGenerationService = {
 
       await reportProgress(
         lang === "es" ? "Generando receta..." : "Generating recipe...",
-        5,
+        0,
       );
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const pct = Math.round((attempt / maxRetries) * 90);
-        await reportProgress(
-          lang === "es"
-            ? `Generando receta (${attempt}/${maxRetries})`
-            : `Generating recipe (${attempt}/${maxRetries})`,
-          pct,
-        );
-
         const result = await recipeGenerationService.generateRecipe(
           form,
           profile,

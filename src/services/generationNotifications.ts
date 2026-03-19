@@ -117,6 +117,10 @@ export const generationNotificationsService = {
             title,
             body,
             sound: false,
+            data: {
+              target: "weekly-plan",
+              status: "progress",
+            },
             ...(Platform.OS === "android"
               ? { channelId: "plan-generation-progress" }
               : {}),
@@ -151,6 +155,10 @@ export const generationNotificationsService = {
           title,
           body,
           sound: false,
+          data: {
+            target: "weekly-plan",
+            status: "completed",
+          },
           ...(Platform.OS === "android"
             ? { channelId: "plan-generation-completion" }
             : {}),
@@ -183,6 +191,10 @@ export const generationNotificationsService = {
           title,
           body: errorMessage.substring(0, 120),
           sound: false,
+          data: {
+            target: "weekly-plan",
+            status: "error",
+          },
           ...(Platform.OS === "android"
             ? { channelId: "plan-generation-error" }
             : {}),
@@ -225,6 +237,10 @@ export const generationNotificationsService = {
             title,
             body: stepLabel,
             sound: false,
+            data: {
+              target: "recipe",
+              status: "progress",
+            },
             ...(Platform.OS === "android"
               ? { channelId: "recipe-generation-progress" }
               : {}),
@@ -257,6 +273,10 @@ export const generationNotificationsService = {
           title,
           body,
           sound: false,
+          data: {
+            target: "recipe",
+            status: "completed",
+          },
           ...(Platform.OS === "android"
             ? { channelId: "recipe-generation-completion" }
             : {}),
@@ -287,6 +307,10 @@ export const generationNotificationsService = {
           title,
           body: errorMessage.substring(0, 120),
           sound: false,
+          data: {
+            target: "recipe",
+            status: "error",
+          },
           ...(Platform.OS === "android"
             ? { channelId: "recipe-generation-error" }
             : {}),

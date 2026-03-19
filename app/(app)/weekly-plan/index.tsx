@@ -1,21 +1,29 @@
-import React, { useCallback } from 'react';
-import { View, Text } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Loader, AlertModal, MultiActionButton } from '@/components/ui';
-import { WizardModal, PlanResultModal, ActivePlanView } from '@/components/weeklyPlan';
-import { useActivePlan, useGenerateWeeklyPlan, useAppTheme } from '@/hooks';
-import { useWeeklyPlanStore } from '@/stores';
+import { AlertModal, Loader, MultiActionButton } from "@/components/ui";
+import {
+    ActivePlanView,
+    PlanResultModal,
+    WizardModal,
+} from "@/components/weeklyPlan";
+import { useActivePlan, useAppTheme, useGenerateWeeklyPlan } from "@/hooks";
+import { useWeeklyPlanStore } from "@/stores";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Text, View } from "react-native";
 
 export default function WeeklyPlanScreen() {
   const { t } = useTranslation();
   const { colors } = useAppTheme();
   const router = useRouter();
+  const { openResult } = useLocalSearchParams<{ openResult?: string }>();
 
-  const navigateTo = useCallback((path: string) => {
-    router.push(path as any);
-  }, [router]);
+  const navigateTo = useCallback(
+    (path: string) => {
+      router.push(path as any);
+    },
+    [router],
+  );
 
   // Active plan state
   const {
@@ -69,16 +77,31 @@ export default function WeeklyPlanScreen() {
     handleSwapPrep,
   } = useGenerateWeeklyPlan();
 
-  const { generationProgress, setShowWizard, setShowResult, wizardStep, resetWizard } = useWeeklyPlanStore();
+  const {
+    generationProgress,
+    setShowWizard,
+    setShowResult,
+    wizardStep,
+    resetWizard,
+  } = useWeeklyPlanStore();
+
+  useEffect(() => {
+    if (openResult === "1") {
+      setShowResult(true);
+      router.replace("/(app)/weekly-plan");
+    }
+  }, [openResult, router, setShowResult]);
 
   // Whether we have a minimized (not yet saved) plan that can be reopened
-  const hasMinimizedPlan = !!generatedPlan && !showResult && !isSaving && !isGenerating;
+  const hasMinimizedPlan =
+    !!generatedPlan && !showResult && !isSaving && !isGenerating;
 
   // Whether generation is in progress but modal was closed
   const isGeneratingMinimized = isGenerating && !showResult;
 
   // Whether the wizard is in progress (user started but minimized it)
-  const hasWizardInProgress = wizardStep > 0 && !showWizard && !isGenerating && !generatedPlan;
+  const hasWizardInProgress =
+    wizardStep > 0 && !showWizard && !isGenerating && !generatedPlan;
 
   // Loading state
   if (!activePlanLoaded || isLoading) {
@@ -99,7 +122,7 @@ export default function WeeklyPlanScreen() {
           onSelectDay={setSelectedDay}
           onCompletePlan={handleCompletePlan}
           onDeletePlan={handleDeletePlan}
-          onViewHistory={() => navigateTo('/(app)/weekly-plan/history')}
+          onViewHistory={() => navigateTo("/(app)/weekly-plan/history")}
           progress={progress}
           isRefreshing={isRefreshing}
           onRefresh={handleRefresh}
@@ -111,10 +134,10 @@ export default function WeeklyPlanScreen() {
             <FontAwesome name="calendar" size={32} color={colors.primary} />
           </View>
           <Text className="text-xl font-bold text-gray-900 dark:text-gray-50 text-center mb-2">
-            {t('weeklyPlan.emptyTitle')}
+            {t("weeklyPlan.emptyTitle")}
           </Text>
           <Text className="text-sm text-gray-500 dark:text-gray-400 text-center leading-5 max-w-[280px]">
-            {t('weeklyPlan.emptyDescription')}
+            {t("weeklyPlan.emptyDescription")}
           </Text>
         </View>
       )}
@@ -129,10 +152,10 @@ export default function WeeklyPlanScreen() {
             floatingColor="amber-500"
             options={[
               {
-                id: 'reopen',
-                label: t('weeklyPlan.fab.reopenPlan'),
-                icon: 'file-text-o',
-                color: '#3B82F6',
+                id: "reopen",
+                label: t("weeklyPlan.fab.reopenPlan"),
+                icon: "file-text-o",
+                color: "#3B82F6",
                 onPress: () => setShowResult(true),
               },
             ]}
@@ -145,24 +168,24 @@ export default function WeeklyPlanScreen() {
             floatingColor="amber-500"
             options={[
               {
-                id: 'reopen',
-                label: t('weeklyPlan.fab.reopenPlan'),
-                icon: 'file-text-o',
-                color: '#3B82F6',
+                id: "reopen",
+                label: t("weeklyPlan.fab.reopenPlan"),
+                icon: "file-text-o",
+                color: "#3B82F6",
                 onPress: () => setShowResult(true),
               },
               {
-                id: 'create',
-                label: t('weeklyPlan.fab.createNew'),
-                icon: 'plus',
-                color: '#22C55E',
+                id: "create",
+                label: t("weeklyPlan.fab.createNew"),
+                icon: "plus",
+                color: "#22C55E",
                 onPress: handleCreatePlan,
               },
               {
-                id: 'discard',
-                label: t('weeklyPlan.result.discardPlan'),
-                icon: 'trash',
-                color: '#EF4444',
+                id: "discard",
+                label: t("weeklyPlan.result.discardPlan"),
+                icon: "trash",
+                color: "#EF4444",
                 onPress: handleDiscard,
               },
             ]}
@@ -175,31 +198,31 @@ export default function WeeklyPlanScreen() {
             floatingColor="amber-500"
             options={[
               {
-                id: 'continue',
-                label: t('weeklyPlan.fab.continueWizard'),
-                icon: 'pencil-square-o',
-                color: '#F59E0B',
+                id: "continue",
+                label: t("weeklyPlan.fab.continueWizard"),
+                icon: "pencil-square-o",
+                color: "#F59E0B",
                 onPress: () => setShowWizard(true),
               },
               {
-                id: 'create',
-                label: t('weeklyPlan.fab.createNew'),
-                icon: 'plus',
-                color: '#22C55E',
+                id: "create",
+                label: t("weeklyPlan.fab.createNew"),
+                icon: "plus",
+                color: "#22C55E",
                 onPress: handleCreatePlan,
               },
               {
-                id: 'history',
-                label: t('weeklyPlan.active.viewHistory'),
-                icon: 'history',
-                color: '#8B5CF6',
-                onPress: () => navigateTo('/(app)/weekly-plan/history'),
+                id: "history",
+                label: t("weeklyPlan.active.viewHistory"),
+                icon: "history",
+                color: "#8B5CF6",
+                onPress: () => navigateTo("/(app)/weekly-plan/history"),
               },
               {
-                id: 'discard',
-                label: t('weeklyPlan.fab.discardWizard'),
-                icon: 'trash',
-                color: '#EF4444',
+                id: "discard",
+                label: t("weeklyPlan.fab.discardWizard"),
+                icon: "trash",
+                color: "#EF4444",
                 onPress: () => {
                   resetWizard();
                 },
@@ -214,31 +237,31 @@ export default function WeeklyPlanScreen() {
             floatingColor="primary-600"
             options={[
               {
-                id: 'create',
-                label: t('weeklyPlan.fab.createNew'),
-                icon: 'calendar-plus-o',
-                color: '#3B82F6',
+                id: "create",
+                label: t("weeklyPlan.fab.createNew"),
+                icon: "calendar-plus-o",
+                color: "#3B82F6",
                 onPress: handleCreatePlan,
               },
               {
-                id: 'history',
-                label: t('weeklyPlan.active.viewHistory'),
-                icon: 'history',
-                color: '#8B5CF6',
-                onPress: () => navigateTo('/(app)/weekly-plan/history'),
+                id: "history",
+                label: t("weeklyPlan.active.viewHistory"),
+                icon: "history",
+                color: "#8B5CF6",
+                onPress: () => navigateTo("/(app)/weekly-plan/history"),
               },
               {
-                id: 'complete',
-                label: t('weeklyPlan.active.completePlan'),
-                icon: 'check-circle',
-                color: '#22C55E',
+                id: "complete",
+                label: t("weeklyPlan.active.completePlan"),
+                icon: "check-circle",
+                color: "#22C55E",
                 onPress: handleCompletePlan,
               },
               {
-                id: 'delete',
-                label: t('weeklyPlan.active.deletePlan'),
-                icon: 'trash',
-                color: '#EF4444',
+                id: "delete",
+                label: t("weeklyPlan.active.deletePlan"),
+                icon: "trash",
+                color: "#EF4444",
                 onPress: handleDeletePlan,
               },
             ]}
@@ -247,25 +270,25 @@ export default function WeeklyPlanScreen() {
           /* No plan — single create option */
           <MultiActionButton
             icon="calendar-plus-o"
-            label={t('weeklyPlan.createNew')}
+            label={t("weeklyPlan.createNew")}
             variant="floating"
             floatingColor="primary-600"
             loading={isGenerating}
             disabled={isGenerating}
             options={[
               {
-                id: 'create',
-                label: t('weeklyPlan.createNew'),
-                icon: 'calendar-plus-o',
-                color: '#3B82F6',
+                id: "create",
+                label: t("weeklyPlan.createNew"),
+                icon: "calendar-plus-o",
+                color: "#3B82F6",
                 onPress: handleCreatePlan,
               },
               {
-                id: 'history',
-                label: t('weeklyPlan.active.viewHistory'),
-                icon: 'history',
-                color: '#8B5CF6',
-                onPress: () => navigateTo('/(app)/weekly-plan/history'),
+                id: "history",
+                label: t("weeklyPlan.active.viewHistory"),
+                icon: "history",
+                color: "#8B5CF6",
+                onPress: () => navigateTo("/(app)/weekly-plan/history"),
               },
             ]}
           />
@@ -305,22 +328,22 @@ export default function WeeklyPlanScreen() {
       {/* Save success modal */}
       <AlertModal
         visible={showSaveSuccess}
-        title={t('weeklyPlan.result.savedTitle')}
-        message={t('weeklyPlan.result.savedMessage')}
+        title={t("weeklyPlan.result.savedTitle")}
+        message={t("weeklyPlan.result.savedMessage")}
         variant="info"
         icon="check-circle"
-        confirmLabel={t('common.ok')}
+        confirmLabel={t("common.ok")}
         onClose={handleSaveSuccessConfirm}
       />
 
       {/* Retry error modal */}
       <AlertModal
         visible={showRetryError}
-        title={t('common.error')}
-        message={t('weeklyPlan.result.generateError')}
+        title={t("common.error")}
+        message={t("weeklyPlan.result.generateError")}
         variant="danger"
-        confirmLabel={t('common.retry')}
-        cancelLabel={t('common.cancel')}
+        confirmLabel={t("common.retry")}
+        cancelLabel={t("common.cancel")}
         onConfirm={() => {
           handleDismissRetryError();
           handleGenerate();
@@ -331,12 +354,12 @@ export default function WeeklyPlanScreen() {
       {/* Complete plan confirmation */}
       <AlertModal
         visible={showCompleteConfirm}
-        title={t('weeklyPlan.active.completePlan')}
-        message={t('weeklyPlan.active.completePlanConfirm')}
+        title={t("weeklyPlan.active.completePlan")}
+        message={t("weeklyPlan.active.completePlanConfirm")}
         variant="info"
         icon="check-circle"
-        confirmLabel={t('common.ok')}
-        cancelLabel={t('common.cancel')}
+        confirmLabel={t("common.ok")}
+        cancelLabel={t("common.cancel")}
         onConfirm={confirmCompletePlan}
         onClose={() => setShowCompleteConfirm(false)}
       />
@@ -344,12 +367,12 @@ export default function WeeklyPlanScreen() {
       {/* Delete plan confirmation */}
       <AlertModal
         visible={showDeleteConfirm}
-        title={t('weeklyPlan.active.deletePlan')}
-        message={t('weeklyPlan.active.deletePlanConfirm')}
+        title={t("weeklyPlan.active.deletePlan")}
+        message={t("weeklyPlan.active.deletePlanConfirm")}
         variant="danger"
         icon="trash"
-        confirmLabel={t('common.delete')}
-        cancelLabel={t('common.cancel')}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
         onConfirm={confirmDeletePlan}
         onClose={() => setShowDeleteConfirm(false)}
       />
@@ -357,12 +380,12 @@ export default function WeeklyPlanScreen() {
       {/* Replace active plan confirmation */}
       <AlertModal
         visible={showReplaceConfirm}
-        title={t('weeklyPlan.wizard.title')}
-        message={t('weeklyPlan.active.replaceActive')}
+        title={t("weeklyPlan.wizard.title")}
+        message={t("weeklyPlan.active.replaceActive")}
         variant="warning"
         icon="exclamation-triangle"
-        confirmLabel={t('common.ok')}
-        cancelLabel={t('common.cancel')}
+        confirmLabel={t("common.ok")}
+        cancelLabel={t("common.cancel")}
         onConfirm={confirmCreatePlan}
         onClose={() => setShowReplaceConfirm(false)}
       />
