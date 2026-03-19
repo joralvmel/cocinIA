@@ -78,6 +78,16 @@ function pickRandomOne<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+function getBatchReuseInstruction(lang: Language, reuseStrategy?: string): string {
+  if (reuseStrategy === 'maximize_reuse') {
+    return tp('wpBatchReuseMaximize', lang);
+  }
+  if (reuseStrategy === 'variety') {
+    return tp('wpBatchReuseVariety', lang);
+  }
+  return tp('wpBatchReuseBalanced', lang);
+}
+
 /* ------------------------------------------------------------------ */
 /*  Base Preparations prompt                                           */
 /* ------------------------------------------------------------------ */
@@ -529,6 +539,8 @@ function buildDayUserPrompt(
       .sort((a, b) => DAYS_ORDER.indexOf(a) - DAYS_ORDER.indexOf(b));
     const dayIndex = sorted.indexOf(day);
     const totalDays = sorted.length;
+    const reuseStrategy = form.batchConfig?.reuse_strategy || 'balanced';
+    const reuseInstruction = getBatchReuseInstruction(lang, reuseStrategy);
 
     // Rotate protein
     const proteinPreps = basePreparations.filter((p) => p.type === "protein");
@@ -536,33 +548,41 @@ function buildDayUserPrompt(
       (p) => p.type !== "protein",
     );
     const suggestedProtein =
-      proteinPreps.length > 1
-        ? proteinPreps[dayIndex % proteinPreps.length]?.name
-        : proteinPreps[0]?.name;
+      reuseStrategy === 'maximize_reuse'
+        ? proteinPreps[0]?.name
+        : proteinPreps.length > 1
+          ? proteinPreps[dayIndex % proteinPreps.length]?.name
+          : proteinPreps[0]?.name;
 
-    // Build explicit combo suggestion: protein + 1-2 non-protein preps (rotating)
+    // Build combo suggestion with reuse strategy-aware intensity.
     const comboPreps: string[] = [];
     if (suggestedProtein) comboPreps.push(suggestedProtein);
     if (nonProteinPreps.length > 0) {
-      const count = Math.min(2, nonProteinPreps.length);
-      for (let i = 0; i < count; i++) {
-        const idx = (dayIndex + i) % nonProteinPreps.length;
-        comboPreps.push(nonProteinPreps[idx].name);
+      let count = Math.min(2, nonProteinPreps.length);
+      if (reuseStrategy === 'maximize_reuse') count = Math.min(1, nonProteinPreps.length);
+
+      for (let i = 0; i < count; i += 1) {
+        const idx = reuseStrategy === 'maximize_reuse'
+          ? i
+          : (dayIndex + i) % nonProteinPreps.length;
+        comboPreps.push(nonProteinPreps[idx]?.name);
       }
     }
 
-    const dishFormats = [
-      "tacos/burritos",
-      "ensalada/salad",
-      "wrap/tortilla",
-      "stir-fry/salteado",
-      "pasta",
-      "bowl",
-      "sándwich/torta",
-      "quesadilla",
-      "sopa/soup",
-      "plato al horno",
-    ];
+    const dishFormats = reuseStrategy === 'maximize_reuse'
+      ? ["bowl", "wrap/tortilla", "tupper salteado/stir-fry"]
+      : [
+          "tacos/burritos",
+          "ensalada/salad",
+          "wrap/tortilla",
+          "stir-fry/salteado",
+          "pasta",
+          "bowl",
+          "sándwich/torta",
+          "quesadilla",
+          "sopa/soup",
+          "plato al horno",
+        ];
     const suggestedFormat = dishFormats[dayIndex % dishFormats.length];
 
     const suggestedCombo =
@@ -578,6 +598,7 @@ function buildDayUserPrompt(
         totalDays,
         suggestedProtein: suggestedProtein || "",
         suggestedCombo,
+        reuseInstruction,
       }),
     );
   }

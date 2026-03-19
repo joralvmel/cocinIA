@@ -1019,24 +1019,32 @@ REGLAS:
     wpSpecialNotesReminder: "NOTAS DEL USUARIO (respétalas): {{notes}}",
     wpForbiddenIngredients:
       "⚠️ PROHIBIDO usar estos ingredientes en NINGUNA receta: {{list}}",
+    wpBatchReuseMaximize:
+      "PRIORIDAD: máxima reutilización. Mantén la misma base proteína + carbohidrato/vegetal en la mayoría de días y cambia solo salsa/acompañamiento para ahorrar tiempo.",
+    wpBatchReuseBalanced:
+      "PRIORIDAD: equilibrio entre reutilización y variedad. Repite bases principales y cambia 1 componente o el formato de armado entre días.",
+    wpBatchReuseVariety:
+      "PRIORIDAD: variedad controlada. Reutiliza las preparaciones base pero rota más combinaciones y presentación.",
     wpBatchAssembly: `🍱 BATCH COOKING - COMIDA DE ENSAMBLAJE:
-Para la COMIDA (lunch) de hoy, crea un PLATO DIFERENTE que se arme con las preparaciones base de la nevera.
+Para la COMIDA (lunch) de hoy, crea un plato de ENSAMBLAJE que se arme con las preparaciones base de la nevera.
 
 PREPARACIONES BASE DISPONIBLES:
 {{prepList}}
 
-REGLAS ESTRICTAS DE VARIEDAD (día {{dayIndex}} de {{totalDays}}):
-1. USA MÁXIMO 2-3 preparaciones base para este plato. NO uses todas.
-2. ASIGNACIÓN DE HOY: Usa obligatoriamente "{{suggestedProtein}}" como proteína principal, combínala con SOLO 1-2 de las otras bases.
-3. NO repitas la misma combinación ni concepto de otros días.
-4. FORMATO DEL PLATO: Elige un formato DIFERENTE al de otros días. Ejemplos: tacos/burritos, ensalada, wrap, salteado/stir-fry, pasta, bowl, sándwich/torta, quesadilla, sopa, poke bowl, empanada, plato al horno.
-5. La receta debe describir SOLO instrucciones de ensamblaje/calentamiento (máx 10-15 min), NO cocinar desde cero.
-6. Puedes añadir 1-2 ingredientes frescos mínimos (lechuga, queso, tortilla, pan, limón, etc.).
+OBJETIVO DE REUTILIZACIÓN (día {{dayIndex}} de {{totalDays}}):
+{{reuseInstruction}}
+
+REGLAS:
+1. Usa 2-3 preparaciones base como máximo (idealmente 2) para este plato.
+2. Si existe, usa "{{suggestedProtein}}" como proteína principal del día.
+3. Cambia principalmente el armado/salsa/acompañamiento; NO conviertas cada día en una cocción totalmente diferente desde cero.
+4. La receta debe describir SOLO ensamblaje y/o recalentado rápido (aprox. 10-15 min).
+5. Puedes añadir 1-2 ingredientes frescos mínimos (lechuga, queso, tortilla, pan, limón, etc.).
 
 COMBINACIONES SUGERIDAS PARA HOY:
 {{suggestedCombo}}
 
-IMPORTANTE: Si otros días ya usaron bowl/wrap/ensalada, elige un formato completamente distinto.`,
+IMPORTANTE: Mantén coherencia de batch cooking: alta reutilización de bases y variaciones ligeras entre días.`,
     wpAvoidRepetition:
       "EVITA repetir estos platos que ya se generaron para otros días: {{titles}}",
     wpReturnJsonOnly: "Devuelve SOLO el JSON array. No añadas explicaciones.",

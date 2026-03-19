@@ -1009,24 +1009,32 @@ RULES:
     wpSpecialNotesReminder: "USER NOTES (respect these): {{notes}}",
     wpForbiddenIngredients:
       "⚠️ FORBIDDEN ingredients - DO NOT use in ANY recipe: {{list}}",
+    wpBatchReuseMaximize:
+      "PRIORITY: maximum reuse. Keep the same core protein + carb/vegetable base on most days and only vary sauce/toppings to save time.",
+    wpBatchReuseBalanced:
+      "PRIORITY: balanced reuse and variety. Repeat core bases and change 1 component or the assembly format across days.",
+    wpBatchReuseVariety:
+      "PRIORITY: controlled variety. Reuse the same base preparations but rotate combinations and presentation more often.",
     wpBatchAssembly: `🍱 BATCH COOKING - ASSEMBLY LUNCH:
-For today's LUNCH, create a DIFFERENT dish that assembles from the base preparations in the fridge.
+For today's LUNCH, create an ASSEMBLY dish using the base preparations from the fridge.
 
 AVAILABLE BASE PREPARATIONS:
 {{prepList}}
 
-STRICT VARIETY RULES (day {{dayIndex}} of {{totalDays}}):
-1. Use MAXIMUM 2-3 base preparations for this dish. DO NOT use all of them.
-2. TODAY'S ASSIGNMENT: You must use "{{suggestedProtein}}" as the main protein, combine it with ONLY 1-2 of the other bases.
-3. DO NOT repeat the same combination or concept from other days.
-4. DISH FORMAT: Choose a DIFFERENT format from other days. Examples: tacos/burritos, salad, wrap, stir-fry, pasta, bowl, sandwich, quesadilla, soup, poke bowl, empanada, baked dish.
-5. The recipe should describe ONLY assembly/reheating instructions (max 10-15 min), DO NOT cook from scratch.
-6. You may add 1-2 minimal fresh ingredients (lettuce, cheese, tortilla, bread, lime, etc.).
+REUSE OBJECTIVE (day {{dayIndex}} of {{totalDays}}):
+{{reuseInstruction}}
+
+RULES:
+1. Use at most 2-3 base preparations (ideally 2) for this dish.
+2. If available, use "{{suggestedProtein}}" as today's main protein.
+3. Primarily vary assembly/sauce/toppings; do NOT turn each day into a totally different cook-from-scratch concept.
+4. The recipe should include ONLY quick assembly and/or reheating steps (about 10-15 min).
+5. You may add 1-2 minimal fresh ingredients (lettuce, cheese, tortilla, bread, lime, etc.).
 
 SUGGESTED COMBO FOR TODAY:
 {{suggestedCombo}}
 
-IMPORTANT: If other days already used bowl/wrap/salad, choose a completely different format.`,
+IMPORTANT: Keep true batch-cooking consistency: high base reuse with light day-to-day variations.`,
     wpAvoidRepetition:
       "AVOID repeating these dishes already generated for other days: {{titles}}",
     wpReturnJsonOnly: "Return ONLY the JSON array. Do not add explanations.",
