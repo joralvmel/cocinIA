@@ -1,18 +1,18 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { withLayoutContext, Redirect } from 'expo-router';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { useTranslation } from 'react-i18next';
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { useAuth } from '@/contexts';
-import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Loader } from '@/components/ui';
+import { Loader } from "@/components/ui";
+import { useAuth } from "@/contexts";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+import { Redirect, withLayoutContext } from "expo-router";
+import { useTranslation } from "react-i18next";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { Navigator } = createMaterialTopTabNavigator();
-const MaterialTopTabs = withLayoutContext(Navigator);
+const MaterialTopTabs = withLayoutContext(Navigator, undefined, true);
 
 function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+  name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
 }) {
   return <FontAwesome size={22} {...props} />;
@@ -27,7 +27,10 @@ export default function AppLayout() {
   // Show loader while checking authentication
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View
+        className="flex-1 items-center justify-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <Loader size="lg" />
       </View>
     );
@@ -43,19 +46,19 @@ export default function AppLayout() {
       <MaterialTopTabs
         screenOptions={{
           tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#6B7280',
+          tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#6B7280",
           tabBarStyle: {
             backgroundColor: colors.card,
             elevation: 0,
             shadowOpacity: 0,
             borderTopWidth: 1,
-            borderTopColor: isDark ? '#374151' : '#E5E7EB',
+            borderTopColor: isDark ? "#374151" : "#E5E7EB",
             paddingBottom: insets.bottom,
           },
           tabBarLabelStyle: {
             fontSize: 10,
-            fontWeight: '600',
-            textTransform: 'none',
+            fontWeight: "600",
+            textTransform: "none",
           },
           tabBarIndicatorStyle: {
             backgroundColor: colors.primary,
@@ -72,36 +75,37 @@ export default function AppLayout() {
         <MaterialTopTabs.Screen
           name="home"
           options={{
-            title: t('tabs.home'),
-            tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name="home" color={color} />,
+            title: t("tabs.home"),
+            tabBarIcon: ({ color }: { color: string }) => (
+              <TabBarIcon name="home" color={color} />
+            ),
           }}
         />
         <MaterialTopTabs.Screen
           name="recipes"
           options={{
-            title: t('tabs.recipes'),
-            tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name="book" color={color} />,
+            title: t("tabs.recipes"),
+            tabBarIcon: ({ color }: { color: string }) => (
+              <TabBarIcon name="book" color={color} />
+            ),
           }}
         />
         <MaterialTopTabs.Screen
           name="weekly-plan"
           options={{
-            title: t('tabs.plan'),
-            tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name="calendar" color={color} />,
+            title: t("tabs.plan"),
+            tabBarIcon: ({ color }: { color: string }) => (
+              <TabBarIcon name="calendar" color={color} />
+            ),
           }}
         />
         <MaterialTopTabs.Screen
           name="shopping-list"
           options={{
-            title: t('tabs.shopping'),
-            tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name="shopping-cart" color={color} />,
-          }}
-        />
-        <MaterialTopTabs.Screen
-          name="pantry"
-          options={{
-            title: t('tabs.pantry'),
-            tabBarIcon: ({ color }: { color: string }) => <TabBarIcon name="archive" color={color} />,
+            title: t("tabs.shopping"),
+            tabBarIcon: ({ color }: { color: string }) => (
+              <TabBarIcon name="shopping-cart" color={color} />
+            ),
           }}
         />
       </MaterialTopTabs>

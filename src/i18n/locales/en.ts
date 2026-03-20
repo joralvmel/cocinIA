@@ -74,8 +74,8 @@
     cookingPreferencesDesc: "Restrictions, cuisines & equipment",
     equipment: "Kitchen Equipment",
     equipmentDesc: "Appliances and utensils",
-    favoriteIngredients: "Favorite Ingredients",
-    favoriteIngredientsDesc: "Ingredients you love to cook with",
+    favoriteIngredients: "Always Available Ingredients",
+    favoriteIngredientsDesc: "Core ingredients you usually have at home",
     routineMeals: "Routine Meals",
     routineMealsDesc: "Define what you usually eat",
     routineMealsTitle: "What do you usually eat?",
@@ -185,10 +185,10 @@
     ingredientName: "Ingredient name",
     ingredientPlaceholder: "e.g., Chicken, Tomatoes, Rice...",
     alwaysAvailable: "Always available",
-    alwaysAvailableDesc: "This ingredient is always in my pantry",
-    noIngredients: "No favorite ingredients",
+    alwaysAvailableDesc: "Add staple ingredients you usually keep on hand.",
+    noIngredients: "No always-available ingredients yet",
     ingredientsHelp:
-      'Add ingredients you frequently use. Mark as "always available" if they\'re staples in your kitchen.',
+      "Add your staple home ingredients here. You can type them below or import them from your recipes.",
     // Actions
     saveChanges: "Save Changes",
     saving: "Saving...",
@@ -388,9 +388,11 @@
       ingredientsToIncludePlaceholder: "E.g: chicken, rice, broccoli...",
       ingredientsToExclude: "Ingredients to exclude",
       ingredientsToExcludePlaceholder: "E.g: seafood, cilantro...",
-      useFavoriteIngredients: "Use my favorite ingredients",
-      useFavoriteIngredientsHint: "Prioritize ingredients from your profile",
-      noFavoriteIngredients: "No favorite ingredients in your profile yet.",
+      useFavoriteIngredients: "Use my always available ingredients",
+      useFavoriteIngredientsHint:
+        "Prioritize ingredients you usually have on hand",
+      noFavoriteIngredients:
+        "You still have no always available ingredients in your profile.",
 
       // Step 4
       servings: "Servings per recipe",
@@ -722,10 +724,10 @@
     ingredientsPlaceholder: "E.g: chicken, tomato, onion...",
     ingredientsToExclude: "Ingredients to exclude",
     excludePlaceholder: "E.g: seafood, cilantro...",
-    usePantry: "Use ingredients from my pantry",
-    usePantryShort: "Pantry",
-    useFavoriteIngredients: "Use my favorite ingredients",
-    favorites: "Favorites",
+    usePantry: "Use my always available ingredients",
+    usePantryShort: "Always available",
+    useFavoriteIngredients: "Use my always available ingredients",
+    favorites: "Always available",
     mealType: "Meal type",
     servings: "Servings",
     servingsLabel: "servings",
@@ -919,11 +921,11 @@ If it's a sauce or side, use "lunch" or "dinner" depending on when it's served.`
     useIngredients: "MUST include these ingredients",
     excludeIngredients: "DO NOT include these ingredients",
     preferFavoriteIngredients:
-      "Prefer using these favorite ingredients: {{list}}",
+      "Prioritize these always available ingredients: {{list}}",
     favoriteSelectionMode:
-      "VARIETY MODE: For this generation, prioritize ONLY this random selection of favorites.",
+      "VARIETY MODE: For this generation, prioritize ONLY this random selection of always available ingredients.",
     favoriteIngredientsNote:
-      "IMPORTANT: These are available favorite ingredients. You do NOT need to use all of them. Pick 1-3 ingredients and vary combinations across generations to avoid repeating the same ones.",
+      "IMPORTANT: These are ingredients the user usually has available. You do NOT need to use all of them. Pick 1-3 ingredients and vary combinations across generations to avoid repeating the same ones.",
     mealType: "Meal type",
     servings: "Servings",
     maxTime: "Maximum preparation time",

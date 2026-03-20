@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { useProfileStore } from '@/stores';
-import { useRecipeGenerationStore } from '@/stores';
-import { profileService } from '@/services';
-import { type Profile, type ProfileEquipment } from '@/services';
+import {
+  profileService,
+  type Profile,
+  type ProfileEquipment,
+} from "@/services";
+import { useProfileStore, useRecipeGenerationStore } from "@/stores";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Builds form-default values (cuisines & equipment) from raw profile data.
@@ -11,7 +13,11 @@ import { type Profile, type ProfileEquipment } from '@/services';
 export function buildFormDefaults(
   profileData: Profile | null,
   equipmentData: ProfileEquipment[],
-  cuisinesData: { id: string; cuisine_type: string; custom_name: string | null }[],
+  cuisinesData: {
+    id: string;
+    cuisine_type: string;
+    custom_name: string | null;
+  }[],
 ) {
   const predefinedCuisines = profileData?.preferred_cuisines || [];
   const customCuisineIds = (cuisinesData || [])
@@ -51,8 +57,8 @@ export function useUserProfile() {
   const { form, setFormField } = useRecipeGenerationStore();
 
   // ---- Hydration gate ----
-  const [hasHydrated, setHasHydrated] = useState(
-    () => useProfileStore.persist.hasHydrated(),
+  const [hasHydrated, setHasHydrated] = useState(() =>
+    useProfileStore.persist.hasHydrated(),
   );
 
   useEffect(() => {
@@ -83,10 +89,13 @@ export function useUserProfile() {
       } = useProfileStore.getState();
       const defaults = buildFormDefaults(p, eq, cc);
       if (defaults.cuisines.length > 0 && form.cuisines.length === 0) {
-        setFormField('cuisines', defaults.cuisines);
+        setFormField("cuisines", defaults.cuisines);
       }
-      if (defaults.equipment.length > 0 && (!form.equipment || form.equipment.length === 0)) {
-        setFormField('equipment', defaults.equipment);
+      if (
+        defaults.equipment.length > 0 &&
+        (!form.equipment || form.equipment.length === 0)
+      ) {
+        setFormField("equipment", defaults.equipment);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,7 +115,7 @@ export function useUserProfile() {
         profileService.getProfile(),
         profileService.getRestrictions(),
         profileService.getEquipment(),
-        profileService.getFavoriteIngredients(),
+        profileService.getAlwaysAvailableIngredients(),
         profileService.getCuisines(),
         profileService.getRoutineMeals(),
       ]);
@@ -119,7 +128,7 @@ export function useUserProfile() {
 
       const mappedFavorites = favoriteIngredientsData.map((i) => ({
         ingredient_name: i.ingredient_name,
-        is_always_available: i.always_available,
+        is_always_available: true,
       }));
 
       setProfile(profileData);
@@ -131,21 +140,25 @@ export function useUserProfile() {
         routineMealsData.map((rm) => ({
           meal_type: rm.meal_type,
           description: rm.description,
-        }))
+        })),
       );
       setLoaded(true);
 
       // Sync form defaults with fresh data
-      const defaults = buildFormDefaults(profileData, equipmentData, mappedCuisines);
+      const defaults = buildFormDefaults(
+        profileData,
+        equipmentData,
+        mappedCuisines,
+      );
       if (defaults.cuisines.length > 0) {
-        setFormField('cuisines', defaults.cuisines);
+        setFormField("cuisines", defaults.cuisines);
       }
       if (defaults.equipment.length > 0) {
-        setFormField('equipment', defaults.equipment);
+        setFormField("equipment", defaults.equipment);
       }
       setProfileLoaded(true);
     } catch (err) {
-      console.error('Error loading profile:', err);
+      console.error("Error loading profile:", err);
       setProfileLoaded(true); // Still show UI even on error
     }
   }, [
@@ -170,14 +183,14 @@ export function useUserProfile() {
   const applyProfileDefaults = useCallback(() => {
     const defaults = buildFormDefaults(profile, equipment, customCuisines);
     if (defaults.cuisines.length > 0) {
-      setFormField('cuisines', defaults.cuisines);
+      setFormField("cuisines", defaults.cuisines);
     }
     if (defaults.equipment.length > 0) {
-      setFormField('equipment', defaults.equipment);
+      setFormField("equipment", defaults.equipment);
     }
   }, [profile, equipment, customCuisines, setFormField]);
 
-  const userName = profile?.display_name?.split(' ')[0] || '';
+  const userName = profile?.display_name?.split(" ")[0] || "";
 
   return {
     profile,
@@ -191,4 +204,3 @@ export function useUserProfile() {
     applyProfileDefaults,
   };
 }
-

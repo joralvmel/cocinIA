@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
 
 // Profile types
 export interface Profile {
@@ -11,16 +11,27 @@ export interface Profile {
   height_cm: number | null;
   weight_kg: number | null;
   birth_date: string | null;
-  gender: 'male' | 'female' | 'other' | null;
-  activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
-  fitness_goal: 'lose_weight' | 'maintain' | 'gain_muscle' | 'eat_healthy' | null;
+  gender: "male" | "female" | "other" | null;
+  activity_level:
+    | "sedentary"
+    | "light"
+    | "moderate"
+    | "active"
+    | "very_active"
+    | null;
+  fitness_goal:
+    | "lose_weight"
+    | "maintain"
+    | "gain_muscle"
+    | "eat_healthy"
+    | null;
   daily_calorie_goal: number | null;
   protein_goal_g: number | null;
   carbs_goal_g: number | null;
   fat_goal_g: number | null;
   default_servings: number | null;
   preferred_cuisines: string[] | null;
-  measurement_system: 'metric' | 'imperial' | null;
+  measurement_system: "metric" | "imperial" | null;
   onboarding_completed: boolean;
   onboarding_step: number | null;
   created_at: string;
@@ -48,7 +59,13 @@ export interface FavoriteIngredient {
   id: string;
   profile_id: string;
   ingredient_name: string;
-  always_available: boolean;
+  created_at: string;
+}
+
+export interface AlwaysAvailableIngredient {
+  id: string;
+  profile_id: string;
+  ingredient_name: string;
   created_at: string;
 }
 
@@ -63,7 +80,7 @@ export interface ProfileCuisine {
 export interface RoutineMeal {
   id: string;
   profile_id: string;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal_type: "breakfast" | "lunch" | "dinner" | "snack";
   description: string;
   created_at: string;
   updated_at: string;
@@ -77,16 +94,21 @@ export interface ProfileUpdatePayload {
   height_cm?: number;
   weight_kg?: number;
   birth_date?: string;
-  gender?: 'male' | 'female' | 'other';
-  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
-  fitness_goal?: 'lose_weight' | 'maintain' | 'gain_muscle' | 'eat_healthy';
+  gender?: "male" | "female" | "other";
+  activity_level?:
+    | "sedentary"
+    | "light"
+    | "moderate"
+    | "active"
+    | "very_active";
+  fitness_goal?: "lose_weight" | "maintain" | "gain_muscle" | "eat_healthy";
   daily_calorie_goal?: number;
   protein_goal_g?: number;
   carbs_goal_g?: number;
   fat_goal_g?: number;
   default_servings?: number;
   preferred_cuisines?: string[];
-  measurement_system?: 'metric' | 'imperial';
+  measurement_system?: "metric" | "imperial";
   onboarding_completed?: boolean;
   onboarding_step?: number;
 }
@@ -103,18 +125,20 @@ export const profileService = {
    * Get the current user's profile
    */
   async getProfile(): Promise<Profile | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
       .single();
 
     if (error) {
       // Profile might not exist yet
-      if (error.code === 'PGRST116') return null;
+      if (error.code === "PGRST116") return null;
       throw error;
     }
 
@@ -125,11 +149,13 @@ export const profileService = {
    * Create or update the current user's profile
    */
   async updateProfile(updates: ProfileUpdatePayload): Promise<Profile> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from("profiles")
       .upsert({
         id: user.id,
         email: user.email,
@@ -163,13 +189,15 @@ export const profileService = {
    * Get user's dietary restrictions
    */
   async getRestrictions(): Promise<ProfileRestriction[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('profile_restrictions')
-      .select('*')
-      .eq('profile_id', user.id);
+      .from("profile_restrictions")
+      .select("*")
+      .eq("profile_id", user.id);
 
     if (error) throw error;
     return data || [];
@@ -179,27 +207,27 @@ export const profileService = {
    * Save dietary restrictions (replaces all existing ones)
    */
   async saveRestrictions(restrictions: RestrictionPayload[]): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     // Delete existing restrictions
     await supabase
-      .from('profile_restrictions')
+      .from("profile_restrictions")
       .delete()
-      .eq('profile_id', user.id);
+      .eq("profile_id", user.id);
 
     // Insert new restrictions if any
     if (restrictions.length > 0) {
-      const { error } = await supabase
-        .from('profile_restrictions')
-        .insert(
-          restrictions.map((r) => ({
-            profile_id: user.id,
-            restriction_type: r.restriction_type,
-            custom_value: r.custom_value || null,
-            is_allergy: r.is_allergy,
-          }))
-        );
+      const { error } = await supabase.from("profile_restrictions").insert(
+        restrictions.map((r) => ({
+          profile_id: user.id,
+          restriction_type: r.restriction_type,
+          custom_value: r.custom_value || null,
+          is_allergy: r.is_allergy,
+        })),
+      );
 
       if (error) throw error;
     }
@@ -240,13 +268,15 @@ export const profileService = {
    * Get user's equipment
    */
   async getEquipment(): Promise<ProfileEquipment[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('profile_equipment')
-      .select('*')
-      .eq('profile_id', user.id);
+      .from("profile_equipment")
+      .select("*")
+      .eq("profile_id", user.id);
 
     if (error) throw error;
     return data || [];
@@ -255,72 +285,76 @@ export const profileService = {
   /**
    * Save equipment (replaces all existing ones)
    */
-  async saveEquipment(equipment: { equipment_type: string; custom_name?: string }[]): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  async saveEquipment(
+    equipment: { equipment_type: string; custom_name?: string }[],
+  ): Promise<void> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     // Delete existing equipment
-    await supabase
-      .from('profile_equipment')
-      .delete()
-      .eq('profile_id', user.id);
+    await supabase.from("profile_equipment").delete().eq("profile_id", user.id);
 
     // Insert new equipment if any
     if (equipment.length > 0) {
-      const { error } = await supabase
-        .from('profile_equipment')
-        .insert(
-          equipment.map((e) => ({
-            profile_id: user.id,
-            equipment_type: e.equipment_type,
-            custom_name: e.custom_name || null,
-          }))
-        );
+      const { error } = await supabase.from("profile_equipment").insert(
+        equipment.map((e) => ({
+          profile_id: user.id,
+          equipment_type: e.equipment_type,
+          custom_name: e.custom_name || null,
+        })),
+      );
 
       if (error) throw error;
     }
   },
 
   /**
-   * Get user's favorite ingredients
+   * Get user's always-available ingredients
    */
-  async getFavoriteIngredients(): Promise<FavoriteIngredient[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+  async getAlwaysAvailableIngredients(): Promise<AlwaysAvailableIngredient[]> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('favorite_ingredients')
-      .select('*')
-      .eq('profile_id', user.id)
-      .order('created_at', { ascending: true });
+      .from("always_available_ingredients")
+      .select("id, profile_id, ingredient_name, created_at")
+      .eq("profile_id", user.id)
+      .order("created_at", { ascending: true });
 
     if (error) throw error;
     return data || [];
   },
 
   /**
-   * Save favorite ingredients (replaces all existing ones)
+   * Save always-available ingredients (replaces all existing ones)
    */
-  async saveFavoriteIngredients(ingredients: { ingredient_name: string; always_available: boolean }[]): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  async saveAlwaysAvailableIngredients(
+    ingredients: { ingredient_name: string }[],
+  ): Promise<void> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     // Delete existing ingredients
     await supabase
-      .from('favorite_ingredients')
+      .from("always_available_ingredients")
       .delete()
-      .eq('profile_id', user.id);
+      .eq("profile_id", user.id);
 
     // Insert new ingredients if any
     if (ingredients.length > 0) {
       const { error } = await supabase
-        .from('favorite_ingredients')
+        .from("always_available_ingredients")
         .insert(
           ingredients.map((i) => ({
             profile_id: user.id,
             ingredient_name: i.ingredient_name,
-            always_available: i.always_available,
-          }))
+          })),
         );
 
       if (error) throw error;
@@ -328,20 +362,38 @@ export const profileService = {
   },
 
   /**
+   * Backward-compatible wrapper
+   */
+  async getFavoriteIngredients(): Promise<FavoriteIngredient[]> {
+    return this.getAlwaysAvailableIngredients();
+  },
+
+  /**
+   * Backward-compatible wrapper
+   */
+  async saveFavoriteIngredients(
+    ingredients: { ingredient_name: string }[],
+  ): Promise<void> {
+    await this.saveAlwaysAvailableIngredients(ingredients);
+  },
+
+  /**
    * Get user's custom cuisines
    */
   async getCuisines(): Promise<ProfileCuisine[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('profile_cuisines')
-      .select('*')
-      .eq('profile_id', user.id);
+      .from("profile_cuisines")
+      .select("*")
+      .eq("profile_id", user.id);
 
     if (error) {
       // Table might not exist yet
-      console.error('Error fetching cuisines:', error);
+      console.error("Error fetching cuisines:", error);
       return [];
     }
     return data || [];
@@ -350,28 +402,26 @@ export const profileService = {
   /**
    * Save cuisines (replaces all existing ones)
    */
-  async saveCuisines(cuisines: { cuisine_type: string; custom_name?: string }[]): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  async saveCuisines(
+    cuisines: { cuisine_type: string; custom_name?: string }[],
+  ): Promise<void> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     // Delete existing cuisines
-    await supabase
-      .from('profile_cuisines')
-      .delete()
-      .eq('profile_id', user.id);
+    await supabase.from("profile_cuisines").delete().eq("profile_id", user.id);
 
     // Insert new cuisines if any
     if (cuisines.length > 0) {
-      const { error } = await supabase
-        .from('profile_cuisines')
-        .insert(
-          cuisines.map((c) => ({
-            profile_id: user.id,
-            cuisine_type: c.cuisine_type,
-            custom_name: c.custom_name || null,
-          }))
-        );
-
+      const { error } = await supabase.from("profile_cuisines").insert(
+        cuisines.map((c) => ({
+          profile_id: user.id,
+          cuisine_type: c.cuisine_type,
+          custom_name: c.custom_name || null,
+        })),
+      );
 
       if (error) throw error;
     }
@@ -381,16 +431,18 @@ export const profileService = {
    * Get user's routine meals
    */
   async getRoutineMeals(): Promise<RoutineMeal[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('routine_meals')
-      .select('*')
-      .eq('profile_id', user.id);
+      .from("routine_meals")
+      .select("*")
+      .eq("profile_id", user.id);
 
     if (error) {
-      console.error('Error fetching routine meals:', error);
+      console.error("Error fetching routine meals:", error);
       return [];
     }
     return data || [];
@@ -400,29 +452,26 @@ export const profileService = {
    * Save routine meals (upserts per meal_type)
    */
   async saveRoutineMeals(
-    meals: { meal_type: string; description: string }[]
+    meals: { meal_type: string; description: string }[],
   ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
     // Delete existing routine meals
-    await supabase
-      .from('routine_meals')
-      .delete()
-      .eq('profile_id', user.id);
+    await supabase.from("routine_meals").delete().eq("profile_id", user.id);
 
     // Insert non-empty entries
     const nonEmpty = meals.filter((m) => m.description.trim());
     if (nonEmpty.length > 0) {
-      const { error } = await supabase
-        .from('routine_meals')
-        .insert(
-          nonEmpty.map((m) => ({
-            profile_id: user.id,
-            meal_type: m.meal_type,
-            description: m.description.trim(),
-          }))
-        );
+      const { error } = await supabase.from("routine_meals").insert(
+        nonEmpty.map((m) => ({
+          profile_id: user.id,
+          meal_type: m.meal_type,
+          description: m.description.trim(),
+        })),
+      );
 
       if (error) throw error;
     }

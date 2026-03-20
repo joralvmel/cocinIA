@@ -7,7 +7,6 @@ import {
   ScreenHeader,
   SearchInput,
   Section,
-  Switch,
   type ActionOption,
 } from "@/components/ui";
 import { useEditIngredientsForm } from "@/hooks";
@@ -31,19 +30,11 @@ export default function EditIngredientsScreen() {
   const form = useEditIngredientsForm();
 
   // UI-only state
-  const [showAddInput, setShowAddInput] = useState(false);
   const [showRecipeIngredients, setShowRecipeIngredients] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState("");
 
   // FAB actions
   const addActionOptions: ActionOption[] = [
-    {
-      id: "manual",
-      label: t("profile.addManual" as any),
-      icon: "pencil",
-      color: "primary",
-      onPress: () => setShowAddInput(true),
-    },
     {
       id: "from-recipes",
       label: t("profile.fromRecipes" as any),
@@ -52,11 +43,6 @@ export default function EditIngredientsScreen() {
       onPress: () => setShowRecipeIngredients(true),
     },
   ];
-
-  const handleAddAndClose = () => {
-    form.handleAddIngredient();
-    setShowAddInput(false);
-  };
 
   if (form.loading || form.saving) {
     return (
@@ -106,33 +92,8 @@ export default function EditIngredientsScreen() {
                           <Text className="text-base text-gray-900 dark:text-gray-50">
                             {ingredient.ingredientName}
                           </Text>
-                          {ingredient.alwaysAvailable && (
-                            <Text className="text-xs text-primary-600 dark:text-primary-400">
-                              ✓ {t("profile.alwaysAvailable")}
-                            </Text>
-                          )}
                         </View>
                         <View className="flex-row items-center gap-3">
-                          <Pressable
-                            onPress={() =>
-                              form.toggleAlwaysAvailable(ingredient.id)
-                            }
-                            className="p-2"
-                          >
-                            <FontAwesome
-                              name={
-                                ingredient.alwaysAvailable
-                                  ? "check-circle"
-                                  : "circle-o"
-                              }
-                              size={20}
-                              color={
-                                ingredient.alwaysAvailable
-                                  ? colors.primary
-                                  : colors.textSecondary
-                              }
-                            />
-                          </Pressable>
                           <Pressable
                             onPress={() => form.removeIngredient(ingredient.id)}
                             className="p-2"
@@ -146,12 +107,50 @@ export default function EditIngredientsScreen() {
                         </View>
                       </View>
                     ))}
+
+                    {/* Quick add row (always the last item) */}
+                    <View className="mt-1 flex-row items-center gap-2">
+                      <View className="flex-1">
+                        <Input
+                          placeholder={t("profile.ingredientPlaceholder")}
+                          value={form.newIngredientName}
+                          onChangeText={form.setNewIngredientName}
+                          onSubmitEditing={form.handleAddIngredient}
+                          returnKeyType="done"
+                          showClearButton
+                        />
+                      </View>
+                      <Pressable
+                        onPress={form.handleAddIngredient}
+                        className="h-12 w-12 rounded-xl items-center justify-center bg-primary-500"
+                      >
+                        <FontAwesome name="plus" size={18} color="#ffffff" />
+                      </Pressable>
+                    </View>
                   </View>
                 ) : (
-                  <View className="py-6 items-center">
-                    <Text className="text-gray-400 dark:text-gray-500">
+                  <View className="py-3 mt-2 gap-3">
+                    <Text className="text-center text-gray-400 dark:text-gray-500">
                       {t("profile.noIngredients")}
                     </Text>
+                    <View className="flex-row items-center gap-2">
+                      <View className="flex-1">
+                        <Input
+                          placeholder={t("profile.ingredientPlaceholder")}
+                          value={form.newIngredientName}
+                          onChangeText={form.setNewIngredientName}
+                          onSubmitEditing={form.handleAddIngredient}
+                          returnKeyType="done"
+                          showClearButton
+                        />
+                      </View>
+                      <Pressable
+                        onPress={form.handleAddIngredient}
+                        className="h-12 w-12 rounded-xl items-center justify-center bg-primary-500"
+                      >
+                        <FontAwesome name="plus" size={18} color="#ffffff" />
+                      </Pressable>
+                    </View>
                   </View>
                 )}
               </Section>
@@ -180,43 +179,6 @@ export default function EditIngredientsScreen() {
             loading={form.saving}
           />
         </View>
-
-        {/* Manual Add BottomSheet */}
-        <BottomSheet
-          visible={showAddInput}
-          onClose={() => {
-            setShowAddInput(false);
-            form.setNewIngredientName("");
-            form.setNewAlwaysAvailable(false);
-          }}
-          title={t("profile.addIngredient")}
-          showOkButton
-          okLabel={t("common.add")}
-          onOk={handleAddAndClose}
-        >
-          <View className="gap-4 pb-4">
-            <Input
-              placeholder={t("profile.ingredientPlaceholder")}
-              value={form.newIngredientName}
-              onChangeText={form.setNewIngredientName}
-              showClearButton
-            />
-            <View className="flex-row items-center justify-between px-1">
-              <View className="flex-1 mr-3">
-                <Text className="text-sm text-gray-900 dark:text-gray-50">
-                  {t("profile.alwaysAvailable")}
-                </Text>
-                <Text className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("profile.alwaysAvailableDesc")}
-                </Text>
-              </View>
-              <Switch
-                value={form.newAlwaysAvailable}
-                onValueChange={form.setNewAlwaysAvailable}
-              />
-            </View>
-          </View>
-        </BottomSheet>
 
         {/* Recipe Ingredients BottomSheet */}
         <BottomSheet

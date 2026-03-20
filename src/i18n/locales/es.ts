@@ -74,8 +74,8 @@
     cookingPreferencesDesc: "Restricciones, cocinas y equipamiento",
     equipment: "Equipamiento de Cocina",
     equipmentDesc: "Electrodomésticos y utensilios",
-    favoriteIngredients: "Ingredientes Favoritos",
-    favoriteIngredientsDesc: "Ingredientes que te gusta usar al cocinar",
+    favoriteIngredients: "Ingredientes Siempre Disponibles",
+    favoriteIngredientsDesc: "Ingredientes base que sueles tener en casa",
     routineMeals: "Comidas Habituales",
     routineMealsDesc: "Define qué sueles comer normalmente",
     routineMealsTitle: "¿Qué sueles comer?",
@@ -185,10 +185,11 @@
     ingredientName: "Nombre del ingrediente",
     ingredientPlaceholder: "ej., Pollo, Tomates, Arroz...",
     alwaysAvailable: "Siempre disponible",
-    alwaysAvailableDesc: "Este ingrediente siempre está en mi despensa",
-    noIngredients: "Sin ingredientes favoritos",
+    alwaysAvailableDesc:
+      "Añade ingredientes base que sueles tener siempre a mano.",
+    noIngredients: "Sin ingredientes siempre disponibles",
     ingredientsHelp:
-      'Añade ingredientes que usas frecuentemente. Márcalos como "siempre disponible" si son básicos en tu cocina.',
+      "Añade aquí tus ingredientes base de casa. Puedes escribirlos abajo o importarlos desde tus recetas.",
     // Actions
     saveChanges: "Guardar Cambios",
     saving: "Guardando...",
@@ -388,9 +389,11 @@
       ingredientsToIncludePlaceholder: "Ej: pollo, arroz, brócoli...",
       ingredientsToExclude: "Ingredientes a excluir",
       ingredientsToExcludePlaceholder: "Ej: mariscos, cilantro...",
-      useFavoriteIngredients: "Usar mis ingredientes favoritos",
-      useFavoriteIngredientsHint: "Priorizar ingredientes de tu perfil",
-      noFavoriteIngredients: "No tienes ingredientes favoritos en tu perfil.",
+      useFavoriteIngredients: "Usar mis ingredientes siempre disponibles",
+      useFavoriteIngredientsHint:
+        "Priorizar ingredientes que sueles tener a mano",
+      noFavoriteIngredients:
+        "Aún no tienes ingredientes siempre disponibles en tu perfil.",
 
       // Step 4
       servings: "Porciones por receta",
@@ -726,10 +729,10 @@
     ingredientsPlaceholder: "Ej: pollo, tomate, cebolla...",
     ingredientsToExclude: "Ingredientes a excluir",
     excludePlaceholder: "Ej: mariscos, cilantro...",
-    usePantry: "Usar ingredientes de mi despensa",
-    usePantryShort: "Despensa",
-    useFavoriteIngredients: "Usar mis ingredientes favoritos",
-    favorites: "Favoritos",
+    usePantry: "Usar mis ingredientes siempre disponibles",
+    usePantryShort: "Siempre disponibles",
+    useFavoriteIngredients: "Usar mis ingredientes siempre disponibles",
+    favorites: "Siempre disponibles",
     mealType: "Tipo de comida",
     servings: "Porciones",
     servingsLabel: "porciones",
@@ -927,11 +930,11 @@ Si es una salsa o acompañamiento, usa "lunch" o "dinner" según cuándo se sirv
     useIngredients: "DEBE incluir estos ingredientes",
     excludeIngredients: "NO incluir estos ingredientes",
     preferFavoriteIngredients:
-      "Preferir usar estos ingredientes favoritos: {{list}}",
+      "Priorizar estos ingredientes siempre disponibles: {{list}}",
     favoriteSelectionMode:
-      "MODO VARIEDAD: Para esta generación, prioriza SOLO esta selección aleatoria de favoritos.",
+      "MODO VARIEDAD: Para esta generación, prioriza SOLO esta selección aleatoria de ingredientes siempre disponibles.",
     favoriteIngredientsNote:
-      "IMPORTANTE: Estos son ingredientes favoritos disponibles. NO es necesario usarlos todos. Elige 1-3 ingredientes y crea combinaciones variadas entre generaciones para evitar repetir siempre los mismos.",
+      "IMPORTANTE: Estos son ingredientes que la persona suele tener disponibles. NO es necesario usarlos todos. Elige 1-3 ingredientes y crea combinaciones variadas entre generaciones para evitar repetir siempre los mismos.",
     mealType: "Tipo de comida",
     servings: "Porciones",
     maxTime: "Tiempo máximo de preparación",
