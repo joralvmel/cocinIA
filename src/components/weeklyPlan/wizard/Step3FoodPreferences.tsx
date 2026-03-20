@@ -1,10 +1,16 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { Section, ChipGroup, SwitchItem, TagInput, Chip } from '@/components/ui';
-import { useWeeklyPlanStore, useProfileStore } from '@/stores';
-import { cuisines as cuisineConstants } from '@/constants/cuisines';
-import { equipment as equipmentConstants } from '@/constants/equipment';
+import {
+    Chip,
+    ChipGroup,
+    Section,
+    SwitchItem,
+    TagInput,
+} from "@/components/ui";
+import { cuisines as cuisineConstants } from "@/constants/cuisines";
+import { equipment as equipmentConstants } from "@/constants/equipment";
+import { useProfileStore, useWeeklyPlanStore } from "@/stores";
+import React, { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { ScrollView, Text, View } from "react-native";
 
 interface ChipOption {
   id: string;
@@ -13,8 +19,8 @@ interface ChipOption {
 
 export function Step3FoodPreferences() {
   const { t } = useTranslation();
-  const [includeText, setIncludeText] = useState('');
-  const [excludeText, setExcludeText] = useState('');
+  const [includeText, setIncludeText] = useState("");
+  const [excludeText, setExcludeText] = useState("");
   const [hasPrePopulated, setHasPrePopulated] = useState(false);
 
   const {
@@ -57,7 +63,7 @@ export function Step3FoodPreferences() {
     // Equipment: merge profile equipment
     if (equipment.length === 0) {
       const allEquip = (profileEquipment || []).map((e) =>
-        e.custom_name ? `custom:${e.custom_name}` : e.equipment_type
+        e.custom_name ? `custom:${e.custom_name}` : e.equipment_type,
       );
       if (allEquip.length > 0) {
         setEquipment(allEquip);
@@ -104,7 +110,7 @@ export function Step3FoodPreferences() {
     const trimmed = includeText.trim();
     if (trimmed && !ingredientsToInclude.includes(trimmed)) {
       setIngredientsToInclude([...ingredientsToInclude, trimmed]);
-      setIncludeText('');
+      setIncludeText("");
     }
   };
 
@@ -112,7 +118,7 @@ export function Step3FoodPreferences() {
     const trimmed = excludeText.trim();
     if (trimmed && !ingredientsToExclude.includes(trimmed)) {
       setIngredientsToExclude([...ingredientsToExclude, trimmed]);
-      setExcludeText('');
+      setExcludeText("");
     }
   };
 
@@ -122,11 +128,12 @@ export function Step3FoodPreferences() {
       showsVerticalScrollIndicator={false}
       contentContainerClassName="px-4 pb-8"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
     >
       {/* Cuisine preferences */}
       <Section
-        title={t('weeklyPlan.wizard.cuisinePreferences')}
-        subtitle={t('weeklyPlan.wizard.cuisineHint')}
+        title={t("weeklyPlan.wizard.cuisinePreferences")}
+        subtitle={t("weeklyPlan.wizard.cuisineHint")}
         className="mb-6"
       >
         <ChipGroup
@@ -139,8 +146,8 @@ export function Step3FoodPreferences() {
 
       {/* Equipment */}
       <Section
-        title={t('weeklyPlan.wizard.equipmentAvailable')}
-        subtitle={t('weeklyPlan.wizard.equipmentHint')}
+        title={t("weeklyPlan.wizard.equipmentAvailable")}
+        subtitle={t("weeklyPlan.wizard.equipmentHint")}
         className="mb-6"
       >
         <ChipGroup
@@ -155,8 +162,8 @@ export function Step3FoodPreferences() {
       <View className="mb-3">
         <SwitchItem
           icon="heart"
-          label={t('weeklyPlan.wizard.useFavoriteIngredients')}
-          description={t('weeklyPlan.wizard.useFavoriteIngredientsHint')}
+          label={t("weeklyPlan.wizard.useFavoriteIngredients")}
+          description={t("weeklyPlan.wizard.useFavoriteIngredientsHint")}
           value={useFavoriteIngredients}
           onValueChange={setUseFavoriteIngredients}
           className="rounded-xl"
@@ -183,14 +190,14 @@ export function Step3FoodPreferences() {
       {useFavoriteIngredients && favoriteIngredients.length === 0 && (
         <View className="mb-6 px-1">
           <Text className="text-sm text-gray-400 dark:text-gray-500 italic">
-            {t('weeklyPlan.wizard.noFavoriteIngredients')}
+            {t("weeklyPlan.wizard.noFavoriteIngredients")}
           </Text>
         </View>
       )}
 
       {/* Ingredients to include */}
       <Section
-        title={t('weeklyPlan.wizard.ingredientsToInclude')}
+        title={t("weeklyPlan.wizard.ingredientsToInclude")}
         className="mb-6"
       >
         <TagInput
@@ -198,15 +205,19 @@ export function Step3FoodPreferences() {
           inputText={includeText}
           onChangeText={setIncludeText}
           onAdd={handleAddInclude}
-          onRemove={(item) => setIngredientsToInclude(ingredientsToInclude.filter((i) => i !== item))}
-          placeholder={t('weeklyPlan.wizard.ingredientsToIncludePlaceholder')}
+          onRemove={(item) =>
+            setIngredientsToInclude(
+              ingredientsToInclude.filter((i) => i !== item),
+            )
+          }
+          placeholder={t("weeklyPlan.wizard.ingredientsToIncludePlaceholder")}
           chipSize="sm"
         />
       </Section>
 
       {/* Ingredients to exclude */}
       <Section
-        title={t('weeklyPlan.wizard.ingredientsToExclude')}
+        title={t("weeklyPlan.wizard.ingredientsToExclude")}
         className="mb-6"
       >
         <TagInput
@@ -214,12 +225,15 @@ export function Step3FoodPreferences() {
           inputText={excludeText}
           onChangeText={setExcludeText}
           onAdd={handleAddExclude}
-          onRemove={(item) => setIngredientsToExclude(ingredientsToExclude.filter((i) => i !== item))}
-          placeholder={t('weeklyPlan.wizard.ingredientsToExcludePlaceholder')}
+          onRemove={(item) =>
+            setIngredientsToExclude(
+              ingredientsToExclude.filter((i) => i !== item),
+            )
+          }
+          placeholder={t("weeklyPlan.wizard.ingredientsToExcludePlaceholder")}
           chipSize="sm"
         />
       </Section>
     </ScrollView>
   );
 }
-

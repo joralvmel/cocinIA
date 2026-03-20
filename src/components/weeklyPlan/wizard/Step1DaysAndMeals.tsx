@@ -1,19 +1,45 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useAppTheme } from '@/hooks/useAppTheme';
-import { Section, ToggleButtonGroup, SwitchItem, DaySelector, NumberInput, Input } from '@/components/ui';
-import { useWeeklyPlanStore } from '@/stores';
-import { DAYS_OF_WEEK, PLAN_MEAL_TYPES, type DayOfWeek, type PlanMealType, type BatchConfig } from '@/types';
-import { getDayLabel, getMealTypeLabel, getMealTypeIcon } from '@/utils';
+import {
+  DaySelector,
+  Input,
+  NumberInput,
+  Section,
+  SwitchItem,
+  ToggleButtonGroup,
+} from "@/components/ui";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { useWeeklyPlanStore } from "@/stores";
+import {
+  DAYS_OF_WEEK,
+  PLAN_MEAL_TYPES,
+  type BatchConfig,
+  type DayOfWeek,
+  type PlanMealType,
+} from "@/types";
+import { getDayLabel, getMealTypeIcon, getMealTypeLabel } from "@/utils";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Pressable, ScrollView, Text, View } from "react-native";
 
 // Map DayOfWeek names to display indices (0=Monday, ..., 6=Sunday)
 const DAY_TO_INDEX: Record<DayOfWeek, number> = {
-  monday: 0, tuesday: 1, wednesday: 2, thursday: 3,
-  friday: 4, saturday: 5, sunday: 6,
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6,
 };
-const INDEX_TO_DAY: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const INDEX_TO_DAY: DayOfWeek[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 export function Step1DaysAndMeals() {
   const { t, i18n } = useTranslation();
@@ -33,16 +59,16 @@ export function Step1DaysAndMeals() {
 
   // Day options for toggle group (no longer needed since we use DaySelector)
   const dayLabels = useMemo(() => {
-    const isSpanish = i18n.language?.startsWith('es');
+    const isSpanish = i18n.language?.startsWith("es");
     return isSpanish
-      ? ['L', 'M', 'X', 'J', 'V', 'S', 'D']
-      : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+      ? ["L", "M", "X", "J", "V", "S", "D"]
+      : ["M", "T", "W", "T", "F", "S", "S"];
   }, [i18n.language]);
 
   // Convert between DayOfWeek names and numeric indices
   const selectedDayIndices = useMemo(
     () => selectedDays.map((d) => DAY_TO_INDEX[d]),
-    [selectedDays]
+    [selectedDays],
   );
 
   const handleDayIndicesChange = (indices: number[]) => {
@@ -69,7 +95,7 @@ export function Step1DaysAndMeals() {
 
   // Get all unique meals across selected days for default mode
   const getDefaultMeals = (): PlanMealType[] => {
-    if (selectedDays.length === 0) return ['lunch', 'dinner'];
+    if (selectedDays.length === 0) return ["lunch", "dinner"];
     return dayConfigs[selectedDays[0]].meals;
   };
 
@@ -81,11 +107,13 @@ export function Step1DaysAndMeals() {
   // Batch cooking: prep day selection
   const prepDayIndices = useMemo(
     () => batchConfig.prep_days.map((d) => DAY_TO_INDEX[d]),
-    [batchConfig.prep_days]
+    [batchConfig.prep_days],
   );
 
   const handlePrepDaysChange = (indices: number[]) => {
-    const days = indices.map((i) => INDEX_TO_DAY[i]).filter(Boolean) as DayOfWeek[];
+    const days = indices
+      .map((i) => INDEX_TO_DAY[i])
+      .filter(Boolean) as DayOfWeek[];
     setBatchConfig({ prep_days: days });
   };
 
@@ -95,17 +123,20 @@ export function Step1DaysAndMeals() {
     if (enabled) {
       selectedDays.forEach((day) => {
         const meals = dayConfigs[day].meals;
-        if (!meals.includes('lunch')) {
-          setDayMeals(day, [...meals, 'lunch']);
+        if (!meals.includes("lunch")) {
+          setDayMeals(day, [...meals, "lunch"]);
         }
       });
     }
   };
 
-  const reuseStrategies: { value: BatchConfig['reuse_strategy']; icon: string }[] = [
-    { value: 'maximize_reuse', icon: 'recycle' },
-    { value: 'balanced', icon: 'balance-scale' },
-    { value: 'variety', icon: 'random' },
+  const reuseStrategies: {
+    value: BatchConfig["reuse_strategy"];
+    icon: string;
+  }[] = [
+    { value: "maximize_reuse", icon: "recycle" },
+    { value: "balanced", icon: "balance-scale" },
+    { value: "variety", icon: "random" },
   ];
 
   return (
@@ -114,11 +145,12 @@ export function Step1DaysAndMeals() {
       showsVerticalScrollIndicator={false}
       contentContainerClassName="px-4 pb-8"
       keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
     >
       {/* Days Selection */}
       <Section
-        title={t('weeklyPlan.wizard.selectDays')}
-        subtitle={t('weeklyPlan.wizard.selectDaysHint')}
+        title={t("weeklyPlan.wizard.selectDays")}
+        subtitle={t("weeklyPlan.wizard.selectDaysHint")}
         className="mb-6"
       >
         <DaySelector
@@ -132,7 +164,7 @@ export function Step1DaysAndMeals() {
       {selectedDays.length === 0 && (
         <View className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 mb-6">
           <Text className="text-amber-700 dark:text-amber-400 text-center font-medium">
-            {t('weeklyPlan.wizard.noDaysSelected')}
+            {t("weeklyPlan.wizard.noDaysSelected")}
           </Text>
         </View>
       )}
@@ -141,31 +173,40 @@ export function Step1DaysAndMeals() {
         <>
           {/* Per-day toggle */}
           <View className="flex-row items-center justify-between mb-4 gap-2">
-            <Text className="font-medium text-gray-700 dark:text-gray-300 flex-1 flex-shrink" numberOfLines={1}>
+            <Text
+              className="font-medium text-gray-700 dark:text-gray-300 flex-1 flex-shrink"
+              numberOfLines={1}
+            >
               {perDayMode
-                ? t('weeklyPlan.wizard.perDayConfig')
-                : t('weeklyPlan.wizard.defaultMeals')}
+                ? t("weeklyPlan.wizard.perDayConfig")
+                : t("weeklyPlan.wizard.defaultMeals")}
             </Text>
             <Pressable
               onPress={() => setPerDayMode(!perDayMode)}
               className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 flex-shrink-0"
             >
               <FontAwesome
-                name={perDayMode ? 'th-list' : 'th-large'}
+                name={perDayMode ? "th-list" : "th-large"}
                 size={14}
                 color={colors.primary}
               />
-              <Text className="text-xs font-medium text-primary-600 dark:text-primary-400" numberOfLines={1}>
+              <Text
+                className="text-xs font-medium text-primary-600 dark:text-primary-400"
+                numberOfLines={1}
+              >
                 {perDayMode
-                  ? t('weeklyPlan.wizard.switchToDefault')
-                  : t('weeklyPlan.wizard.switchToPerDay')}
+                  ? t("weeklyPlan.wizard.switchToDefault")
+                  : t("weeklyPlan.wizard.switchToPerDay")}
               </Text>
             </Pressable>
           </View>
 
           {/* Default meals for all days */}
           {!perDayMode && (
-            <Section title={t('weeklyPlan.wizard.defaultMeals')} className="mb-6">
+            <Section
+              title={t("weeklyPlan.wizard.defaultMeals")}
+              className="mb-6"
+            >
               <ToggleButtonGroup
                 options={mealTypeOptions}
                 values={getDefaultMeals()}
@@ -190,12 +231,14 @@ export function Step1DaysAndMeals() {
 
                   {/* Meal types for this day */}
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    {t('weeklyPlan.wizard.step1Title')}
+                    {t("weeklyPlan.wizard.step1Title")}
                   </Text>
                   <ToggleButtonGroup
                     options={mealTypeOptions}
                     values={dayConfigs[day].meals}
-                    onChange={(meals) => setDayMeals(day, meals as PlanMealType[])}
+                    onChange={(meals) =>
+                      setDayMeals(day, meals as PlanMealType[])
+                    }
                   />
                 </View>
               ))}
@@ -208,8 +251,8 @@ export function Step1DaysAndMeals() {
           <View className="mb-4 mt-2">
             <SwitchItem
               icon="fire"
-              label={t('weeklyPlan.wizard.batchCooking')}
-              description={t('weeklyPlan.wizard.batchCookingDescription')}
+              label={t("weeklyPlan.wizard.batchCooking")}
+              description={t("weeklyPlan.wizard.batchCookingDescription")}
               value={batchCookingEnabled}
               onValueChange={handleBatchToggle}
               className="rounded-xl"
@@ -220,16 +263,20 @@ export function Step1DaysAndMeals() {
             <View className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 gap-5 mb-4">
               {/* Batch info */}
               <View className="flex-row items-center gap-2">
-                <FontAwesome name="info-circle" size={14} color={colors.primary} />
+                <FontAwesome
+                  name="info-circle"
+                  size={14}
+                  color={colors.primary}
+                />
                 <Text className="text-sm text-gray-600 dark:text-gray-400 flex-1">
-                  {t('weeklyPlan.wizard.batchLunchOnly')}
+                  {t("weeklyPlan.wizard.batchLunchOnly")}
                 </Text>
               </View>
 
               {/* Prep days */}
               <Section
-                title={t('weeklyPlan.wizard.prepDays')}
-                subtitle={t('weeklyPlan.wizard.prepDaysHint')}
+                title={t("weeklyPlan.wizard.prepDays")}
+                subtitle={t("weeklyPlan.wizard.prepDaysHint")}
               >
                 <DaySelector
                   selectedDays={prepDayIndices}
@@ -240,10 +287,12 @@ export function Step1DaysAndMeals() {
               </Section>
 
               {/* Max prep time */}
-              <Section title={t('weeklyPlan.wizard.maxPrepTime')}>
+              <Section title={t("weeklyPlan.wizard.maxPrepTime")}>
                 <NumberInput
                   value={batchConfig.max_prep_time_minutes || 180}
-                  onChange={(val) => setBatchConfig({ max_prep_time_minutes: val })}
+                  onChange={(val) =>
+                    setBatchConfig({ max_prep_time_minutes: val })
+                  }
                   min={30}
                   max={480}
                   step={15}
@@ -253,12 +302,14 @@ export function Step1DaysAndMeals() {
 
               {/* Base preparations count */}
               <Section
-                title={t('weeklyPlan.wizard.basePrepsCount')}
-                subtitle={t('weeklyPlan.wizard.basePrepsHint')}
+                title={t("weeklyPlan.wizard.basePrepsCount")}
+                subtitle={t("weeklyPlan.wizard.basePrepsHint")}
               >
                 <NumberInput
                   value={batchConfig.base_preparations_count}
-                  onChange={(val) => setBatchConfig({ base_preparations_count: val })}
+                  onChange={(val) =>
+                    setBatchConfig({ base_preparations_count: val })
+                  }
                   min={1}
                   max={10}
                   step={1}
@@ -266,49 +317,60 @@ export function Step1DaysAndMeals() {
               </Section>
 
               {/* Reuse strategy */}
-              <Section title={t('weeklyPlan.wizard.reuseStrategy')}>
+              <Section title={t("weeklyPlan.wizard.reuseStrategy")}>
                 <View className="gap-2 mt-3">
                   {reuseStrategies.map((strategy) => {
-                    const isSelected = batchConfig.reuse_strategy === strategy.value;
+                    const isSelected =
+                      batchConfig.reuse_strategy === strategy.value;
                     return (
                       <Pressable
                         key={strategy.value}
-                        onPress={() => setBatchConfig({ reuse_strategy: strategy.value })}
+                        onPress={() =>
+                          setBatchConfig({ reuse_strategy: strategy.value })
+                        }
                         className={`flex-row items-center p-3 rounded-xl border ${
                           isSelected
-                            ? 'bg-primary-100 dark:bg-primary-900/40 border-primary-600 dark:border-primary-400'
-                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600'
+                            ? "bg-primary-100 dark:bg-primary-900/40 border-primary-600 dark:border-primary-400"
+                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600"
                         }`}
                       >
                         <View
                           className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
                             isSelected
-                              ? 'bg-primary-600 dark:bg-primary-500'
-                              : 'bg-gray-100 dark:bg-gray-700'
+                              ? "bg-primary-600 dark:bg-primary-500"
+                              : "bg-gray-100 dark:bg-gray-700"
                           }`}
                         >
                           <FontAwesome
                             name={strategy.icon as any}
                             size={18}
-                            color={isSelected ? '#fff' : colors.textSecondary}
+                            color={isSelected ? "#fff" : colors.textSecondary}
                           />
                         </View>
                         <View className="flex-1">
                           <Text
                             className={`font-semibold ${
                               isSelected
-                                ? 'text-primary-600 dark:text-primary-400'
-                                : 'text-gray-900 dark:text-gray-50'
+                                ? "text-primary-600 dark:text-primary-400"
+                                : "text-gray-900 dark:text-gray-50"
                             }`}
                           >
-                            {t(`weeklyPlan.wizard.reuse${strategy.value === 'maximize_reuse' ? 'Maximize' : strategy.value === 'balanced' ? 'Balanced' : 'Variety'}` as any)}
+                            {t(
+                              `weeklyPlan.wizard.reuse${strategy.value === "maximize_reuse" ? "Maximize" : strategy.value === "balanced" ? "Balanced" : "Variety"}` as any,
+                            )}
                           </Text>
                           <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                            {t(`weeklyPlan.wizard.reuse${strategy.value === 'maximize_reuse' ? 'Maximize' : strategy.value === 'balanced' ? 'Balanced' : 'Variety'}Desc` as any)}
+                            {t(
+                              `weeklyPlan.wizard.reuse${strategy.value === "maximize_reuse" ? "Maximize" : strategy.value === "balanced" ? "Balanced" : "Variety"}Desc` as any,
+                            )}
                           </Text>
                         </View>
                         {isSelected && (
-                          <FontAwesome name="check-circle" size={20} color={colors.primary} />
+                          <FontAwesome
+                            name="check-circle"
+                            size={20}
+                            color={colors.primary}
+                          />
                         )}
                       </Pressable>
                     );
@@ -318,9 +380,9 @@ export function Step1DaysAndMeals() {
 
               {/* Batch notes */}
               <Input
-                label={t('weeklyPlan.wizard.batchNotes')}
-                placeholder={t('weeklyPlan.wizard.batchNotesPlaceholder')}
-                value={batchConfig.notes || ''}
+                label={t("weeklyPlan.wizard.batchNotes")}
+                placeholder={t("weeklyPlan.wizard.batchNotesPlaceholder")}
+                value={batchConfig.notes || ""}
                 onChangeText={(text) => setBatchConfig({ notes: text })}
                 multiline
                 numberOfLines={3}
@@ -332,4 +394,3 @@ export function Step1DaysAndMeals() {
     </ScrollView>
   );
 }
-

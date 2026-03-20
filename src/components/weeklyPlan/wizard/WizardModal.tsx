@@ -1,14 +1,14 @@
-import React from 'react';
-import { View, Text, KeyboardAvoidingView, Platform } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { FullScreenModal, StepperProgress, Button } from '@/components/ui';
-import { useWeeklyPlanStore } from '@/stores';
+import { Button, FullScreenModal, StepperProgress } from "@/components/ui";
+import { useWeeklyPlanStore } from "@/stores";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { KeyboardAvoidingView, Text, View } from "react-native";
 
-import { Step1DaysAndMeals } from './Step1DaysAndMeals';
-import { Step2CookingPreferences } from './Step2CookingPreferences';
-import { Step3FoodPreferences } from './Step3FoodPreferences';
-import { Step4NutritionAndNotes } from './Step4NutritionAndNotes';
-import { Step5Summary } from './Step5Summary';
+import { Step1DaysAndMeals } from "./Step1DaysAndMeals";
+import { Step2CookingPreferences } from "./Step2CookingPreferences";
+import { Step3FoodPreferences } from "./Step3FoodPreferences";
+import { Step4NutritionAndNotes } from "./Step4NutritionAndNotes";
+import { Step5Summary } from "./Step5Summary";
 
 interface WizardModalProps {
   visible: boolean;
@@ -32,36 +32,31 @@ export function WizardModal({
   isGenerating = false,
 }: WizardModalProps) {
   const { t } = useTranslation();
-  const {
-    wizardStep,
-    totalSteps,
-    selectedDays,
-    nextStep,
-    prevStep,
-  } = useWeeklyPlanStore();
+  const { wizardStep, totalSteps, selectedDays, nextStep, prevStep } =
+    useWeeklyPlanStore();
 
   const stepLabels = [
-    t('weeklyPlan.wizard.steps.days'),
-    t('weeklyPlan.wizard.steps.cooking'),
-    t('weeklyPlan.wizard.steps.food'),
-    t('weeklyPlan.wizard.steps.nutrition'),
-    t('weeklyPlan.wizard.steps.summary'),
+    t("weeklyPlan.wizard.steps.days"),
+    t("weeklyPlan.wizard.steps.cooking"),
+    t("weeklyPlan.wizard.steps.food"),
+    t("weeklyPlan.wizard.steps.nutrition"),
+    t("weeklyPlan.wizard.steps.summary"),
   ];
 
   const stepTitles = [
-    t('weeklyPlan.wizard.step1Title'),
-    t('weeklyPlan.wizard.step2Title'),
-    t('weeklyPlan.wizard.step3Title'),
-    t('weeklyPlan.wizard.step4Title'),
-    t('weeklyPlan.wizard.step5Title'),
+    t("weeklyPlan.wizard.step1Title"),
+    t("weeklyPlan.wizard.step2Title"),
+    t("weeklyPlan.wizard.step3Title"),
+    t("weeklyPlan.wizard.step4Title"),
+    t("weeklyPlan.wizard.step5Title"),
   ];
 
   const stepSubtitles = [
-    t('weeklyPlan.wizard.step1Subtitle'),
-    t('weeklyPlan.wizard.step2Subtitle'),
-    t('weeklyPlan.wizard.step3Subtitle'),
-    t('weeklyPlan.wizard.step4Subtitle'),
-    t('weeklyPlan.wizard.step5Subtitle'),
+    t("weeklyPlan.wizard.step1Subtitle"),
+    t("weeklyPlan.wizard.step2Subtitle"),
+    t("weeklyPlan.wizard.step3Subtitle"),
+    t("weeklyPlan.wizard.step4Subtitle"),
+    t("weeklyPlan.wizard.step5Subtitle"),
   ];
 
   // Validation per step
@@ -81,19 +76,12 @@ export function WizardModal({
     <FullScreenModal
       visible={visible}
       onClose={onClose}
-      title={t('weeklyPlan.wizard.title')}
+      title={t("weeklyPlan.wizard.title")}
     >
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-      >
+      <KeyboardAvoidingView className="flex-1" behavior="padding">
         {/* Stepper Progress */}
         <View className="px-4 pt-2 pb-3">
-          <StepperProgress
-            steps={stepLabels}
-            currentStep={wizardStep}
-          />
+          <StepperProgress steps={stepLabels} currentStep={wizardStep} />
         </View>
 
         {/* Step header */}
@@ -115,12 +103,8 @@ export function WizardModal({
         <View className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
           <View className="flex-row gap-3">
             {wizardStep > 0 && (
-              <Button
-                variant="outline"
-                onPress={prevStep}
-                className="flex-1"
-              >
-                {t('common.back')}
+              <Button variant="outline" onPress={prevStep} className="flex-1">
+                {t("common.back")}
               </Button>
             )}
 
@@ -131,7 +115,7 @@ export function WizardModal({
                 disabled={!isStepValid()}
                 className="flex-1"
               >
-                {t('common.next')}
+                {t("common.next")}
               </Button>
             ) : (
               <Button
@@ -143,8 +127,8 @@ export function WizardModal({
                 icon="magic"
               >
                 {isGenerating
-                  ? t('weeklyPlan.wizard.generatingPlan')
-                  : t('weeklyPlan.wizard.generatePlan')}
+                  ? t("weeklyPlan.wizard.generatingPlan")
+                  : t("weeklyPlan.wizard.generatePlan")}
               </Button>
             )}
           </View>
@@ -153,6 +137,3 @@ export function WizardModal({
     </FullScreenModal>
   );
 }
-
-
-
